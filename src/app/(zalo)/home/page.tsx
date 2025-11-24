@@ -40,6 +40,7 @@ export default function HomePage() {
   return (
     <div className="flex h-screen w-full font-sans">
       <HomeDesktop
+        onNavigateToMessage={handleNavigateToMessage}
         currentUser={currentUser}
         groups={groups}
         allUsers={allUsers}

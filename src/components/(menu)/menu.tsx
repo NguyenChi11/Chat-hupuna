@@ -52,11 +52,25 @@ export default function Sidebar() {
   };
 
   // Hàm thực hiện hành động cuối cùng
-  const finalizeLogout = () => {
-    cookieBase.remove('session_token');
-    cookieBase.remove('remember_login');
-    // localStorage.removeItem('info_user'); // Xóa localStorage
-    router.push('/login');
+  const finalizeLogout = async () => {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'logout' }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error('Logout failed');
+    return data.success;
+  };
+
+  const handleFinalLogout = async () => {
+    try {
+      await finalizeLogout(); // gọi API xóa cookie
+      cookieBase.remove('session_token'); // xóa client cache
+      router.push('/login'); // redirect
+    } catch (error) {
+      console.error(error);
+      alert('Có lỗi xảy ra khi đăng xuất.');
+    }
   };
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -323,10 +337,7 @@ export default function Sidebar() {
                 Hủy
               </button>
               <button
-                onClick={() => {
-                  finalizeLogout(); // Thực hiện hành động
-                  setShowLogoutConfirm(false);
-                }}
+                onClick={handleFinalLogout}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
                 Đăng xuất

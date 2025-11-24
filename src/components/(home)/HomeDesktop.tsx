@@ -22,6 +22,7 @@ interface HomeDesktopProps {
   onScrollComplete: () => void;
   fetchAllData: () => Promise<void> | void;
   onShowGlobalSearch: () => void;
+  onNavigateToMessage: (message: any) => void;
 }
 
 export default function HomeDesktop({
@@ -38,6 +39,7 @@ export default function HomeDesktop({
   onScrollComplete,
   fetchAllData,
   onShowGlobalSearch,
+                                      onNavigateToMessage
 }: HomeDesktopProps) {
   return (
     <div className="hidden md:flex h-screen w-full">
@@ -52,6 +54,7 @@ export default function HomeDesktop({
         onSelectChat={onSelectChat}
         onChatAction={onChatAction}
         onShowGlobalSearch={onShowGlobalSearch}
+        onNavigateToMessage={onNavigateToMessage}
       />
 
       <div className="flex-1 flex flex-col overflow-auto border-l border-gray-200">

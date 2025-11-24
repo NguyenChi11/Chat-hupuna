@@ -32,6 +32,25 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, _id });
       }
 
+      case 'updateAvatar': {
+        // Nhận userId và newAvatarUrl từ data
+        const { userId, newAvatarUrl } = data;
+
+        if (!userId || !newAvatarUrl) {
+          return NextResponse.json({ error: 'Missing user ID or new Avatar URL' }, { status: 400 });
+        }
+
+        // Cập nhật trường avatar trên document User có _id = userId
+        const result = await updateByField<User>(
+          collectionName,
+          '_id',
+          userId,
+          { avatar: newAvatarUrl }
+        );
+
+        return NextResponse.json({ success: true, result });
+      }
+
       case 'read': {
         // 1. Dùng getAllRows lấy danh sách User (Tận dụng sẵn)
         const result = await getAllRows<User>(collectionName, {

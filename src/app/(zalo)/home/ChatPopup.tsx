@@ -32,6 +32,7 @@ import {
   recallMessageApi,
   markAsReadApi,
 } from '@/fetch/messages';
+import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
 
 const showNotification = () => {
   // 1. Kiểm tra xem trình duyệt có hỗ trợ không
@@ -158,6 +159,8 @@ export default function ChatWindow({
 
   const roomId = isGroup ? getId(selectedChat) : getOneToOneRoomId(getId(currentUser), getId(selectedChat));
   const chatName = selectedChat.name;
+
+  const [showSearchSidebar, setShowSearchSidebar] = useState(false);
 
   const sendMessageProcess = useCallback(
     async (msgData: MessageCreate) => {
@@ -452,21 +455,60 @@ export default function ChatWindow({
   const messagesGrouped = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   const handlePinMessage = async (message: Message) => {
+    // 1. Cập nhật trạng thái local trước (Optimistic update)
     setPinnedMessage(message);
 
-    try {
-      const newPinnedStatus = !message.isPinned;
-      const res = await togglePinMessageApi(message._id, newPinnedStatus);
+    const newPinnedStatus = !message.isPinned; // Xác định trạng thái mới
 
-      if (res.success) {
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'togglePin',
+          messageId: message._id,
+          data: { isPinned: newPinnedStatus }, // Sử dụng trạng thái mới
+        }),
+      });
+
+      if (res.ok) {
+        // 2. Cập nhật danh sách messages và pinnedMessage
         setMessages((prev) => prev.map((m) => (m._id === message._id ? { ...m, isPinned: newPinnedStatus } : m)));
+
         await fetchPinnedMessages();
+
+        // 🔥 BƯỚC MỚI: GỬI THÔNG BÁO VÀO NHÓM
+        const action = newPinnedStatus ? 'đã ghim' : 'đã bỏ ghim';
+        const senderName = currentUser.name || 'Một thành viên';
+        let notificationText = '';
+
+        // Tạo nội dung thông báo dựa trên loại tin nhắn
+        if (message.type === 'text') {
+          notificationText = `${senderName} ${action} một tin nhắn văn bản.`;
+        } else if (message.type === 'image') {
+          notificationText = `${senderName} ${action} một hình ảnh.`;
+        } else if (message.type === 'file') {
+          notificationText = `${senderName} ${action} tệp tin "${message.fileName || 'file'}" vào nhóm.`;
+        } else {
+          notificationText = `${senderName} ${action} một tin nhắn.`;
+        }
+
+        await sendNotifyMessage(notificationText);
+        // 🔥 END BƯỚC MỚI
+
+      } else {
+        // Nếu API fail, roll back local state
+        setPinnedMessage(message.isPinned ? message : null);
+        console.error('API togglePin failed');
       }
     } catch (error) {
       console.error('Ghim tin nhắn thất bại', error);
-      setPinnedMessage(null);
+
+      // 3. Roll back trạng thái local nếu có lỗi mạng/server
+      setPinnedMessage(message.isPinned ? message : null);
     }
   };
+
 
   //useEffect ghim tin nhắn
   useEffect(() => {
@@ -809,6 +851,8 @@ export default function ChatWindow({
           showPopup={showPopup}
           onTogglePopup={() => setShowPopup((prev) => !prev)}
           onOpenMembers={() => setOpenMember(true)}
+          showSearchSidebar={showSearchSidebar}
+          onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
         />
         <PinnedMessagesSection
           allPinnedMessages={allPinnedMessages}
@@ -901,6 +945,20 @@ export default function ChatWindow({
           />
         </div>
       )}
+
+      {showSearchSidebar && (
+        <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[350px] h-full ">
+          <SearchSidebar
+            isOpen={showSearchSidebar}
+            onClose={() => setShowSearchSidebar(false)}
+            roomId={roomId}
+            onJumpToMessage={handleJumpToMessage}
+            getSenderName={getSenderName}
+          />
+        </div>
+      )}
+
+
 
       {openMember && isGroup && (
         <ModalMembers

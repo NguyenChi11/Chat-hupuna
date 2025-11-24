@@ -26,6 +26,7 @@ export function useChatMembers({ selectedChat, isGroup, currentUser, sendNotifyM
     }
   }, [selectedChat, isGroup]);
 
+
   const handleMemberRemoved = useCallback(
     async (removedMemberId: string, removedMemberName: string) => {
       setActiveMembers((prev) => prev.filter((m) => String(m._id) !== String(removedMemberId)));

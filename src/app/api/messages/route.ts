@@ -44,28 +44,51 @@ export async function POST(req: NextRequest) {
       }
 
       case 'read': {
-        // 1. Lấy tin nhắn
+        const { roomId, isPinned, searchQuery, ...otherFilters } = filters || {};
+
+        let mongoFilters: any = { ...otherFilters };
+        if (roomId) {
+          mongoFilters.roomId = roomId;
+        }
+
+        if (isPinned !== undefined) {
+          mongoFilters.isPinned = isPinned;
+        }
+
+        // 🔥 LOGIC TÌM KIẾM CỤC BỘ (SEARCH QUERY)
+        if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
+          const escapedTerm = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const searchRegex = new RegExp(escapedTerm, 'i');
+
+          // Thêm điều kiện $or để tìm trong content hoặc fileName
+          mongoFilters.$or = [
+            { content: { $regex: searchRegex } },
+            { fileName: { $regex: searchRegex } },
+          ];
+        }
+
+        // 1. Lấy tin nhắn với filter đã cập nhật
         const result = await getAllRows<Message>(collectionName, {
-          search,
+          search: undefined, // Bỏ search legacy, dùng mongoFilters
           skip,
           limit,
-          field,
-          value,
-          filters,
+          // field, value, // Không dùng field/value nếu dùng filters
+          filters: mongoFilters, // <-- Sử dụng filters đã xây dựng
           sort,
         });
 
         const messages: Message[] = result.data || [];
 
-        if (!messages.length) return NextResponse.json(result);
+        // ... (phần còn lại của case 'read' để lấy thông tin sender và trả về)
+        // ... (phần lấy danh sách senderIds, query users, enrichedMessages)
 
         // Lấy danh sách senderId
         const senderIds = [...new Set(messages.map((m) => String(m.sender)))]
           .filter(ObjectId.isValid)
           .map((id) => new ObjectId(id));
-        if (!senderIds.length) return NextResponse.json(result);
 
-        // Query users
+        // ... (các bước lấy userMap và enrichedMessages)
+
         const usersResult = await getAllRows<User>(USERS_COLLECTION_NAME, {
           filters: { _id: { $in: senderIds } },
           limit: 999999,
