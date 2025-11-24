@@ -1,7 +1,7 @@
 // server.js
 import { Server } from 'socket.io';
 
-const io = new Server(3001, {
+const io = new Server(3002, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
