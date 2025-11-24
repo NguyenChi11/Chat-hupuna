@@ -1,0 +1,16 @@
+<!--?xml version="1.0" encoding="UTF-8"?-->
+<svg width="128" height="128" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Half blue rectangle with border">
+  <!-- Khung bo góc -->
+  <rect x="2" y="2" width="20" height="20" rx="4" ry="4" fill="none" stroke="#0066FF" stroke-width="1.8"></rect>
+
+  <!-- Dùng clip-path để giữ fill nằm gọn trong khung -->
+  <clipPath id="clip">
+    <rect x="2" y="2" width="20" height="20" rx="4" ry="4"></rect>
+  </clipPath>
+
+  <!-- Nửa bên phải được tô xanh, cắt gọn bởi clip-path -->
+  <rect x="12" y="2" width="10" height="20" fill="#0066FF" clip-path="url(#clip)"></rect>
+
+  <!-- Đường chia giữa -->
+  <line x1="12" y1="2" x2="12" y2="22" stroke="#0066FF" stroke-width="1.6" stroke-linecap="round"></line>
+</svg>

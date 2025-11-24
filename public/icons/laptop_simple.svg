@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="220" height="150" viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Simple laptop illustration">
+  <!-- Laptop body -->
+  <rect x="20" y="18" rx="8" ry="8" width="180" height="95" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2"/>
+
+  <!-- Screen inner -->
+  <rect x="30" y="28" rx="6" ry="6" width="160" height="70" fill="#f3f4f6"/>
+
+  <!-- Laptop base (keyboard area) -->
+  <rect x="10" y="95" rx="6" ry="6" width="200" height="18" fill="#f1f5f9" stroke="#d7dbe0" stroke-width="1.5"/>
+
+  <!-- thin top edge of base for separation -->
+  <rect x="20" y="92" rx="2" ry="2" width="180" height="6" fill="#eef2f6"/>
+
+  <!-- Shadow under laptop -->
+  <ellipse cx="110" cy="125" rx="70" ry="8" fill="#e6e7ea"/>
+</svg>

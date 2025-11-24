@@ -1,0 +1,30 @@
+export const USERS_COLLECTION_NAME = 'Users';
+
+export interface User {
+  [key: string]: unknown;
+  _id: string;
+  name: string;
+  username: string;
+  password?: string;
+  unreadCount?: number;
+  lastMessage?: string;
+  lastMessageAt?: number;
+
+  avatar?: string;
+  role?: string;
+  department?: string;
+  status?: string;
+  isPinnedBy?: Record<string, boolean>;
+  isHiddenBy?: Record<string, boolean>;
+}
+export interface UserCreate {
+  [key: string]: unknown;
+  name: string;
+  username: string;
+  password: string;
+
+  avatar?: string;
+  role?: string;
+  department?: string;
+  status?: string;
+}

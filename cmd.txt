@@ -1,0 +1,16 @@
+git stash        # Cất code đi
+git switch tên_nhánh_khác
+# ... làm việc xong ...
+git switch nhánh_cũ
+git stash pop    # Lấy code ra làm tiếp
+
+
+=== khởi chạy socketServer 
+node server.js
+
+npm run dev
+
+npx tsc --noEmit
+
+=== bỏ merge khi lỡ tay
+git merge --abort
