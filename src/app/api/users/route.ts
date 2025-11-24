@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         const msgCollection = await getCollection<Message>(MESSAGES_COLLECTION_NAME);
 
         const usersWithData = await Promise.all(
-          users.map(async (u: any) => {
+          users.map(async (u: User) => {
             // Bỏ qua chính mình trong danh sách
             if (String(u._id) === userIdStr) return u;
 
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing currentUserId, roomId or data' }, { status: 400 });
         }
         const partnerId = roomId;
-        const updateFields: any = {};
+        const updateFields: Record<string, boolean> = {};
 
         if (typeof data.isPinned === 'boolean') {
           updateFields[`isPinnedBy.${currentUserId}`] = data.isPinned;

@@ -95,14 +95,28 @@ export default function Sidebar({
   onShowGlobalSearch,
 }: SidebarProps) {
   const currentUserId = currentUser._id;
+  // Hàm lấy tên hiển thị cho 1 item (User hoặc Group)
+  const getChatDisplayName = (chat: ChatItemType | User): string => {
+    const maybeGroup = chat as GroupConversation;
+    const isGroupChat = maybeGroup.isGroup === true || Array.isArray(maybeGroup.members);
+
+    if (isGroupChat) {
+      return (maybeGroup.name || '').trim() || 'Nhóm';
+    }
+
+    const user = chat as User;
+    return (user.name || user.username || 'Người dùng').trim();
+  };
+
   // 1. GỘP DATA: Nối mảng groups và allUsers lại
-  const mixedChats = [...groups, ...allUsers];
+  const mixedChats: (GroupConversation | User)[] = [...groups, ...allUsers];
 
   // 2. LỌC (SEARCH + HIDE)
   const filteredChats = mixedChats.filter((chat) => {
     const isHidden = chat.isHidden === true;
     const isSearching = searchTerm.trim() !== '';
-    const matchesSearch = chat.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const displayName = getChatDisplayName(chat);
+    const matchesSearch = displayName.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (isSearching) {
       // TRƯỜNG HỢP 1: Đang tìm kiếm
@@ -114,6 +128,7 @@ export default function Sidebar({
       return !isHidden;
     }
   });
+
   // 4. SẮP XẾP (Ưu tiên Ghim, sau đó đến thời gian)
   filteredChats.sort((a, b) => {
     const timeA = a.lastMessageAt || 0;
@@ -129,7 +144,9 @@ export default function Sidebar({
 
     // B. Nếu cùng trạng thái Ghim, sắp xếp theo thời gian
     if (timeA === 0 && timeB === 0) {
-      return (a.name || '').localeCompare(b.name || '');
+      const nameA = getChatDisplayName(a);
+      const nameB = getChatDisplayName(b);
+      return nameA.localeCompare(nameB);
     }
     return timeB - timeA; // Mới nhất lên đầu
   });
@@ -156,7 +173,8 @@ export default function Sidebar({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-semibold truncate max-w-[140px]">
-                {currentUser.name || currentUser.username}
+                {/* Nếu đang chọn một cuộc trò chuyện thì ưu tiên hiển thị tên cuộc trò chuyện (nhất là nhóm) */}
+                {selectedChat ? getChatDisplayName(selectedChat) : currentUser.name || currentUser.username}
               </span>
               <span className="text-[11px] opacity-80 truncate max-w-[160px]">ID: {currentUser.username}</span>
             </div>

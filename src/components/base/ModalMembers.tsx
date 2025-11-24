@@ -22,17 +22,8 @@ interface Props {
   onRoleChange?: (memberId: string, memberName: string, newRole: 'ADMIN' | 'MEMBER') => void;
 }
 
-function isMemberInfo(member: unknown): member is MemberInfo {
-  if (typeof member !== 'object' || member === null) return false;
-
-  const m = member as {
-    _id?: unknown;
-    id?: unknown;
-    name?: unknown;
-  };
-
-  const hasId = typeof m._id === 'string' || typeof m.id === 'string';
-  return hasId && typeof m.name === 'string';
+function isMemberInfo(member: any): member is MemberInfo {
+  return typeof member === 'object' && member !== null && ('_id' in member || 'id' in member) && 'name' in member;
 }
 
 export default function GroupMembersModal({
@@ -52,7 +43,6 @@ export default function GroupMembersModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [localMembers, setLocalMembers] = useState<MemberInfo[]>([]);
   const [loadingAction, setLoadingAction] = useState<string | null>(null); // Để hiện loading khi kick/promote
-  const [pendingKick, setPendingKick] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     const valid = members.filter(isMemberInfo);
@@ -62,10 +52,8 @@ export default function GroupMembersModal({
   if (!isOpen) return null;
 
   const myId = String(currentUser._id || currentUser.id);
-  const getMemberId = (member: MemberInfo) => String(member._id || member.id);
-
-  const myMemberInfo = localMembers.find((m) => getMemberId(m) === myId);
-  const myRole: GroupRole = myMemberInfo?.role || 'MEMBER';
+  const myMemberInfo = localMembers.find((m) => String(m._id || (m as any).id) === myId);
+  const myRole: GroupRole = (myMemberInfo as any)?.role || 'MEMBER';
 
   // --- LOGIC PERMISSION ---
   const canKick = (targetRole: GroupRole) => {
@@ -92,39 +80,17 @@ export default function GroupMembersModal({
 
   const handleAction = async (action: 'kick' | 'promote' | 'demote', targetUserId: string) => {
     if (!conversationId) return;
-    const convId = conversationId;
     setLoadingAction(targetUserId); // Bắt đầu loading cho user này
 
-    const targetMember = localMembers.find((m) => getMemberId(m) === targetUserId);
+    const targetMember = localMembers.find((m) => String(m._id || (m as any).id) === targetUserId);
     const targetName = targetMember ? targetMember.name : 'Thành viên';
 
-    type KickPayload = {
-      action: 'kickMember';
-      conversationId: string;
-      targetUserId: string;
-    };
-
-    type ChangeRolePayload = {
-      action: 'changeRole';
-      conversationId: string;
-      targetUserId: string;
-      data: { role: 'ADMIN' | 'MEMBER' };
-    };
-
-    let payload: KickPayload | ChangeRolePayload;
+    const payload: any = { conversationId, targetUserId };
     if (action === 'kick') {
-      payload = {
-        action: 'kickMember',
-        conversationId: convId,
-        targetUserId,
-      };
+      payload.action = 'kickMember';
     } else {
-      payload = {
-        action: 'changeRole',
-        conversationId: convId,
-        targetUserId,
-        data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
-      };
+      payload.action = 'changeRole';
+      payload.data = { role: action === 'promote' ? 'ADMIN' : 'MEMBER' };
     }
 
     try {
@@ -136,11 +102,13 @@ export default function GroupMembersModal({
 
       if (res.ok) {
         if (action === 'kick') {
-          setLocalMembers((prev) => prev.filter((m) => getMemberId(m) !== targetUserId));
+          setLocalMembers((prev) => prev.filter((m) => String(m._id || (m as any).id) !== targetUserId));
           if (onMemberRemoved) onMemberRemoved(targetUserId, targetName);
         } else if (action === 'promote' || action === 'demote') {
           const newRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
-          setLocalMembers((prev) => prev.map((m) => (getMemberId(m) === targetUserId ? { ...m, role: newRole } : m)));
+          setLocalMembers((prev) =>
+            prev.map((m) => (String(m._id || (m as any).id) === targetUserId ? { ...m, role: newRole } : m)),
+          );
           if (onRoleChange) onRoleChange(targetUserId, targetName, newRole);
         }
         if (reLoad) reLoad();
@@ -157,13 +125,7 @@ export default function GroupMembersModal({
 
   // Filter
   const searchUser = localMembers.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const existingMemberIds = localMembers.map((m) => getMemberId(m));
-
-  const handleConfirmKick = () => {
-    if (!pendingKick) return;
-    void handleAction('kick', pendingKick.id);
-    setPendingKick(null);
-  };
+  const existingMemberIds = localMembers.map((m) => String(m._id || (m as any).id));
 
   // --- SUB COMPONENTS ---
   const RoleBadge = ({ role }: { role: GroupRole }) => {
@@ -183,30 +145,23 @@ export default function GroupMembersModal({
   };
 
   return (
-    // 1. Outer Wrapper kiểu popup Zalo
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] py-1">
-      <div className="bg-white w-full h-full sm:h-auto sm:max-w-2xl sm:rounded-2xl shadow-2xl animate-fade-in-up flex flex-col max-h-[90vh] overflow-hidden">
+    // 1. Outer Wrapper giống CreateGroupModal
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white sm:bg-black/50 py-1 rounded-lg">
+      <div className="bg-white w-full h-full sm:max-w-2xl shadow-none sm:shadow-2xl animate-fade-in-up flex flex-col">
         {/* --- HEADER --- */}
-        <div className="flex-none flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <div className="min-w-0">
-            <h3 className="text-sm sm:text-base font-semibold truncate">Thành viên nhóm</h3>
-            {groupName && (
-              <p className="text-xs sm:text-sm text-blue-100 font-medium mt-0.5 truncate max-w-[220px] sm:max-w-xs">
-                {groupName}
-              </p>
-            )}
+        <div className="flex-none flex justify-between items-center p-4 border-b border-gray-200 bg-white">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">Thành viên nhóm</h3>
+            {groupName && <p className="text-sm text-gray-500 font-medium mt-0.5">{groupName}</p>}
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/15 transition-colors flex items-center justify-center"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={2}
               stroke="currentColor"
-              className="w-5 h-5 sm:w-6 sm:h-6"
+              className="w-6 h-6 text-gray-500"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -214,14 +169,14 @@ export default function GroupMembersModal({
         </div>
 
         {/* --- BODY --- */}
-        <div className="flex-1 flex flex-col min-h-0 bg-[#f4f6f9]">
+        <div className="flex-1 flex flex-col min-h-0 bg-gray-50/50">
           {/* Search & Add Section */}
-          <div className="flex-none p-4 space-y-3 bg-white pb-4 shadow-sm z-10 border-b border-gray-100">
+          <div className="flex-none p-4 space-y-3 bg-white pb-6 shadow-sm z-10">
             {/* Chỉ Admin/Owner mới thấy nút Add */}
             {(myRole === 'OWNER' || myRole === 'ADMIN') && (
               <button
                 onClick={() => setShowCreateGroupModal(true)}
-                className="w-full py-2.5 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-sm font-semibold transition-all active:scale-95 group"
+                className="w-full py-3 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold transition-all active:scale-95 group"
               >
                 <div className="p-1 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
                   <img src={IconGroup.src} alt="" className="w-4 h-4" />
@@ -236,7 +191,7 @@ export default function GroupMembersModal({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm thành viên..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full outline-none focus:bg-white focus:ring-2 focus:ring-blue-200 border border-transparent focus:border-blue-400 text-sm"
+                className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 border border-transparent focus:border-blue-500 transition-all"
               />
               <div className="absolute left-3 top-1/2 -translate-y-1/2">
                 <Image src={SearchIcon} alt="search" width={20} height={20} className="opacity-40" />
@@ -246,17 +201,17 @@ export default function GroupMembersModal({
 
           {/* Member List */}
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            <h4 className="font-semibold text-xs text-gray-600 mb-3 uppercase tracking-wider flex justify-between">
+            <h4 className="font-semibold text-xs text-gray-500 mb-3 uppercase tracking-wider flex justify-between">
               <span>Danh sách</span>
-              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[12px] sm:text-[13px]">
+              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[15px]">
                 {searchUser.length} thành viên
               </span>
             </h4>
 
             <div className="space-y-2">
               {searchUser.map((member) => {
-                const memberId = getMemberId(member);
-                const memberRole = member.role || 'MEMBER';
+                const memberId = String(member._id || (member as any).id);
+                const memberRole = (member as any).role || 'MEMBER';
                 const isMe = memberId === myId;
                 const isLoading = loadingAction === memberId;
 
@@ -270,7 +225,7 @@ export default function GroupMembersModal({
                     {/* Avatar */}
                     <div className="w-11 h-11 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0 border border-gray-100">
                       {member.avatar ? (
-                        <Image
+                        <img
                           src={member.avatar}
                           alt=""
                           className="w-full h-full object-cover"
@@ -349,7 +304,9 @@ export default function GroupMembersModal({
                         {/* Nút Kick (Xóa) */}
                         {canKick(memberRole) && (
                           <button
-                            onClick={() => setPendingKick({ id: memberId, name: member.name })}
+                            onClick={() => {
+                              if (confirm(`Xóa ${member.name} khỏi nhóm?`)) handleAction('kick', memberId);
+                            }}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
                             title="Mời ra khỏi nhóm"
                           >
@@ -411,35 +368,8 @@ export default function GroupMembersModal({
           onClose={() => setShowCreateGroupModal(false)}
           reLoad={reLoad}
           onMembersAdded={handleOptimisticAddMember}
-          // Với mode "add" không cần quan tâm group trả về nên bỏ tham số
           onGroupCreated={() => setShowCreateGroupModal(false)}
         />
-      )}
-
-      {/* Popup xác nhận kích thành viên kiểu Zalo */}
-      {pendingKick && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
-            <h4 className="text-base font-semibold text-gray-900 mb-2">Mời thành viên ra khỏi nhóm</h4>
-            <p className="text-sm text-gray-700 mb-4">
-              Bạn có chắc muốn mời <span className="font-semibold">{pendingKick.name}</span> ra khỏi nhóm không?
-            </p>
-            <div className="flex justify-end gap-2 mt-2">
-              <button
-                onClick={() => setPendingKick(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleConfirmKick}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Mời ra khỏi nhóm
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
