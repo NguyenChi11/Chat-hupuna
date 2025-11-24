@@ -124,7 +124,28 @@ export function useHomePage() {
         });
 
         const messageData = await res.json();
-        const messages = (messageData.data || []) as GlobalSearchMessage[];
+        const allMessages = (messageData.data || []) as any[];
+        
+        // Filter messages to only include allowed types and map to GlobalSearchMessage format
+        const messages: GlobalSearchMessage[] = allMessages
+          .filter((msg: any) => ['text', 'image', 'file', 'sticker'].includes(msg.type))
+          .map((msg: any) => ({
+            _id: msg._id,
+            content: msg.content,
+            type: msg.type as 'text' | 'image' | 'file' | 'sticker',
+            fileName: msg.fileName,
+            timestamp: msg.timestamp,
+            sender: msg.sender,
+            senderName: msg.senderName || '',
+            roomId: msg.roomId,
+            roomName: msg.roomName || '',
+            isGroupChat: msg.isGroupChat || false,
+            partnerId: msg.partnerId,
+            partnerName: msg.partnerName,
+            fileUrl: msg.fileUrl,
+            receiver: msg.receiver,
+            displayRoomName: msg.displayRoomName,
+          }));
 
         setGlobalSearchResults({
           contacts: contactResults,
