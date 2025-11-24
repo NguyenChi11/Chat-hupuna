@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Sidebar from '@/ui/danhba/Sidebar';
-import MainContent from '@/ui/danhba/MainContent';
+import Sidebar from '@/ui/phonebook/Sidebar';
+import MainContent from '@/ui/phonebook/MainContent';
 
 export default function HomePage() {
   const [selectedMenu, setSelectedMenu] = useState<string>('messages'); // mặc định cho desktop

@@ -1,7 +1,7 @@
 // File: components/MainContent.tsx
 import React from 'react';
-import FriendsList from '@/ui/danhba/FriendsList'; // Component cho danh sách bạn bè
-import FriendRequests from '@/ui/danhba/FriendRequests'; // Component cho lời mời kết bạn
+import FriendsList from '@/ui/phonebook/FriendsList'; // Component cho danh sách bạn bè
+import FriendRequests from '@/ui/phonebook/FriendRequests'; // Component cho lời mời kết bạn
 import GroupRequest from './GroupRequest';
 import GroupsPage from './Group';
 

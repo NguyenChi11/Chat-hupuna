@@ -53,7 +53,7 @@ export default function LoginForm() {
         localStorage.setItem('remember_login', JSON.stringify(remember));
 
         setIsLoading(false);
-        router.push('/trangchu');
+        router.push('/home');
       } else {
         toast({ type: 'error', message: result.message || 'Đăng nhập thất bại', duration: 3000 });
         setIsLoading(false);

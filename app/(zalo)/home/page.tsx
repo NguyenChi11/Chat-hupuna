@@ -14,7 +14,7 @@ import ChatWindow from '@/ui/base/ChatPopup';
 import CreateGroupModal from '@/ui/base/CreateGroupModal';
 import Sidebar from '@/ui/base/Sidebar';
 // Data & Utils
-import { banners } from '@/(zalo)/trangchu/dataBanner';
+import { banners } from '@/(zalo)/home/dataBanner';
 import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
 import GlobalSearchModal from '@/ui/base/GlobalSearchModal';
@@ -43,8 +43,8 @@ export default function HomePage() {
 
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
 
-  const handleSelectContact = useCallback((contact: any) => {
-    console.log('📱 Select contact:', contact);
+  const handleSelectContact = useCallback((phonebook: any) => {
+    console.log('📱 Select phonebook:', phonebook);
 
     // Đóng modal
     setShowGlobalSearchModal(false);
@@ -53,13 +53,13 @@ export default function HomePage() {
     setScrollToMessageId(null);
 
     // Chọn chat
-    setSelectedChat(contact);
+    setSelectedChat(phonebook);
 
     // Reset unread count
-    if (contact.isGroup || contact.members) {
-      setGroups((prev) => prev.map((g) => (g._id === contact._id ? { ...g, unreadCount: 0 } : g)));
+    if (phonebook.isGroup || phonebook.members) {
+      setGroups((prev) => prev.map((g) => (g._id === phonebook._id ? { ...g, unreadCount: 0 } : g)));
     } else {
-      setAllUsers((prev) => prev.map((u) => (u._id === contact._id ? { ...u, unreadCount: 0 } : u)));
+      setAllUsers((prev) => prev.map((u) => (u._id === phonebook._id ? { ...u, unreadCount: 0 } : u)));
     }
   }, []);
 

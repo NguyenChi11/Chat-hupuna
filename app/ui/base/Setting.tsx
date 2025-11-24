@@ -36,7 +36,7 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
 
   return (
     <div
-      className="flex flex-col md:flex-row bg-gray-100 border rounded-lg shadow-lg 
+      className="flex flex-col md:flex-row bg-gray-100 rounded-lg shadow-lg 
       w-full max-w-4xl mx-auto 
       h-auto md:h-[600px] 
       overflow-hidden relative"

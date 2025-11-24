@@ -52,12 +52,41 @@ export default function Sidebar() {
   };
 
   // Hàm thực hiện hành động cuối cùng
-  const finalizeLogout = () => {
-    cookieBase.remove('session_token');
-    cookieBase.remove('remember_login');
-    // localStorage.removeItem('info_user'); // Xóa localStorage
-    router.push('/login');
+  const finalizeLogout = async () => {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'logout' }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error('Logout failed');
+    return data.success;
   };
+
+  const checkLogout = async () => {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'me' }),
+    });
+    if (res.status === 401) return true; // đã logout
+    return false; // vẫn còn session
+  };
+
+  const handleFinalLogout = async () => {
+    try {
+      await finalizeLogout(); // gọi API xóa cookie
+      const loggedOut = await checkLogout(); // kiểm tra session
+      if (loggedOut) {
+        cookieBase.remove('info_user'); // xóa client cache
+        router.push('/login'); // redirect
+      } else {
+        alert('Đăng xuất không thành công, vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Có lỗi xảy ra khi đăng xuất.');
+    }
+  };
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
@@ -75,13 +104,13 @@ export default function Sidebar() {
   }, []);
 
   const handleTrangChu = () => {
-    setActive('trangchu');
-    router.push('/trangchu');
+    setActive('home');
+    router.push('/home');
   };
 
   const handleDanhBa = () => {
-    setActive('danhba');
-    router.push('/danhba');
+    setActive('phonebook');
+    router.push('/phonebook');
   };
 
   const [userInfo, setUserInfo] = useState<User | null>(null);
@@ -101,14 +130,17 @@ export default function Sidebar() {
 
         {/* Menu trên */}
         <div className="flex flex-col gap-6 flex-1">
+          {/* Trang chủ */}
           <button
-            className={`p-2 rounded-lg cursor-pointer ${active === 'trangchu' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
+            className={`rounded-lg cursor-pointer w-[52px] h-[52px] flex items-center justify-center ${active === 'home' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
             onClick={handleTrangChu}
           >
             <Image src={MessgeIcon} alt="" width={35} height={35} />
           </button>
+
+          {/* Danh bạ */}
           <button
-            className={`p-2 rounded-lg cursor-pointer ${active === 'danhba' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
+            className={`rounded-lg cursor-pointer w-[52px] h-[52px] flex items-center justify-center ${active === 'phonebook' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
             onClick={handleDanhBa}
           >
             <Image src={PhoneBookIcon} alt="" width={35} height={35} />
@@ -117,9 +149,10 @@ export default function Sidebar() {
 
         {/* Menu dưới */}
         <div className="flex flex-col gap-6">
+          {/* Nút cloud zalo */}
           <div className="relative inline-block">
             <button
-              className={`p-2 rounded-lg cursor-pointer ${active === 'upload' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
+              className={`rounded-lg cursor-pointer w-[52px] h-[52px] flex items-center justify-center ${active === 'upload' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
               onClick={() => setActive(active === 'upload' ? null : 'upload')}
             >
               <Image src={CLoudZIcon} alt="" width={35} height={35} />
@@ -133,17 +166,18 @@ export default function Sidebar() {
             )}
           </div>
 
+          {/* Nút my cloud */}
           <button
-            className={`p-2 rounded-lg cursor-pointer ${active === 'cloud' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
+            className={`rounded-lg cursor-pointer w-[52px] h-[52px] flex items-center justify-center ${active === 'cloud' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
             onClick={() => setActive('cloud')}
           >
             <Image src={CLoudIcon} alt="" width={32} height={32} />
           </button>
 
-          {/* Nút briefcase */}
+          {/* Nút công cụ */}
           <div className="relative" ref={businessRef}>
             <button
-              className={`p-2 rounded-lg cursor-pointer ${
+              className={`rounded-lg cursor-pointer w-[52px] h-[52px] flex items-center justify-center ${
                 active === 'briefcase' ? 'bg-blue-500' : 'hover:bg-blue-500'
               }`}
               onClick={() => {
@@ -186,7 +220,8 @@ export default function Sidebar() {
           {/* Nút cài đặt */}
           <div className="relative" ref={settingsRef}>
             <button
-              className={` cursor-pointer ${active === 'settings' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
+              className={`rounded-lg cursor-pointer w-[52px] h-[52px] flex items-center justify-center
+                ${active === 'settings' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
               onClick={() => setShowSettings((prev) => !prev)}
             >
               <Image src={SettingsIcon} alt="" width={35} height={35} className="w-12 h-11 cursor-pointer " />
@@ -215,7 +250,10 @@ export default function Sidebar() {
                 {/* Nút Cài đặt */}
                 <button
                   className="w-full flex items-center gap-1 px-2.5 py-2 hover:bg-gray-100 transition-colors rounded-lg cursor-pointer"
-                  onClick={() => setShowSettingsPanel(true)}
+                  onClick={() => {
+                    setShowSettings(false);
+                    setShowSettingsPanel(true);
+                  }}
                 >
                   <img src={IconST1.src} alt="Settings Icon" className="w-8 h-8" />
                   <span className="text-gray-700 font-medium">Cài đặt</span>
@@ -323,10 +361,7 @@ export default function Sidebar() {
                 Hủy
               </button>
               <button
-                onClick={() => {
-                  finalizeLogout(); // Thực hiện hành động
-                  setShowLogoutConfirm(false);
-                }}
+                onClick={handleFinalLogout}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
                 Đăng xuất
@@ -335,10 +370,15 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
       {/* SettingsPanel full-screen overlay */}
       {showSettingsPanel && (
-        <div className="fixed inset-0 top-40  z-60 flex">
-          <div className="flex-1 overflow-auto">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm px-3">
+          <div
+            className="w-full max-w-4xl max-h-[calc(100%-3rem)] bg-gray-100 rounded-lg shadow-lg overflow-hidden
+                 transform transition-all duration-300 ease-out
+                 scale-95 opacity-0 animate-showModal"
+          >
             <SettingsPanel onClose={() => setShowSettingsPanel(false)} />
           </div>
         </div>

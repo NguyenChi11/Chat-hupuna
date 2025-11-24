@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { verifyJWT } from '@/lib/auth'; // Đảm bảo đường dẫn này đúng với cấu trúc của bạn
 
 // Danh sách các trang cần bảo vệ
-const protectedRoutes = ['/trangchu'];
+const protectedRoutes = ['/home'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/') {
     const token = request.cookies.get('session_token')?.value;
     if (token && (await verifyJWT(token))) {
-      return NextResponse.redirect(new URL('/trangchu', request.url));
+      return NextResponse.redirect(new URL('/home', request.url));
     }
   }
 
@@ -30,5 +30,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/trangchu/:path*', '/api/conversations/:path*', '/api/message/:path*'],
+  matcher: ['/', '/home/:path*', '/api/conversations/:path*', '/api/message/:path*'],
 };

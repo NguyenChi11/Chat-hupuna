@@ -36,7 +36,7 @@ interface Props {
   currentUser: User;
   allUsers: User[];
   onNavigateToMessage: (message: Message) => void;
-  onSelectContact: (contact: any) => void;
+  onSelectContact: (phonebook: any) => void;
 }
 
 export default function GlobalSearchModal({
@@ -420,21 +420,21 @@ export default function GlobalSearchModal({
                       <span className="text-xs text-gray-500 font-normal">({results?.contacts?.length || 0})</span>
                     </h4>
                     <div className="space-y-1">
-                      {results.contacts.map((contact) => (
+                      {results.contacts.map((phonebook) => (
                         <div
-                          key={contact._id}
-                          onClick={() => onSelectContact(contact)}
+                          key={phonebook._id}
+                          onClick={() => onSelectContact(phonebook)}
                           className="flex items-center p-3 rounded-xl hover:bg-blue-50 cursor-pointer transition-all group"
                         >
                           <div className="relative">
                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
-                              {contact.avatar ? (
-                                <img src={contact.avatar} className="w-full h-full object-cover" alt="" />
+                              {phonebook.avatar ? (
+                                <img src={phonebook.avatar} className="w-full h-full object-cover" alt="" />
                               ) : (
-                                contact.name?.charAt(0).toUpperCase()
+                                phonebook.name?.charAt(0).toUpperCase()
                               )}
                             </div>
-                            {contact.isGroup && (
+                            {phonebook.isGroup && (
                               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                   <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
@@ -444,10 +444,10 @@ export default function GlobalSearchModal({
                           </div>
                           <div className="flex-1 min-w-0 ml-3">
                             <p className="font-medium text-gray-800 truncate">
-                              <HighlightText text={contact.name} keyword={localSearchTerm} />
+                              <HighlightText text={phonebook.name} keyword={localSearchTerm} />
                             </p>
                             <p className="text-xs text-gray-500 flex items-center gap-1">
-                              {contact.isGroup ? 'Nhóm' : 'Liên hệ'}
+                              {phonebook.isGroup ? 'Nhóm' : 'Liên hệ'}
                             </p>
                           </div>
                           <svg
