@@ -9,7 +9,7 @@ const ICPerson = ({ className, stroke }: { className?: string; stroke?: string }
         height="800px"
         viewBox="0 0 64 64"
         xmlns="http://www.w3.org/2000/svg"
-        stroke-width="3"
+        strokeWidth="3"
         stroke={stroke || '#000000'}
         fill="none"
       >

@@ -109,6 +109,19 @@ export function useHomePage() {
 
       if (data.data) {
         setGroups(data.data);
+
+        // Đồng bộ lại selectedChat (nếu đang mở 1 group) với dữ liệu mới nhất
+        setSelectedChat((prev) => {
+          if (!prev) return prev;
+
+          // Chỉ áp dụng cho nhóm, chat 1-1 sẽ không có trong danh sách groups
+          const maybeGroup = prev as GroupConversation;
+          const isGroupChat = maybeGroup.isGroup === true || Array.isArray(maybeGroup.members);
+          if (!isGroupChat) return prev;
+
+          const updated = data.data.find((g: GroupConversation) => g._id === maybeGroup._id);
+          return updated || prev;
+        });
       }
     } catch (e) {
       console.error('Fetch groups error:', e);

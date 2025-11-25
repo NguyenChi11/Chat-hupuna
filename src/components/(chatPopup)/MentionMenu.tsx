@@ -7,6 +7,7 @@ import React, { RefObject } from 'react';
 import type { User } from '@/types/User';
 import type { MemberInfo } from '@/types/Group';
 import { getProxyUrl } from '../../utils/utils';
+import Image from 'next/image';
 
 interface MentionMenuProps {
   showMentionMenu: boolean;
@@ -48,7 +49,13 @@ export default function MentionMenu({
             }`}
           >
             {userAvatar ? (
-              <img src={getProxyUrl(userAvatar)} alt={userName} className="w-10 h-10 rounded-full object-cover" />
+              <Image
+                width={40}
+                height={40}
+                src={getProxyUrl(userAvatar)}
+                alt={userName}
+                className="w-10 h-10 rounded-full object-cover"
+              />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-white flex items-center justify-center font-semibold">
                 {userName.charAt(0).toUpperCase()}

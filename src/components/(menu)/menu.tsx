@@ -58,8 +58,19 @@ export default function SidebarMenu() {
   };
 
   // Hàm thực hiện hành động cuối cùng
-  const finalizeLogout = () => {
-    // Xóa session trên cookie (JWT)
+  const finalizeLogout = async () => {
+    try {
+      // Gọi API logout để xoá cookie HttpOnly `session_token` trên server
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      });
+    } catch (error) {
+      console.error('Logout API error:', error);
+    }
+
+    // Xóa session trên cookie (JWT) phía client (nếu có lưu thêm bản non-HttpOnly)
     cookieBase.remove('session_token');
     cookieBase.remove('remember_login');
 
@@ -69,7 +80,7 @@ export default function SidebarMenu() {
       localStorage.removeItem('remember_login');
     }
 
-    router.push('/login');
+    router.push('/');
   };
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

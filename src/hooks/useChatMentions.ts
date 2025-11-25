@@ -100,15 +100,13 @@ export function useChatMentions({ allUsers, activeMembers, currentUserId }: UseC
   const selectMention = (user: User | MemberInfo) => {
     if (mentionStartPos === null || !editableRef.current) return;
 
+    const editable = editableRef.current;
     const userId = user._id;
     const userName = user.name || 'User';
 
-    const currentText = editableRef.current.textContent || '';
     const cursorPos = getCursorPosition();
 
-    const beforeMention = currentText.slice(0, mentionStartPos);
-    const afterCursor = currentText.slice(cursorPos);
-
+    // Tạo span mention mới
     const mentionSpan = document.createElement('span');
     mentionSpan.contentEditable = 'false';
     mentionSpan.className =
@@ -118,35 +116,91 @@ export function useChatMentions({ allUsers, activeMembers, currentUserId }: UseC
     mentionSpan.dataset.userName = userName;
     mentionSpan.textContent = `@${userName}`;
 
-    editableRef.current.innerHTML = '';
+    // Helper: Tạo range theo vị trí text (dựa trên textContent)
+    const createRangeFromOffsets = (start: number, end: number): Range | null => {
+      const range = document.createRange();
+      let current = 0;
+      let startNode: Node | null = null;
+      let startOffset = 0;
+      let endNode: Node | null = null;
+      let endOffset = 0;
 
-    if (beforeMention) {
-      editableRef.current.appendChild(document.createTextNode(beforeMention));
-    }
+      const walker = (node: Node): boolean => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent || '';
+          const next = current + text.length;
 
-    editableRef.current.appendChild(mentionSpan);
-    editableRef.current.appendChild(document.createTextNode(' '));
+          if (!startNode && start >= current && start <= next) {
+            startNode = node;
+            startOffset = start - current;
+          }
+          if (!endNode && end >= current && end <= next) {
+            endNode = node;
+            endOffset = end - current;
+          }
 
-    if (afterCursor) {
-      editableRef.current.appendChild(document.createTextNode(afterCursor));
+          current = next;
+        } else {
+          node.childNodes.forEach((child) => {
+            if (!endNode) {
+              const done = walker(child);
+              if (done) return;
+            }
+          });
+        }
+
+        return !!endNode;
+      };
+
+      walker(editable);
+
+      if (!startNode || !endNode) return null;
+
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+      return range;
+    };
+
+    const range = createRangeFromOffsets(mentionStartPos, cursorPos);
+    if (!range) {
+      // Fallback: chèn mention ở cuối nếu không tính được range
+      editable.appendChild(mentionSpan);
+      const spaceNode = document.createTextNode(' ');
+      editable.appendChild(spaceNode);
+
+      const sel = window.getSelection();
+      if (sel) {
+        const caretRange = document.createRange();
+        caretRange.setStartAfter(spaceNode);
+        caretRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(caretRange);
+      }
+    } else {
+      // Xoá đoạn @typing hiện tại và thay bằng span mention
+      range.deleteContents();
+
+      const spaceNode = document.createTextNode(' ');
+      range.insertNode(mentionSpan);
+      mentionSpan.after(spaceNode);
+
+      const sel = window.getSelection();
+      if (sel) {
+        const caretRange = document.createRange();
+        caretRange.setStartAfter(spaceNode);
+        caretRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(caretRange);
+      }
     }
 
     setShowMentionMenu(false);
     setMentionStartPos(null);
     setMentionQuery('');
 
+    // Đảm bảo focus lại vào ô nhập
     setTimeout(() => {
-      editableRef.current?.focus();
-      const range = document.createRange();
-      const sel = window.getSelection();
-
-      const spaceNode = mentionSpan.nextSibling;
-      if (spaceNode) {
-        range.setStartAfter(spaceNode);
-        range.collapse(true);
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-      }
+      editable.focus();
     }, 0);
   };
 

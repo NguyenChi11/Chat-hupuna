@@ -33,6 +33,7 @@ interface ChatInfoPopupProps {
   onMemberRemoved?: (memberId: string, memberName: string) => void;
   onRoleChange?: (memberId: string, memberName: string, newRole: 'ADMIN' | 'MEMBER') => void;
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroup: boolean) => void;
+  reLoad?: () => void;
 }
 
 export default function ChatInfoPopup({
@@ -50,9 +51,76 @@ export default function ChatInfoPopup({
   onMemberRemoved,
   onRoleChange,
   onChatAction,
+  reLoad,
 }: ChatInfoPopupProps) {
   const popupRef = useRef<HTMLDivElement | null>(null);
   const [openMember, setOpenMember] = React.useState(false);
+  const [groupAvatar, setGroupAvatar] = React.useState<string | undefined>(
+    isGroup ? (selectedChat as GroupConversation).avatar : undefined,
+  );
+  const [groupName, setGroupName] = React.useState<string>(chatName || '');
+  const [isRenameModalOpen, setIsRenameModalOpen] = React.useState(false);
+  const [renameInput, setRenameInput] = React.useState('');
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [previewMedia, setPreviewMedia] = React.useState<{ url: string; type: 'image' | 'video' } | null>(null);
+
+  React.useEffect(() => {
+    setGroupName(chatName || '');
+  }, [chatName]);
+
+  const handleChangeGroupAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !isGroup) return;
+
+    try {
+      const groupId = (selectedChat as GroupConversation)._id;
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('roomId', String(groupId));
+      formData.append('sender', String(currentUser._id));
+      formData.append('receiver', '');
+      formData.append('type', 'image');
+      formData.append('folderName', `GroupAvatar_${groupId}`);
+
+      const uploadRes = await fetch(`/api/upload?uploadId=group-avatar-${groupId}-${Date.now()}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadJson = await uploadRes.json();
+
+      if (!uploadRes.ok || !uploadJson?.success || !uploadJson?.link) {
+        alert('Tải lên ảnh nhóm thất bại, vui lòng thử lại.');
+        return;
+      }
+
+      const avatarUrl: string = uploadJson.link;
+
+      const updateRes = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateAvatar',
+          conversationId: groupId,
+          data: { avatar: avatarUrl },
+        }),
+      });
+
+      if (!updateRes.ok) {
+        alert('Cập nhật ảnh nhóm thất bại, vui lòng thử lại.');
+        return;
+      }
+
+      setGroupAvatar(avatarUrl);
+      // Gọi reload để các nơi khác (Sidebar, ChatHeader, ...) cập nhật avatar mới
+      if (reLoad) {
+        reLoad();
+      }
+    } catch (error) {
+      console.error('Update group avatar error:', error);
+      alert('Có lỗi xảy ra khi cập nhật ảnh nhóm.');
+    }
+  };
 
   const {
     localIsPinned,
@@ -72,6 +140,55 @@ export default function ChatInfoPopup({
     messages,
     onChatAction,
   });
+
+  const handleRenameGroup = () => {
+    if (!isGroup) return;
+    const currentName = groupName || chatName || '';
+    setRenameInput(currentName);
+    setIsRenameModalOpen(true);
+  };
+
+  const handleSubmitRenameGroup = async () => {
+    if (!isGroup) return;
+
+    const currentName = (groupName || chatName || '').trim();
+    const newName = renameInput.trim();
+
+    if (!newName || newName === currentName) {
+      setIsRenameModalOpen(false);
+      return;
+    }
+
+    try {
+      const groupId = (selectedChat as GroupConversation)._id;
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'renameGroup',
+          conversationId: groupId,
+          data: { name: newName },
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json?.success) {
+        alert('Đổi tên nhóm thất bại, vui lòng thử lại.');
+        return;
+      }
+
+      setGroupName(newName);
+      setIsRenameModalOpen(false);
+
+      if (reLoad) {
+        reLoad();
+      }
+    } catch (error) {
+      console.error('Rename group error:', error);
+      alert('Có lỗi xảy ra khi đổi tên nhóm.');
+    }
+  };
 
   // 🔥 HELPER: Render Menu Dropdown (Dùng chung cho cả 3 loại)
   const renderMenu = (itemUrl: string, itemId: string, fileName?: string) => {
@@ -172,13 +289,56 @@ export default function ChatInfoPopup({
       <div className="space-y-6 bg-gray-200">
         {/* Tên chat & Chức năng (Giữ nguyên code cũ) */}
         <div className="space-y-6 bg-white w-full mb-2">
-          <div className="flex flex-col items-center  ">
-            <div className="mt-2 flex items-center gap-2">
-              <p className="text-lg font-semibold text-black">{chatName}</p>
-              <div className="bg-gray-200 rounded-full w-6 h-6 flex justify-center items-center cursor-pointer">
-                <Image src={IconEdit} alt="edit" width={20} height={20} className="w-3 h-3" />
+          <div className="flex flex-col items-center">
+            {/* Avatar nhóm */}
+            {isGroup && (
+              <div className="mt-4 flex flex-col items-center">
+                <div
+                  className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold cursor-pointer group"
+                  onClick={() => avatarInputRef.current?.click()}
+                  title="Nhấn để thay đổi ảnh nhóm"
+                >
+                  {groupAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={getProxyUrl(groupAvatar)}
+                      alt={chatName || 'Group avatar'}
+                      className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span>{(groupName || 'G').charAt(0).toUpperCase()}</span>
+                  )}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-medium">
+                    Đổi ảnh
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={avatarInputRef}
+                  className="hidden"
+                  onChange={handleChangeGroupAvatar}
+                />
+                <p className="mt-2 text-xs text-gray-500">Ảnh đại diện nhóm</p>
               </div>
-            </div>
+            )}
+
+            {isGroup && (
+              <div className="mt-3 flex items-center gap-2">
+                <p className="text-lg font-semibold text-black">{groupName}</p>
+                <button
+                  type="button"
+                  className="bg-gray-200 rounded-full w-6 h-6 flex justify-center items-center cursor-pointer hover:bg-gray-300"
+                  onClick={handleRenameGroup}
+                  title="Đổi tên nhóm"
+                >
+                  <Image src={IconEdit} alt="edit" width={20} height={20} className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-around items-start text-center">
@@ -248,7 +408,7 @@ export default function ChatInfoPopup({
                 className="truncate hover:bg-gray-100 hover:cursor-pointer rounded-lg p-2"
                 onClick={() => setOpenMember(true)}
               >
-                <h1 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{chatName}</h1>
+                <h1 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{groupName}</h1>
                 <p className="text-xs text-gray-500 flex gap-2">
                   <Image src={IconGroup1} alt="" width={25} height={25} />
                   {isGroup ? `${(selectedChat as GroupConversation).members.length} thành viên` : 'Đang hoạt động'}
@@ -289,8 +449,12 @@ export default function ChatInfoPopup({
                         key={index}
                         // 🔥 Relative để định vị nút menu. KHÔNG overflow-hidden ở đây.
                         className="relative aspect-square cursor-pointer group"
-                        // Nhấn vào item -> Mở tab mới
-                        onClick={() => window.open(item.url, '_blank')}
+                        onClick={() =>
+                          setPreviewMedia({
+                            url: getProxyUrl(item.url),
+                            type: item.type === 'video' ? 'video' : 'image',
+                          })
+                        }
                       >
                         {/* Wrapper chứa ảnh/video mới có overflow-hidden */}
                         <div className="w-full h-full rounded-md overflow-hidden bg-gray-100">
@@ -547,6 +711,89 @@ export default function ChatInfoPopup({
           onMemberRemoved={onMemberRemoved}
           onRoleChange={onRoleChange}
         />
+      )}
+
+      {isRenameModalOpen && isGroup && (
+        <div className="fixed inset-0 z-[9500] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-[90%] max-w-sm p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Đổi tên nhóm</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Nhập tên mới cho nhóm chat. Tên nhóm sẽ được cập nhật cho tất cả thành viên.
+            </p>
+            <input
+              type="text"
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleSubmitRenameGroup();
+                }
+              }}
+              autoFocus
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 mb-4"
+              placeholder="Nhập tên nhóm mới"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                onClick={() => setIsRenameModalOpen(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={!renameInput.trim()}
+                onClick={() => void handleSubmitRenameGroup()}
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewMedia && (
+        <div
+          className="fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center"
+          onClick={() => setPreviewMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full px-4"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <button
+              type="button"
+              className="absolute -top-2 right-4 text-white bg-black/60 hover:bg-black rounded-full p-1"
+              onClick={() => setPreviewMedia(null)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            <div className="flex items-center justify-center max-h-[80vh]">
+              {previewMedia.type === 'image' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewMedia.url}
+                  alt="Xem ảnh"
+                  className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
+                />
+              ) : (
+                <video src={previewMedia.url} controls autoPlay className="max-h-[80vh] w-full rounded-lg bg-black" />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
