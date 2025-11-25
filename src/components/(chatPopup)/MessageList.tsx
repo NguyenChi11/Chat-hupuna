@@ -143,7 +143,7 @@ export default function MessageList({
                   <div className={`flex-shrink-0 ${isGrouped ? 'invisible' : 'visible'}`}>
                     {senderInfo.avatar ? (
                       <Image
-                        src={senderInfo.avatar}
+                        src={getProxyUrl(senderInfo.avatar)}
                         alt={senderInfo.name}
                         width={40}
                         height={40}

@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { formatTimeAgo } from '../../utils/dateUtils';
 import IconPin from '@/public/icons/pin.svg';
 import { formatMessagePreview } from './Sidebar';
 import type { ChatItem as ChatItemType, GroupConversation } from '@/types/Group';
 import type { User } from '@/types/User';
+import {getProxyUrl} from "@/utils/utils";
 
 interface ChatItemProps {
   item: ChatItemType;
@@ -150,7 +151,7 @@ export default function ChatItem({
             className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg
                         ${isGroup ? 'bg-blue-500' : 'bg-gray-400'} overflow-hidden`}
           >
-            {item.avatar ? <img src={item.avatar} alt={name} className="w-full h-full object-cover" /> : avatarChar}
+            {item.avatar ? <img src={getProxyUrl(item.avatar)} alt={name} className="w-full h-full object-cover" /> : avatarChar}
           </div>
           {!isGroup && (
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
