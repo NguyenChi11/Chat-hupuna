@@ -8,17 +8,6 @@ import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
 import type { GlobalSearchMessage, GlobalSearchContact } from '@/components/(home)/HomeOverlays'; // Cập nhật đường dẫn nếu cần // Cập nhật đường dẫn nếu cần
 
-interface SidebarUpdateData {
-  sender: string;
-  senderName?: string;
-  receiver?: string;
-  type?: string;
-  content?: string;
-  isRecalled?: boolean;
-  isGroup?: boolean;
-  roomId: string;
-  members?: Array<string | { _id: string }>;
-}
 
 // Kiểu dữ liệu cho bản ghi tin nhắn trả về từ API globalSearch
 interface GlobalSearchMessageApi {

@@ -124,21 +124,17 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing roomId or userId' }, { status: 400 });
         }
 
-        // Logic: Tìm tất cả tin nhắn trong roomId này
-        // Mà người dùng (userId) CHƯA có trong mảng readBy
-        // Sau đó thêm userId vào mảng readBy
+        // 1. Filter: Tìm các tin nhắn trong roomId có userId CHƯA đọc ($ne: not equal)
         const filter = {
           roomId,
-          readBy: { $ne: userId }, // $ne: not equal (chưa có trong mảng)
+          readBy: { $ne: userId },
         };
 
+        // 2. Update: Thêm userId vào mảng readBy của các tin nhắn tìm được ($addToSet)
         const updateData = {
-          $addToSet: { readBy: userId }, // $addToSet: thêm vào mảng nếu chưa có
+          $addToSet: { readBy: userId },
         };
 
-        // Gọi hàm updateMany (Lưu ý: updateMany trong lib của bạn phải hỗ trợ toán tử $addToSet)
-        // Nếu updateMany của bạn chỉ hỗ trợ $set, bạn cần sửa lại file CRUD hoặc dùng logic khác.
-        // Tuy nhiên, file CRUD mới nhất tôi gửi đã hỗ trợ toán tử mongo.
         const result = await updateMany<Message>(collectionName, filter, updateData);
 
         return NextResponse.json({ success: true, result });
