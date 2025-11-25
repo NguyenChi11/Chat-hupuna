@@ -5,14 +5,47 @@ import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { signJWT } from '@/lib/auth';
 
+type UserSort = { field: keyof User; order?: 'asc' | 'desc' } | Array<{ field: keyof User; order?: 'asc' | 'desc' }>;
+
+interface ToggleChatStatusPayload {
+  isPinned?: boolean;
+  isHidden?: boolean;
+}
+
+interface LoginPayload {
+  username?: string;
+  password?: string;
+}
+
+type UsersRequestData = Partial<User> & ToggleChatStatusPayload & LoginPayload & Record<string, unknown>;
+
+interface UsersRequestBody {
+  action?: 'create' | 'read' | 'getById' | 'update' | 'delete' | 'toggleChatStatus' | 'login' | 'logout';
+  collectionName?: string;
+  data?: UsersRequestData;
+  field?: keyof User;
+  value?: unknown;
+  filters?: Record<string, unknown>;
+  search?: string;
+  skip?: number;
+  limit?: number;
+  _id?: string;
+  code?: string;
+  sort?: UserSort;
+  currentUserId?: string;
+  roomId?: string;
+  isPinned?: boolean;
+  isHidden?: boolean;
+}
+
 export async function POST(req: NextRequest) {
   // Bọc parse JSON để tránh crash khi body rỗng / không hợp lệ
-  let body: any = {};
+  let body: UsersRequestBody = {};
   try {
     // Chỉ cố parse nếu header là JSON
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      body = await req.json();
+      body = (await req.json()) as UsersRequestBody;
     }
   } catch (err) {
     console.warn('Invalid JSON body in /api/users:', err);
@@ -41,7 +74,10 @@ export async function POST(req: NextRequest) {
   try {
     switch (action) {
       case 'create': {
-        const _id = await addRow<User>(collectionName, data);
+        if (!data) {
+          return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+        }
+        const _id = await addRow<User>(collectionName, data as User);
         return NextResponse.json({ success: true, _id });
       }
 
@@ -150,11 +186,18 @@ export async function POST(req: NextRequest) {
         }
         try {
           // FIX: Validate ObjectId để tránh crash app nếu value rác
-          const fixedValue = field === '_id' && ObjectId.isValid(value) ? new ObjectId(value) : value;
-          const result = await updateByField<User>(collectionName, field, fixedValue, data);
+          if (field === '_id' && typeof value === 'string' && !ObjectId.isValid(value)) {
+            return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+          }
+          const result = await updateByField<User>(
+            collectionName,
+            field,
+            value as string | number,
+            (data || {}) as Partial<User>,
+          );
           console.log(result);
           return NextResponse.json({ success: true });
-        } catch (e) {
+        } catch (error) {
           return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
         }
 
@@ -163,25 +206,29 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing field or value for delete' }, { status: 400 });
         }
         // FIX: Thêm logic xử lý ObjectId cho delete tương tự update
-        const deleteValue = field === '_id' && ObjectId.isValid(value) ? new ObjectId(value) : value;
-        await deleteByField<User>(collectionName, field, deleteValue);
+        const deleteValue =
+          field === '_id' && typeof value === 'string' && ObjectId.isValid(value)
+            ? new ObjectId(value)
+            : (value as string | number);
+        await deleteByField<User>(collectionName, field, deleteValue as string | number);
         return NextResponse.json({ success: true });
       // 🔥 CASE MỚI: TOGGLE PIN/HIDE CHO CHAT 1-1
       case 'toggleChatStatus': {
         if (!currentUserId || !data || !roomId) {
           return NextResponse.json({ error: 'Missing currentUserId, roomId or data' }, { status: 400 });
         }
+        const statusData = data as ToggleChatStatusPayload;
         const partnerId = roomId;
         const updateFields: Record<string, boolean> = {};
 
-        if (typeof data.isPinned === 'boolean') {
-          updateFields[`isPinnedBy.${currentUserId}`] = data.isPinned;
+        if (typeof statusData.isPinned === 'boolean') {
+          updateFields[`isPinnedBy.${currentUserId}`] = statusData.isPinned;
         }
 
         // 🔥 FIX: THÊM LOGIC CHO ISHIDDEN
-        if (typeof data.isHidden === 'boolean') {
+        if (typeof statusData.isHidden === 'boolean') {
           // Cập nhật trạng thái ẨN của currentUserId trên document của đối tác.
-          updateFields[`isHiddenBy.${currentUserId}`] = data.isHidden;
+          updateFields[`isHiddenBy.${currentUserId}`] = statusData.isHidden;
         }
 
         if (Object.keys(updateFields).length === 0) {
@@ -194,8 +241,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, result });
       }
       case 'login': {
-        console.log('data: ', data);
-        const { username, password } = data || {};
+        const loginData = (data || {}) as LoginPayload;
+        console.log('data: ', loginData);
+        const { username, password } = loginData;
         if (!username || !password)
           return NextResponse.json({ success: false, message: 'Thiếu tên người dùng hoặc mật khẩu!' }, { status: 400 });
 
@@ -225,7 +273,7 @@ export async function POST(req: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           path: '/',
           sameSite: 'lax',
-          maxAge: 7 * 24 * 3600, // 7 ngày
+          maxAge: 30 * 24 * 3600, // 30 ngày - duy trì đăng nhập lâu, chỉ xoá khi logout hoặc sau 30 ngày
         });
 
         return res;
@@ -235,10 +283,10 @@ export async function POST(req: NextRequest) {
         const res = NextResponse.json({ success: true });
         res.cookies.set('session_token', '', {
           httpOnly: true,
-          secure: true,
-          sameSite: 'strict',
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
           path: '/',
-          maxAge: 0,
+          maxAge: 0, // xoá ngay lập tức
         });
         return res;
       }

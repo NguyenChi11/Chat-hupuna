@@ -10,7 +10,7 @@ export async function signJWT(payload: any) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: ALG })
     .setIssuedAt()
-    .setExpirationTime('7d') // Token hết hạn sau 7 ngày
+    .setExpirationTime('30d') // Token hết hạn sau 30 ngày (phù hợp với maxAge cookie)
     .sign(SECRET_KEY);
 }
 

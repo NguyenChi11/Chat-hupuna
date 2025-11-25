@@ -33,30 +33,9 @@ import {
   markAsReadApi,
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
+import { isVideoFile } from '@/utils/utils';
 
-const showNotification = () => {
-  // 1. Kiểm tra xem trình duyệt có hỗ trợ không
-  if (!('Notification' in window)) {
-    alert('Trình duyệt không hỗ trợ thông báo');
-    return;
-  }
-
-  // 2. Xin quyền người dùng
-  if (Notification.permission === 'granted') {
-    // Đã có quyền -> Hiện luôn
-    new Notification('Tin nhắn mới!', {
-      body: 'Bạn A vừa gửi tin nhắn cho bạn.',
-      // icon: '/icons/logo.png', // Đường dẫn icon
-    });
-  } else if (Notification.permission !== 'denied') {
-    // Chưa có quyền -> Hỏi xin quyền
-    Notification.requestPermission().then((permission) => {
-      if (permission === 'granted') {
-        new Notification('Xin chào!', { body: 'Đã bật thông báo thành công' });
-      }
-    });
-  }
-};
+const MESSAGE_SOUND_URL = 'https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -143,6 +122,7 @@ export default function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const markedReadRef = useRef<string | null>(null);
+  const messageAudioRef = useRef<HTMLAudioElement | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pickerTab, setPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -152,6 +132,7 @@ export default function ChatWindow({
   const [, setPinnedMessage] = useState<Message | null>(null);
   const [allPinnedMessages, setAllPinnedMessages] = useState<Message[]>([]);
   const [showPinnedList, setShowPinnedList] = useState(false);
+  const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
 
   const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
     return [user1Id, user2Id].sort().join('_');
@@ -239,6 +220,38 @@ export default function ChatWindow({
     currentUserId: currentUser._id,
   });
 
+  // Thêm option @all khi là nhóm
+  const ALL_MENTION_ID = '__ALL__';
+  const mentionSuggestionsWithAll = useMemo(() => {
+    if (!isGroup) return mentionSuggestions;
+
+    const allOption = {
+      _id: ALL_MENTION_ID,
+      name: 'Tất cả mọi người',
+      avatar: undefined,
+    } as User;
+
+    // Tránh trùng nếu đã có trong list
+    if (mentionSuggestions.some((u) => (u as User)._id === ALL_MENTION_ID)) return mentionSuggestions;
+
+    return [allOption, ...mentionSuggestions];
+  }, [isGroup, mentionSuggestions]);
+
+  // Kết hợp keydown: vừa xử lý mention menu, vừa gửi tin nhắn với Enter
+  const handleKeyDownCombined = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Đầu tiên cho hook xử lý (ArrowUp/Down, Enter để chọn mention, Escape...)
+    handleKeyDownEditable(e);
+
+    // Nếu mention menu đang mở, không xử lý gửi tin nhắn
+    if (showMentionMenu) return;
+
+    // Enter (không Shift) để gửi tin nhắn
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void handleSendMessage();
+    }
+  };
+
   const handleContextMenu = useCallback((e: React.MouseEvent, msg: Message) => {
     e.preventDefault();
     setContextMenu({
@@ -285,7 +298,7 @@ export default function ChatWindow({
     if (!contextMenu || !contextMenu.visible) return null;
 
     const { x, y, message: msg } = contextMenu;
-    const isMe = msg.sender === currentUser._id;
+    const isMe = (msg.sender as any)._id === currentUser._id;
     const isText = msg.type === 'text';
     const isRecalled = msg.isRecalled;
     const canCopy = isText && !isRecalled;
@@ -388,8 +401,67 @@ export default function ChatWindow({
     );
   };
 
+  const playMessageSound = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!messageAudioRef.current) {
+        messageAudioRef.current = new Audio(MESSAGE_SOUND_URL);
+      }
+      const audio = messageAudioRef.current;
+      audio.currentTime = 0;
+      void audio.play().catch(() => {
+        // ignore autoplay errors
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const showMessageNotification = useCallback(
+    (msg: Message) => {
+      if (typeof window === 'undefined') return;
+      if (!('Notification' in window)) return;
+
+      // Nếu chưa xin quyền, xin ngay lúc nhận tin nhắn
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            new Notification(chatName || 'Tin nhắn mới', {
+              body:
+                msg.content ||
+                (msg.type === 'image'
+                  ? 'Đã gửi cho bạn một ảnh.'
+                  : msg.type === 'video' || isVideoFile(msg.fileName)
+                    ? 'Đã gửi cho bạn một video.'
+                    : msg.type === 'file'
+                      ? 'Đã gửi cho bạn một file.'
+                      : 'Bạn có tin nhắn mới.'),
+            });
+          }
+        });
+        return;
+      }
+
+      if (Notification.permission !== 'granted') return;
+
+      const body =
+        msg.content ||
+        (msg.type === 'image'
+          ? 'Đã gửi cho bạn một ảnh.'
+          : msg.type === 'video' || isVideoFile(msg.fileName)
+            ? 'Đã gửi cho bạn một video.'
+            : msg.type === 'file'
+              ? 'Đã gửi cho bạn một file.'
+              : 'Bạn có tin nhắn mới.');
+
+      new Notification(chatName || 'Tin nhắn mới', {
+        body,
+      });
+    },
+    [chatName],
+  );
+
   useEffect(() => {
-    showNotification();
     if (!contextMenu?.visible) return;
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -673,6 +745,12 @@ export default function ChatWindow({
 
     socketRef.current.on('receive_message', (data: Message) => {
       setMessages((prev) => [...prev, data]);
+
+      // Chỉ thông báo & phát tiếng khi tin nhắn không phải của chính mình
+      if (data.sender !== currentUser._id) {
+        playMessageSound();
+        showMessageNotification(data);
+      }
     });
 
     socketRef.current.on('message_recalled', (data: { _id: string; roomId: string }) => {
@@ -686,7 +764,7 @@ export default function ChatWindow({
     return () => {
       socketRef.current?.disconnect();
     };
-  }, [roomId]);
+  }, [roomId, currentUser._id, playMessageSound, showMessageNotification]);
 
   const handleRecallMessage = async (messageId: string) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) return;
@@ -771,6 +849,23 @@ export default function ChatWindow({
     const { mentions, displayText } = parseMentions(plainText);
 
     const repliedUserName = replyingTo ? getSenderName(replyingTo.sender) : undefined;
+    const ALL_MENTION_ID = '__ALL__';
+
+    // Expand mentions: nếu có @all thì thêm toàn bộ member IDs
+    const expandedMentionIds = new Set<string>();
+    mentions.forEach((id) => {
+      if (id === ALL_MENTION_ID) {
+        activeMembers.forEach((mem) => {
+          const memId = String(mem._id || mem.id || '');
+          if (memId) expandedMentionIds.add(memId);
+        });
+      } else {
+        expandedMentionIds.add(id);
+      }
+    });
+
+    const finalMentions = Array.from(expandedMentionIds);
+
     const newMsg: MessageCreate = {
       roomId,
       sender: currentUser._id,
@@ -779,7 +874,7 @@ export default function ChatWindow({
       timestamp: Date.now(),
       replyToMessageId: replyingTo?._id,
       replyToMessageName: repliedUserName,
-      mentions: mentions.length > 0 ? mentions : undefined,
+      mentions: finalMentions.length > 0 ? finalMentions : undefined,
     };
 
     // Xóa nội dung
@@ -838,6 +933,32 @@ export default function ChatWindow({
 
   if (!selectedChat) return null;
 
+  // Xin quyền thông báo 1 lần khi mở cửa sổ chat
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {
+        // ignore
+      });
+    }
+  }, []);
+
+  // Khởi tạo audio sau lần click đầu tiên (để tránh bị chặn autoplay)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const initAudio = () => {
+      if (!messageAudioRef.current) {
+        messageAudioRef.current = new Audio(MESSAGE_SOUND_URL);
+      }
+      window.removeEventListener('click', initAudio);
+    };
+
+    window.addEventListener('click', initAudio);
+    return () => window.removeEventListener('click', initAudio);
+  }, []);
+
   return (
     <main className="flex h-full bg-gray-700">
       <div
@@ -877,6 +998,7 @@ export default function ChatWindow({
             onJumpToMessage={handleJumpToMessage}
             getSenderInfo={getSenderInfo}
             renderMessageContent={renderMessageContent}
+            onOpenMedia={(url, type) => setPreviewMedia({ url, type })}
           />
           <div ref={messagesEndRef} />
         </div>
@@ -895,13 +1017,16 @@ export default function ChatWindow({
 
           <ReplyBanner replyingTo={replyingTo} getSenderName={getSenderName} onCancel={() => setReplyingTo(null)} />
 
-          <MentionMenu
-            showMentionMenu={showMentionMenu}
-            mentionSuggestions={mentionSuggestions}
-            selectedMentionIndex={selectedMentionIndex}
-            mentionMenuRef={mentionMenuRef}
-            onSelectMention={selectMention}
-          />
+          {/* Chỉ cho phép mention (@) trong nhóm, không áp dụng cho chat 1-1 */}
+          {isGroup && (
+            <MentionMenu
+              showMentionMenu={showMentionMenu}
+              mentionSuggestions={mentionSuggestionsWithAll}
+              selectedMentionIndex={selectedMentionIndex}
+              mentionMenuRef={mentionMenuRef}
+              onSelectMention={selectMention}
+            />
+          )}
 
           <ChatInput
             showEmojiPicker={showEmojiPicker}
@@ -910,7 +1035,7 @@ export default function ChatWindow({
             onVoiceInput={handleVoiceInput}
             editableRef={editableRef}
             onInputEditable={handleInputChangeEditable}
-            onKeyDownEditable={handleKeyDownEditable}
+            onKeyDownEditable={handleKeyDownCombined}
             onPasteEditable={(e) => {
               e.preventDefault();
               const text = e.clipboardData.getData('text/plain');
@@ -918,7 +1043,11 @@ export default function ChatWindow({
               handleInputChangeEditable();
             }}
             onSendMessage={handleSendMessage}
-            onSelectImage={(file) => handleUploadAndSend(file, 'image')}
+            onSelectImage={(file) => {
+              const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
+              const msgType = isVideo ? 'file' : 'image';
+              handleUploadAndSend(file, msgType);
+            }}
             onSelectFile={(file) => handleUploadAndSend(file, 'file')}
             onFocusEditable={() => setShowEmojiPicker(false)}
           />
@@ -942,10 +1071,10 @@ export default function ChatWindow({
             onRoleChange={handleRoleChange}
             onJumpToMessage={handleJumpToMessage}
             onChatAction={onChatAction}
+            reLoad={reLoad}
           />
         </div>
       )}
-
       {showSearchSidebar && (
         <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[350px] h-full ">
           <SearchSidebar
@@ -975,6 +1104,48 @@ export default function ChatWindow({
       )}
 
       {contextMenu && contextMenu.visible && <ContextMenuRenderer />}
+
+      {previewMedia && (
+        <div
+          className="fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center"
+          onClick={() => setPreviewMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full px-4"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <button
+              type="button"
+              className="absolute -top-2 right-4 text-white bg-black/60 hover:bg-black rounded-full p-1"
+              onClick={() => setPreviewMedia(null)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            <div className="flex items-center justify-center max-h-[80vh]">
+              {previewMedia.type === 'image' ? (
+                <Image
+                  src={previewMedia.url}
+                  alt="Xem ảnh"
+                  width={1200}
+                  height={800}
+                  className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
+                />
+              ) : (
+                <video src={previewMedia.url} controls autoPlay className="max-h-[80vh] w-full rounded-lg bg-black" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

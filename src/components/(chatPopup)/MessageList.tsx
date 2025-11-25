@@ -26,6 +26,7 @@ interface MessageListProps {
   onJumpToMessage: (id: string) => void;
   getSenderInfo: (sender: User | string) => SenderInfo;
   renderMessageContent: (content: string, mentionedUserIds?: string[], isMe?: boolean) => React.ReactNode;
+  onOpenMedia: (url: string, type: 'image' | 'video') => void;
 }
 
 export default function MessageList({
@@ -41,6 +42,7 @@ export default function MessageList({
   onJumpToMessage,
   getSenderInfo,
   renderMessageContent,
+  onOpenMedia,
 }: MessageListProps) {
   return (
     <>
@@ -98,6 +100,7 @@ export default function MessageList({
             const senderName = allUsersMap.get(msg.sender) || senderInfo.name;
 
             const isRecalled = msg.isRecalled === true;
+            const isVideo = msg.type === 'video' || isVideoFile(msg.fileName) || isVideoFile(msg.fileUrl);
 
             return (
               <div
@@ -206,7 +209,14 @@ export default function MessageList({
                         )}
 
                         {msg.type === 'image' && msg.fileUrl && (
-                          <div className="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-200 relative overflow-hidden">
+                          <div
+                            className="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-200 relative overflow-hidden cursor-zoom-in"
+                            onClick={() => {
+                              if (isUploading) return;
+                              const url = getProxyUrl(msg.fileUrl as string);
+                              onOpenMedia(url, 'image');
+                            }}
+                          >
                             <Image
                               src={isUploading ? msg.fileUrl : getProxyUrl(msg.fileUrl)}
                               alt="Ảnh gửi"
@@ -228,7 +238,7 @@ export default function MessageList({
                           </div>
                         )}
 
-                        {msg.type === 'file' && msg.fileUrl && (
+                        {msg.type === 'file' && msg.fileUrl && !isVideo && (
                           <a
                             href={msg.fileUrl}
                             target="_blank"
@@ -255,11 +265,19 @@ export default function MessageList({
                           </a>
                         )}
 
-                        {isVideoFile(msg.fileUrl) && (
-                          <video controls className="max-w-full rounded-lg">
-                            <source src={msg.fileUrl} />
-                            Trình duyệt của bạn không hỗ trợ video.
-                          </video>
+                        {isVideo && msg.fileUrl && (
+                          <div className="relative max-w-full cursor-zoom-in">
+                            <video src={msg.fileUrl} controls className="max-w-full rounded-lg" />
+                            <button
+                              type="button"
+                              className="absolute inset-0 bg-transparent"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onOpenMedia(msg.fileUrl as string, 'video');
+                              }}
+                            />
+                          </div>
                         )}
                       </>
                     )}

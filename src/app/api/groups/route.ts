@@ -60,8 +60,20 @@ export async function POST(req: NextRequest) {
         const conversations = result.data || [];
         if (!conversations.length) return NextResponse.json(result);
 
-        // 1. Lấy tất cả ID thành viên
-        const allMemberIds = Array.from(new Set(conversations.flatMap((conv) => conv.members.map((m: any) => m._id))));
+        // 1. Lấy tất cả ID thành viên (hỗ trợ cả định dạng cũ: members là string)
+        const allMemberIds = Array.from(
+          new Set(
+            conversations.flatMap((conv) =>
+              (conv.members || []).map((m: any) => {
+                if (!m) return undefined;
+                if (typeof m === 'string') return m;
+                if (typeof m === 'object' && '_id' in m) return String(m._id);
+                if (typeof m === 'object' && 'id' in m) return String((m as any).id);
+                return undefined;
+              }),
+            ),
+          ),
+        ).filter((id) => !!id);
 
         // 2. Query User Info
         const allMemberObjectIds = allMemberIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
@@ -73,17 +85,73 @@ export async function POST(req: NextRequest) {
           if (u._id) userMap.set(String(u._id), u);
         });
 
-        // 3. Enrich (Thêm tên, avatar vào object member)
-        const enrichedConversations = conversations.map((conv) => ({
-          ...conv,
-          _id: conv._id.toString(),
-          members: conv.members.map((mem: any) => {
-            const memberInfo = userMap.get(mem._id);
-            return memberInfo
-              ? { ...mem, name: memberInfo.name, avatar: memberInfo.avatar } // Giữ nguyên role trong mem
-              : { ...mem, name: 'Unknown User' };
-          }),
-        }));
+        // 3. Chuẩn hóa member & đảm bảo mỗi nhóm có ít nhất 1 OWNER
+        const enrichedConversations = conversations.map((conv) => {
+          const rawMembers: any[] = Array.isArray(conv.members) ? (conv.members as any[]) : [];
+
+          // Tìm xem đã có OWNER chưa
+          const hasOwner = rawMembers.some((m) => m && typeof m === 'object' && m.role === 'OWNER');
+
+          // Xác định id người sẽ làm OWNER (ưu tiên createdBy, fallback member đầu tiên)
+          let ownerIdToAssign: string | null = null;
+          const createdByStr = conv.createdBy ? String(conv.createdBy) : null;
+
+          const getMemberId = (m: any): string | null => {
+            if (!m) return null;
+            if (typeof m === 'string') return m;
+            if (typeof m === 'object') {
+              if ('_id' in m && m._id) return String(m._id);
+              if ('id' in m && (m as any).id) return String((m as any).id);
+            }
+            return null;
+          };
+
+          if (!hasOwner && rawMembers.length > 0) {
+            if (createdByStr && rawMembers.some((m) => getMemberId(m) === createdByStr)) {
+              ownerIdToAssign = createdByStr;
+            } else {
+              const firstId = getMemberId(rawMembers[0]);
+              ownerIdToAssign = firstId;
+            }
+          }
+
+          const normalizedMembers = rawMembers.map((mem: any) => {
+            const memId = getMemberId(mem);
+            const base: any = typeof mem === 'object' ? { ...mem } : { _id: memId };
+
+            // Gán role mặc định nếu thiếu
+            if (!base.role || !['OWNER', 'ADMIN', 'MEMBER'].includes(base.role)) {
+              if (ownerIdToAssign && memId === ownerIdToAssign) {
+                base.role = 'OWNER';
+              } else {
+                base.role = 'MEMBER';
+              }
+            }
+
+            const memberInfo = memId ? userMap.get(memId) : undefined;
+
+            if (memberInfo) {
+              return {
+                ...base,
+                _id: memId,
+                name: memberInfo.name,
+                avatar: memberInfo.avatar,
+              };
+            }
+
+            return {
+              ...base,
+              _id: memId,
+              name: base.name || 'Unknown User',
+            };
+          });
+
+          return {
+            ...conv,
+            _id: conv._id.toString(),
+            members: normalizedMembers,
+          };
+        });
 
         const msgCollection = await getCollection<Message>(MESSAGES_COLLECTION_NAME);
 
@@ -197,6 +265,32 @@ export async function POST(req: NextRequest) {
           console.error('addMembers Error:', err);
           return NextResponse.json({ error: 'Server error during addMembers' }, { status: 500 });
         }
+      }
+
+      case 'updateAvatar': {
+        if (!conversationId || !data?.avatar) {
+          return NextResponse.json({ error: 'Missing info' }, { status: 400 });
+        }
+
+        const result = await collection.updateOne(
+          { _id: new ObjectId(conversationId) } as any,
+          { $set: { avatar: data.avatar } } as any,
+        );
+
+        return NextResponse.json({ success: true, result });
+      }
+
+      case 'renameGroup': {
+        if (!conversationId || !data?.name) {
+          return NextResponse.json({ error: 'Missing info' }, { status: 400 });
+        }
+
+        const result = await collection.updateOne(
+          { _id: new ObjectId(conversationId) } as any,
+          { $set: { name: data.name } } as any,
+        );
+
+        return NextResponse.json({ success: true, result });
       }
 
       case 'changeRole': {

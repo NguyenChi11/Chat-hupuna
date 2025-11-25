@@ -6,6 +6,7 @@ import SearchIcon from '@/public/icons/icon-search.svg';
 import { User } from '../../../types/User';
 import { GroupConversation } from '@/types/Group';
 import { useCreateGroupModal } from '@/hooks/useCreateGroupModal';
+import { getProxyUrl } from '@/utils/utils';
 
 interface Props {
   currentUser: User;
@@ -136,7 +137,7 @@ export default function CreateGroupModal({
                       <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-white bg-gradient-to-br from-blue-500 to-blue-600">
                         {user.avatar ? (
                           <Image
-                            src={user.avatar}
+                            src={getProxyUrl(user.avatar)}
                             alt=""
                             width={24}
                             height={24}

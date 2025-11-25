@@ -53,7 +53,7 @@ export default function ChatInput({
 
       <input
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         id="imageInput"
         className="hidden"
         onChange={(e) => {
