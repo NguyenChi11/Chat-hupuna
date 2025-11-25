@@ -182,20 +182,13 @@ export default function ChatInfoPopup({
           </div>
 
           <div className="flex justify-around items-start text-center">
-            <div className="flex flex-col items-center w-20">
-              <div className="bg-gray-200 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer">
-                <Image src={IconNotification} alt="" width={20} height={20} />
-              </div>
-              <p className="mt-2 text-xs text-gray-700 break-words text-center">Tắt thông báo</p>
-            </div>
-
-            {/*ghim/bỏ ghim*/}
+            {/* Ghim/Bỏ ghim */}
             <div className="flex flex-col items-center w-20">
               <div
                 className={`rounded-full w-8 h-8 flex justify-center items-center cursor-pointer transition-colors ${
                   localIsPinned ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-200 hover:bg-gray-300'
                 }`}
-                onClick={() => handleChatActionClick('pin')} // 🔥 Gọi hàm xử lý cục bộ
+                onClick={() => handleChatActionClick('pin')}
               >
                 <Image src={IconPin} alt="pin" width={20} height={20} className={localIsPinned ? 'rotate-45' : ''} />
               </div>
@@ -206,16 +199,39 @@ export default function ChatInfoPopup({
               </p>
             </div>
 
+            {/* Ẩn/Hiện trò chuyện */}
+            <div className="flex flex-col items-center w-20">
+              <div
+                className={`rounded-full w-8 h-8 flex justify-center items-center cursor-pointer transition-colors ${
+                  localIsHidden ? 'bg-red-100 text-red-600' : 'bg-gray-200 hover:bg-gray-300'
+                }`}
+                onClick={() => handleChatActionClick('hide')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path d="M12 9a3 3 0 00-3 3.75h6A3 3 0 0012 9z" />
+                  <path
+                    fillRule="evenodd"
+                    d="M18.75 3a.75.75 0 00-.75.75v.5a.75.75 0 001.5 0v-.5A.75.75 0 0018.75 3zM12 2.25c-5.11 0-9.352 3.69-10.158 8.442a.75.75 0 000 1.516C2.648 18.06 6.89 21.75 12 21.75c5.11 0 9.352-3.69 10.158-8.442a.75.75 0 000-1.516C21.352 5.94 17.11 2.25 12 2.25zM4.755 12a7.5 7.5 0 0114.49 0 7.5 7.5 0 01-14.49 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <p className={`mt-2 text-xs text-center ${localIsHidden ? 'text-red-600 font-medium' : 'text-gray-700'}`}>
+                {localIsHidden ? 'Hiện Trò Chuyện' : 'Ẩn Trò Chuyện'}
+              </p>
+            </div>
+
+            {/* Tạo nhóm trò chuyện */}
             <div className="flex flex-col items-center w-20">
               <div
                 onClick={() => {
                   onShowCreateGroup();
                   onClose();
                 }}
-                className=" text-xs text-gray-700 break-words text-center cursor-pointer flex flex-col items-center w-20"
+                className="text-xs text-gray-700 break-words text-center cursor-pointer flex flex-col items-center w-20"
               >
-                <div className="bg-gray-200 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer mb-2 ">
-                  <Image src={IconGroup} alt={IconGroup} width={20} height={20} />
+                <div className="bg-gray-200 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer mb-2">
+                  <Image src={IconGroup} alt="group" width={20} height={20} />
                 </div>
                 Tạo nhóm trò chuyện
               </div>
@@ -513,47 +529,9 @@ export default function ChatInfoPopup({
           </div>
         </div>
 
-        {/* Thiết lập bảo mật & Footer (Giữ nguyên) */}
-        <div className="space-y-3 bg-white py-2 px-4">
-          <p className="font-semibold text-black">Thiết lập bảo mật</p>
-          <div className="flex items-center gap-2">
-            <Image src={IconClock} alt="clock" width={20} height={20} className="w-5" />
-            <span className="text-base font-medium text-black">Tin nhắn tự xóa</span>
-          </div>
-          <p className="text-sm text-gray-500 ml-7">Không bao giờ</p>
-
-          <div className="flex flex-col items-center w-20">
-            <div
-              className={`rounded-full w-8 h-8 flex justify-center items-center cursor-pointer transition-colors ${
-                localIsHidden ? 'bg-red-100 text-red-600' : 'bg-gray-200 hover:bg-gray-300'
-              }`}
-              onClick={() => handleChatActionClick('hide')} // 🔥 Gọi hàm xử lý cục bộ
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M12 9a3 3 0 00-3 3.75h6A3 3 0 0012 9z" />
-                <path
-                  fillRule="evenodd"
-                  d="M18.75 3a.75.75 0 00-.75.75v.5a.75.75 0 001.5 0v-.5A.75.75 0 0018.75 3zM12 2.25c-5.11 0-9.352 3.69-10.158 8.442a.75.75 0 000 1.516C2.648 18.06 6.89 21.75 12 21.75c5.11 0 9.352-3.69 10.158-8.442a.75.75 0 000-1.516C21.352 5.94 17.11 2.25 12 2.25zM4.755 12a7.5 7.5 0 0114.49 0 7.5 7.5 0 01-14.49 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <p className={`mt-2 text-xs text-center ${localIsHidden ? 'text-red-600 font-medium' : 'text-gray-700'}`}>
-              {localIsHidden ? 'Hiện Trò Chuyện' : 'Ẩn Trò Chuyện'}
-            </p>
-          </div>
-        </div>
+        {/* (Phần Ẩn/Hiện trò chuyện đã đưa lên khu "Chức năng" phía trên cùng) */}
       </div>
 
-      <div className="p-4 border-t mt-auto">
-        <button className="w-full flex flex-col items-start cursor-pointer text-red-600 hover:bg-gray-100 p-2 rounded-lg">
-          <div className="flex items-center gap-1 mb-1">
-            <Image src={IconWR} alt="Warning Icon" width={20} height={20} className="w-5 h-5" />
-            <span className="text-black text-medium">Báo xấu</span>
-          </div>
-          <span className="font-medium">Xóa lịch sử trò chuyện</span>
-        </button>
-      </div>
       {/*</div>*/}
 
       {openMember && isGroup && (

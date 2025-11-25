@@ -13,10 +13,11 @@ export interface GroupMemberSchema {
 }
 
 // 3. Cấu trúc hiển thị ở Frontend (đã populate thông tin User)
-// Kế thừa từ GroupMemberSchema để có thêm field 'role'
+// Kế thừa từ GroupMemberSchema và chấp nhận thêm field id (một số API trả về id thay vì _id)
 export interface MemberInfo extends GroupMemberSchema {
   name: string;
   avatar?: string;
+  id?: string;
 }
 
 export interface GroupConversation {
@@ -37,6 +38,9 @@ export interface GroupConversation {
   createdAt?: string;
   isRecall?: boolean;
 
+  // Các field trạng thái đã được tính sẵn từ server (tiện cho FE sử dụng)
+  isPinned?: boolean;
+  isHidden?: boolean;
   isPinnedBy?: Record<string, boolean>;
   isHiddenBy?: Record<string, boolean>;
 }

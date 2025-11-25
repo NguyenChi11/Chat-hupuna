@@ -176,7 +176,7 @@ export default function MessageList({
                   )}
 
                   <div
-                    className={`p-2 rounded-lg shadow-sm 
+                    className={`p-2 rounded-lg shadow-sm w-[19rem]
                       ${isMe ? 'bg-blue-100 text-black' : 'bg-white text-black'}
                       ${(msg.type === 'sticker' && !isRecalled) || isVideoFile(msg.fileUrl) ? '!bg-transparent !shadow-none !p-0' : ''} 
                       ${!isGrouped ? (isMe ? 'rounded-br-none' : 'rounded-bl-none') : ''}

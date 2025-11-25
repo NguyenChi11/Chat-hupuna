@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import Sidebar from '../(menu)/menu';
+import SidebarMenu from '../(menu)/menu';
 
 const LayoutBase = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex h-screen w-screen">
       {/* Sidebar bên trái */}
-      <Sidebar />
+      <SidebarMenu />
 
       {/* Nội dung chính, chiếm hết phần còn lại */}
       <div className="flex-1 overflow-auto">{children}</div>

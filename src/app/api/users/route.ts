@@ -6,6 +6,19 @@ import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { signJWT } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
+  // Bọc parse JSON để tránh crash khi body rỗng / không hợp lệ
+  let body: any = {};
+  try {
+    // Chỉ cố parse nếu header là JSON
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      body = await req.json();
+    }
+  } catch (err) {
+    console.warn('Invalid JSON body in /api/users:', err);
+    body = {};
+  }
+
   const {
     action,
     collectionName = USERS_COLLECTION_NAME,
@@ -23,7 +36,7 @@ export async function POST(req: NextRequest) {
     roomId,
     isPinned,
     isHidden,
-  } = await req.json();
+  } = body;
 
   try {
     switch (action) {
@@ -73,7 +86,7 @@ export async function POST(req: NextRequest) {
         const msgCollection = await getCollection<Message>(MESSAGES_COLLECTION_NAME);
 
         const usersWithData = await Promise.all(
-          users.map(async (u: any) => {
+          users.map(async (u: User) => {
             // Bỏ qua chính mình trong danh sách
             if (String(u._id) === userIdStr) return u;
 
@@ -159,7 +172,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing currentUserId, roomId or data' }, { status: 400 });
         }
         const partnerId = roomId;
-        const updateFields: any = {};
+        const updateFields: Record<string, boolean> = {};
 
         if (typeof data.isPinned === 'boolean') {
           updateFields[`isPinnedBy.${currentUserId}`] = data.isPinned;

@@ -22,7 +22,7 @@ interface Props {
   onRoleChange?: (memberId: string, memberName: string, newRole: 'ADMIN' | 'MEMBER') => void;
 }
 
-function isMemberInfo(member: any): member is MemberInfo {
+function isMemberInfo(member: unknown): member is MemberInfo {
   return typeof member === 'object' && member !== null && ('_id' in member || 'id' in member) && 'name' in member;
 }
 
@@ -52,8 +52,8 @@ export default function GroupMembersModal({
   if (!isOpen) return null;
 
   const myId = String(currentUser._id || currentUser.id);
-  const myMemberInfo = localMembers.find((m) => String(m._id || (m as any).id) === myId);
-  const myRole: GroupRole = (myMemberInfo as any)?.role || 'MEMBER';
+  const myMemberInfo = localMembers.find((m) => String(m._id || m.id) === myId);
+  const myRole: GroupRole = myMemberInfo?.role || 'MEMBER';
 
   // --- LOGIC PERMISSION ---
   const canKick = (targetRole: GroupRole) => {
@@ -82,16 +82,35 @@ export default function GroupMembersModal({
     if (!conversationId) return;
     setLoadingAction(targetUserId); // Bắt đầu loading cho user này
 
-    const targetMember = localMembers.find((m) => String(m._id || (m as any).id) === targetUserId);
+    const targetMember = localMembers.find((m) => String(m._id || m.id) === targetUserId);
     const targetName = targetMember ? targetMember.name : 'Thành viên';
 
-    const payload: any = { conversationId, targetUserId };
-    if (action === 'kick') {
-      payload.action = 'kickMember';
-    } else {
-      payload.action = 'changeRole';
-      payload.data = { role: action === 'promote' ? 'ADMIN' : 'MEMBER' };
-    }
+    type GroupActionPayload =
+      | {
+          conversationId: string;
+          targetUserId: string;
+          action: 'kickMember';
+        }
+      | {
+          conversationId: string;
+          targetUserId: string;
+          action: 'changeRole';
+          data: { role: 'ADMIN' | 'MEMBER' };
+        };
+
+    const payload: GroupActionPayload =
+      action === 'kick'
+        ? {
+            conversationId,
+            targetUserId,
+            action: 'kickMember',
+          }
+        : {
+            conversationId,
+            targetUserId,
+            action: 'changeRole',
+            data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
+          };
 
     try {
       const res = await fetch('/api/groups', {
@@ -102,12 +121,12 @@ export default function GroupMembersModal({
 
       if (res.ok) {
         if (action === 'kick') {
-          setLocalMembers((prev) => prev.filter((m) => String(m._id || (m as any).id) !== targetUserId));
+          setLocalMembers((prev) => prev.filter((m) => String(m._id || m.id) !== targetUserId));
           if (onMemberRemoved) onMemberRemoved(targetUserId, targetName);
         } else if (action === 'promote' || action === 'demote') {
-          const newRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
+          const newRole: GroupRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
           setLocalMembers((prev) =>
-            prev.map((m) => (String(m._id || (m as any).id) === targetUserId ? { ...m, role: newRole } : m)),
+            prev.map((m) => (String(m._id || m.id) === targetUserId ? { ...m, role: newRole } : m)),
           );
           if (onRoleChange) onRoleChange(targetUserId, targetName, newRole);
         }
@@ -125,7 +144,7 @@ export default function GroupMembersModal({
 
   // Filter
   const searchUser = localMembers.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const existingMemberIds = localMembers.map((m) => String(m._id || (m as any).id));
+  const existingMemberIds = localMembers.map((m) => String(m._id || m.id));
 
   // --- SUB COMPONENTS ---
   const RoleBadge = ({ role }: { role: GroupRole }) => {
@@ -145,23 +164,46 @@ export default function GroupMembersModal({
   };
 
   return (
-    // 1. Outer Wrapper giống CreateGroupModal
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white sm:bg-black/50 py-1 rounded-lg">
-      <div className="bg-white w-full h-full sm:max-w-2xl shadow-none sm:shadow-2xl animate-fade-in-up flex flex-col">
+    // 1. Outer Wrapper kiểu Zalo: overlay mờ, modal bo góc trên desktop, full-screen trên mobile
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-2 sm:px-4 py-4 sm:py-6">
+      <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl rounded-none sm:rounded-2xl shadow-none sm:shadow-xl border border-gray-200 flex flex-col overflow-hidden">
         {/* --- HEADER --- */}
-        <div className="flex-none flex justify-between items-center p-4 border-b border-gray-200 bg-white">
-          <div>
-            <h3 className="text-lg font-bold text-gray-800">Thành viên nhóm</h3>
-            {groupName && <p className="text-sm text-gray-500 font-medium mt-0.5">{groupName}</p>}
+        <div className="flex-none px-4 py-3 border-b bg-[#f3f6fb] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="w-5 h-5"
+              >
+                <path d="M7 7a3 3 0 116 0 3 3 0 01-6 0z" />
+                <path d="M4 21v-1a5 5 0 015-5h2" />
+                <path d="M16 11a3 3 0 110-6 3 3 0 010 6z" />
+                <path d="M21 21v-1a5 5 0 00-4-4.9" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800 truncate">Thành viên nhóm</p>
+              {groupName && (
+                <p className="text-xs text-gray-500 font-medium truncate max-w-[220px] sm:max-w-[260px]">{groupName}</p>
+              )}
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
+            aria-label="Đóng"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={2}
               stroke="currentColor"
-              className="w-6 h-6 text-gray-500"
+              className="w-4 h-4"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -169,17 +211,17 @@ export default function GroupMembersModal({
         </div>
 
         {/* --- BODY --- */}
-        <div className="flex-1 flex flex-col min-h-0 bg-gray-50/50">
+        <div className="flex-1 flex flex-col min-h-0 bg-gray-50/60">
           {/* Search & Add Section */}
-          <div className="flex-none p-4 space-y-3 bg-white pb-6 shadow-sm z-10">
+          <div className="flex-none p-4 space-y-3 bg-white shadow-sm z-10">
             {/* Chỉ Admin/Owner mới thấy nút Add */}
             {(myRole === 'OWNER' || myRole === 'ADMIN') && (
               <button
                 onClick={() => setShowCreateGroupModal(true)}
-                className="w-full py-3 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold transition-all active:scale-95 group"
+                className="w-full py-3 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-semibold text-sm transition-all active:scale-95 group"
               >
-                <div className="p-1 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                  <img src={IconGroup.src} alt="" className="w-4 h-4" />
+                <div className="p-1.5 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                  <Image src={IconGroup.src} width={16} height={16} alt="" className="w-4 h-4" />
                 </div>
                 Thêm thành viên mới
               </button>
@@ -191,27 +233,27 @@ export default function GroupMembersModal({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm thành viên..."
-                className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 border border-transparent focus:border-blue-500 transition-all"
+                className="w-full h-10 pl-10 pr-4 bg-gray-100 rounded-full outline-none text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 border border-transparent focus:border-blue-500 transition-all"
               />
               <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Image src={SearchIcon} alt="search" width={20} height={20} className="opacity-40" />
+                <Image src={SearchIcon} alt="search" width={18} height={18} className="opacity-40" />
               </div>
             </div>
           </div>
 
           {/* Member List */}
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            <h4 className="font-semibold text-xs text-gray-500 mb-3 uppercase tracking-wider flex justify-between">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar bg-gray-50/60">
+            <h4 className="font-semibold text-[11px] text-gray-500 mb-3 uppercase tracking-wider flex justify-between items-center">
               <span>Danh sách</span>
-              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[15px]">
+              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[11px]">
                 {searchUser.length} thành viên
               </span>
             </h4>
 
             <div className="space-y-2">
               {searchUser.map((member) => {
-                const memberId = String(member._id || (member as any).id);
-                const memberRole = (member as any).role || 'MEMBER';
+                const memberId = String(member._id || member.id);
+                const memberRole: GroupRole = member.role;
                 const isMe = memberId === myId;
                 const isLoading = loadingAction === memberId;
 
@@ -229,7 +271,9 @@ export default function GroupMembersModal({
                           src={member.avatar}
                           alt=""
                           className="w-full h-full object-cover"
-                          onError={(e) => ((e.target as HTMLElement).style.display = 'none')}
+                          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-lg">
@@ -337,9 +381,9 @@ export default function GroupMembersModal({
                 );
               })}
               {searchUser.length === 0 && (
-                <div className="text-center py-12 opacity-50 flex flex-col items-center">
-                  <Image src={SearchIcon} alt="" width={48} height={48} className="mb-3 grayscale opacity-20" />
-                  <p className="text-gray-500 font-medium">Không tìm thấy thành viên nào</p>
+                <div className="text-center py-10 opacity-60 flex flex-col items-center">
+                  <Image src={SearchIcon} alt="" width={40} height={40} className="mb-3 grayscale opacity-30" />
+                  <p className="text-gray-500 text-sm font-medium">Không tìm thấy thành viên nào</p>
                 </div>
               )}
             </div>
@@ -347,10 +391,10 @@ export default function GroupMembersModal({
         </div>
 
         {/* --- FOOTER --- */}
-        <div className="flex-none p-4 bg-white border-t border-gray-200 flex justify-end gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+        <div className="flex-none px-4 py-3 bg-white border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
+            className="w-full sm:w-auto px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-colors"
           >
             Đóng
           </button>

@@ -8,7 +8,6 @@ import { useToast } from '../base/toast';
 import { LoadingFull } from '../base/loading-full';
 import { confirmAlert } from '../base/alert';
 import { User } from '../../types/User';
-import { cookieBase } from '../../utils/cookie';
 import { APP_VERSION } from '@/version';
 export default function LoginForm() {
   const [username, setUsername] = useState('');
@@ -37,20 +36,23 @@ export default function LoginForm() {
         toast({ type: 'success', message: 'Đăng nhập thành công!', duration: 3000 });
 
         const { _id, username, name } = result.user;
-        // 🔥 CHỈ CẦN LƯU INFO ĐỂ HIỂN THỊ UI
-        // Token đã được tự động lưu vào Cookie bởi API
-        localStorage.setItem(
-          'info_user',
-          JSON.stringify({
-            _id,
-            username,
-            name,
-            version: APP_VERSION,
-          }),
-        );
 
-        // Nếu có logic remember_login, bạn có thể giữ lại
-        localStorage.setItem('remember_login', JSON.stringify(remember));
+        // 🔥 CHỈ CẦN LƯU INFO ĐỂ HIỂN THỊ UI
+        // Token (session_token) đã được lưu vào Cookie HttpOnly bởi API
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            'info_user',
+            JSON.stringify({
+              _id,
+              username,
+              name,
+              version: APP_VERSION,
+            }),
+          );
+
+          // Nếu có logic remember_login, lưu ở localStorage cho đơn giản
+          localStorage.setItem('remember_login', JSON.stringify(remember));
+        }
 
         setIsLoading(false);
         router.push('/home');
@@ -103,16 +105,26 @@ export default function LoginForm() {
   }, [searchParams]);
 
   useEffect(() => {
-    const rememberLogin = cookieBase.get<boolean>('remember_login');
-    const savedUser = cookieBase.get<User>('info_user');
+    if (typeof window === 'undefined') return;
 
-    setRemember(rememberLogin ?? false);
+    try {
+      const rememberRaw = localStorage.getItem('remember_login');
+      const rememberLogin = rememberRaw ? (JSON.parse(rememberRaw) as boolean) : false;
+      setRemember(rememberLogin ?? false);
 
-    if (rememberLogin && savedUser) {
-      setUsername(savedUser.username || '');
-    } else {
-      cookieBase.remove('info_user');
+      const savedUserRaw = localStorage.getItem('info_user');
+
+      if (rememberLogin && savedUserRaw) {
+        const savedUser = JSON.parse(savedUserRaw) as User;
+        setUsername(savedUser.username || '');
+      } else {
+        localStorage.removeItem('info_user');
+        setUsername('');
+      }
+    } catch (e) {
+      console.error('Không đọc được thông tin đăng nhập từ localStorage', e);
       setUsername('');
+      setRemember(false);
     }
   }, []);
 

@@ -23,7 +23,7 @@ export default function FriendRequests() {
         <img src={IconUser.src} alt="user" className="w-10 h-10  object-cover" />
         Lời mời kết bạn
       </h1>
-      <div className="mb-6">
+      <div className="mb-4">
         <h2 className="text-gray-700 font-semibold mb-2">Lời mời đã nhận ({receivedRequests.length})</h2>
         {receivedRequests.map((request, index) => (
           <div key={index} className="p-4 bg-gray-100 rounded-lg flex items-start space-x-4">

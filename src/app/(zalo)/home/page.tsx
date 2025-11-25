@@ -6,6 +6,7 @@ import HomeDesktop from '@/components/(home)/HomeDesktop';
 import HomeMobile from '@/components/(home)/HomeMobile';
 import HomeOverlays from '@/components/(home)/HomeOverlays';
 import { useHomePage } from '@/hooks/useHomePage';
+import type { GroupConversation } from '@/types/Group';
 
 export default function HomePage() {
   const {
@@ -85,10 +86,16 @@ export default function HomePage() {
         onSelectContact={handleSelectContact}
         showCreateGroupModal={showCreateGroupModal}
         onCloseCreateGroup={() => setShowCreateGroupModal(false)}
-        onGroupCreated={() => {
-          fetchAllData();
+        // Sau khi tạo nhóm:
+        // - Đóng modal
+        // - Nếu có group mới trả về -> auto chọn group đó để mở giao diện chat
+        onGroupCreated={(group?: GroupConversation) => {
+          if (group) {
+            setSelectedChat(group);
+          }
           setShowCreateGroupModal(false);
         }}
+        reLoad={fetchAllData}
       />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { User } from '@/types/User';
+import type { GroupConversation } from '@/types/Group';
 
 interface UseCreateGroupModalParams {
   currentUser: User;
@@ -11,7 +12,12 @@ interface UseCreateGroupModalParams {
   existingMemberIds?: string[];
   reLoad?: () => void;
   onMembersAdded?: (users: User[]) => void;
-  onGroupCreated: () => void;
+  /**
+   * Được gọi sau khi tạo nhóm / thêm thành viên thành công.
+   * - Với mode "create": nhận về group vừa tạo để FE có thể auto mở khung chat.
+   * - Với mode "add": không cần tham số.
+   */
+  onGroupCreated: (group?: GroupConversation) => void;
   onClose: () => void;
 }
 
@@ -133,13 +139,22 @@ export function useCreateGroupModal({
       });
 
       const result = await res.json();
-      reLoad?.();
+
       if (result.success) {
+        // Chỉ reload lại dữ liệu khi thao tác thành công
+        reLoad?.();
+
         if (mode === 'add' && onMembersAdded) {
           const addedUsersFullInfo = allUsers.filter((u) => newMembersOnly.includes(String(u._id)));
           onMembersAdded(addedUsersFullInfo);
+          // Với mode "add" không cần mở chat mới
+          onGroupCreated();
+        } else if (mode === 'create') {
+          // Khi tạo nhóm mới, backend trả về group => truyền cho callback
+          const createdGroup = result.group as GroupConversation | undefined;
+          onGroupCreated(createdGroup);
         }
-        onGroupCreated();
+
         onClose();
       } else {
         setError(result.error || 'Thực hiện thất bại');
@@ -166,5 +181,3 @@ export function useCreateGroupModal({
     handleSubmit,
   };
 }
-
-

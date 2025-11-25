@@ -6,6 +6,7 @@ import GlobalSearchModal from '../../app/(zalo)/home/GlobalSearchModal';
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
 
 import { User } from '@/types/User';
+import type { GroupConversation } from '@/types/Group';
 
 // Reuse the same shapes as GlobalSearchModal
 export interface GlobalSearchMessage {
@@ -45,7 +46,13 @@ interface HomeOverlaysProps {
   onSelectContact: (contact: GlobalSearchContact) => void;
   showCreateGroupModal: boolean;
   onCloseCreateGroup: () => void;
-  onGroupCreated: () => void;
+  /**
+   * Callback khi tạo nhóm mới / thêm thành viên.
+   * - Với tạo nhóm: nhận group mới để component cha có thể chọn mở chat.
+   */
+  onGroupCreated: (group?: GroupConversation) => void;
+  // Hàm reload dữ liệu bên ngoài (thường là fetchAllData)
+  reLoad?: () => void;
 }
 
 export default function HomeOverlays({
@@ -61,6 +68,7 @@ export default function HomeOverlays({
   showCreateGroupModal,
   onCloseCreateGroup,
   onGroupCreated,
+  reLoad,
 }: HomeOverlaysProps) {
   return (
     <>
@@ -83,6 +91,7 @@ export default function HomeOverlays({
           allUsers={allUsers}
           onClose={onCloseCreateGroup}
           onGroupCreated={onGroupCreated}
+          reLoad={reLoad}
         />
       )}
     </>

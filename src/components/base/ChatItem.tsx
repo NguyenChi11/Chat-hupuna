@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { formatTimeAgo } from '../../utils/dateUtils';
 import IconPin from '@/public/icons/pin.svg';
 import { formatMessagePreview } from './Sidebar';
-import type { ChatItem as ChatItemType } from '@/types/Group';
+import type { ChatItem as ChatItemType, GroupConversation } from '@/types/Group';
+import type { User } from '@/types/User';
 
 interface ChatItemProps {
   item: ChatItemType;
@@ -30,7 +31,34 @@ export default function ChatItem({
   const lastMessage = item.lastMessage || (isGroup ? 'Nhóm mới tạo' : 'Sẵn sàng trò chuyện');
   const isRecall = item.isRecall;
   const unreadCount = item.unreadCount || 0;
-  const name = item.name || 'Unknown';
+
+  // Tên hiển thị: ưu tiên tên nhóm / tên người dùng, nếu thiếu thì tạo tên tạm
+  let name: string;
+  if (isGroup) {
+    const group = item as GroupConversation;
+    if (group.name && group.name.trim()) {
+      name = group.name;
+    } else if (Array.isArray(group.members) && group.members.length > 0) {
+      // Nếu nhóm chưa có name, tạo tên tạm từ tên 1 vài thành viên
+      const memberNames = group.members
+        .map((m) => {
+          if (m && typeof m === 'object' && 'name' in m) {
+            return String((m as { name?: unknown }).name ?? '');
+          }
+          return '';
+        })
+        .filter((n) => !!n)
+        .slice(0, 3)
+        .join(', ');
+      name = memberNames || 'Nhóm';
+    } else {
+      name = 'Nhóm';
+    }
+  } else {
+    const user = item as User;
+    name = user.name || user.username || 'Người dùng';
+  }
+
   const avatarChar = name.charAt(0).toUpperCase();
   const timeDisplay = formatTimeAgo(item.lastMessageAt);
 

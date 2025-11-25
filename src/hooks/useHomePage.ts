@@ -6,9 +6,7 @@ import io, { type Socket } from 'socket.io-client';
 
 import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
-import type { GlobalSearchMessage, GlobalSearchContact } from '@/components/(home)/HomeOverlays'; // Cập nhật đường dẫn nếu cần
-
-type SearchContact = ChatItem;
+import type { GlobalSearchMessage, GlobalSearchContact } from '@/components/(home)/HomeOverlays'; // Cập nhật đường dẫn nếu cần // Cập nhật đường dẫn nếu cần
 
 interface SidebarUpdateData {
   sender: string;
@@ -20,6 +18,25 @@ interface SidebarUpdateData {
   isGroup?: boolean;
   roomId: string;
   members?: Array<string | { _id: string }>;
+}
+
+// Kiểu dữ liệu cho bản ghi tin nhắn trả về từ API globalSearch
+interface GlobalSearchMessageApi {
+  _id: string;
+  content: string;
+  type: string;
+  fileName?: string;
+  timestamp: number;
+  sender: string;
+  senderName?: string;
+  roomId: string;
+  roomName?: string;
+  isGroupChat?: boolean;
+  partnerId?: string;
+  partnerName?: string;
+  fileUrl?: string;
+  receiver?: string;
+  displayRoomName?: string;
 }
 
 const SOCKET_URL = 'http://localhost:3002'; // Đã thống nhất dùng 3001 từ component HomePage
@@ -95,7 +112,6 @@ export function useHomePage() {
     }
   }, []);
 
-
   const handleSelectContact = useCallback(
     (contact: GlobalSearchContact) => {
       setShowGlobalSearchModal(false);
@@ -159,11 +175,11 @@ export function useHomePage() {
         });
 
         const messageData = await res.json();
-        const allMessages = (messageData.data || []) as any[];
+        const allMessages = (messageData.data || []) as GlobalSearchMessageApi[];
 
         const messages: GlobalSearchMessage[] = allMessages
-          .filter((msg: any) => ['text', 'image', 'file', 'sticker'].includes(msg.type))
-          .map((msg: any) => ({
+          .filter((msg: GlobalSearchMessageApi) => ['text', 'image', 'file', 'sticker'].includes(msg.type))
+          .map((msg: GlobalSearchMessageApi) => ({
             _id: msg._id,
             content: msg.content,
             type: msg.type as 'text' | 'image' | 'file' | 'sticker',
@@ -193,13 +209,18 @@ export function useHomePage() {
     [currentUser, groups, allUsers],
   );
 
-  // 🔥 HÀM MỞ MODAL TÌM KIẾM TOÀN CỤC
+  // 🔥 HÀM MỞ / ĐÓNG MODAL TÌM KIẾM TOÀN CỤC (TOGGLE)
   const handleOpenGlobalSearch = useCallback(() => {
-    setGlobalSearchTerm('');
-    setGlobalSearchResults({ contacts: [], messages: [] });
-    setShowGlobalSearchModal(true);
+    setShowGlobalSearchModal((prev) => {
+      const next = !prev;
+      if (next) {
+        // Khi mở lại modal thì reset state tìm kiếm
+        setGlobalSearchTerm('');
+        setGlobalSearchResults({ contacts: [], messages: [] });
+      }
+      return next;
+    });
   }, []);
-
 
   const handleNavigateToMessage = useCallback(
     (message: GlobalSearchMessage) => {
@@ -208,19 +229,17 @@ export function useHomePage() {
       const myId = String(currentUser?._id);
 
       // Cố gắng tìm chat dựa trên message
+      // Cố gắng tìm chat dựa trên message
       if (message.isGroupChat === true && message.roomId) {
         targetChat = groups.find((g) => String(g._id) === String(message.roomId)) ?? null;
-      }
-      else if (message.isGroupChat === false) {
+      } else if (message.isGroupChat === false) {
         let partnerId: string | null = null;
         if (message.partnerId) {
           partnerId = String(message.partnerId);
-        }
-        else if (message.roomId && message.roomId.includes('_')) {
+        } else if (message.roomId && message.roomId.includes('_')) {
           const parts = message.roomId.split('_');
           partnerId = parts[0] === myId ? parts[1] : parts[0];
-        }
-        else {
+        } else {
           const senderId = String(message.sender);
           const receiverId = message.receiver ? String(message.receiver) : null;
           partnerId = senderId === myId ? receiverId : senderId;
@@ -250,7 +269,6 @@ export function useHomePage() {
     },
     [groups, allUsers, currentUser, fetchAllData, handleSelectChat],
   );
-
 
   // ============================================================
   // 🔥 FETCH CURRENT USER
@@ -354,7 +372,6 @@ export function useHomePage() {
     };
   }, [currentUser, fetchAllData, allUsers]);
 
-
   // 5. Xử lý Chat Action (Pin/Hide)
   const handleChatAction = useCallback(
     async (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroupChat: boolean) => {
@@ -363,7 +380,14 @@ export function useHomePage() {
       const apiRoute = isGroupChat ? '/api/groups' : '/api/users';
 
       try {
-        const payload: any = {
+        const payload: {
+          action: 'toggleChatStatus';
+          _id: string;
+          currentUserId: string;
+          roomId: string;
+          conversationId: string;
+          data: { isPinned?: boolean; isHidden?: boolean };
+        } = {
           action: 'toggleChatStatus',
           _id: currentUser._id,
           currentUserId: currentUser._id,
@@ -379,19 +403,26 @@ export function useHomePage() {
         });
 
         if (res.ok) {
-          const stateUpdater = (prev: any[]) =>
-            prev.map((chat) => {
-              if (chat._id === roomId) {
-                const updateField = actionType === 'pin' ? 'isPinned' : 'isHidden';
-                return { ...chat, [updateField]: isChecked };
-              }
-              return chat;
-            });
-
           if (isGroupChat) {
-            setGroups(stateUpdater);
+            setGroups((prev) =>
+              prev.map((chat) => {
+                if (chat._id === roomId) {
+                  const updateField = actionType === 'pin' ? 'isPinned' : 'isHidden';
+                  return { ...chat, [updateField]: isChecked };
+                }
+                return chat;
+              }),
+            );
           } else {
-            setAllUsers(stateUpdater);
+            setAllUsers((prev) =>
+              prev.map((chat) => {
+                if (chat._id === roomId) {
+                  const updateField = actionType === 'pin' ? 'isPinned' : 'isHidden';
+                  return { ...chat, [updateField]: isChecked };
+                }
+                return chat;
+              }),
+            );
           }
 
           setTimeout(() => {
@@ -404,7 +435,6 @@ export function useHomePage() {
     },
     [currentUser, fetchAllData],
   );
-
 
   return {
     currentUser,

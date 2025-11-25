@@ -2,9 +2,10 @@ import React, { useState, useCallback, useRef, useMemo } from 'react';
 import ChatItem from './ChatItem';
 import IconBB from '@/public/icons/bb.svg';
 import IconGroup from '@/public/icons/group.svg';
-import { User } from '@/types/User';
-import { GroupConversation } from '@/types/Group';
 import SearchResults from '@/components/(chatPopup)/SearchResults';
+import { User } from '../../types/User';
+import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Group';
+import Image from 'next/image';
 
 interface SidebarProps {
   currentUser: User;
@@ -13,8 +14,8 @@ interface SidebarProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   setShowCreateGroupModal: (show: boolean) => void;
-  selectedChat: any;
-  onSelectChat: (item: any) => void;
+  selectedChat: ChatItemType | null;
+  onSelectChat: (item: ChatItemType) => void;
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroup: boolean) => void;
   onNavigateToMessage: (message: any) => void;
 }
@@ -39,6 +40,21 @@ interface GlobalSearchResult {
   contacts: any[];
   messages: Message[];
 }
+
+// Hàm lấy tên hiển thị cho 1 item (User hoặc Group)
+const getChatDisplayName = (chat: any): string => {
+  const maybeGroup = chat as GroupConversation;
+  // Dùng `hasOwnProperty` để kiểm tra an toàn hơn, nhưng dùng `isGroup === true` hoặc `Array.isArray(members)` cũng ổn
+  const isGroupChat = maybeGroup.isGroup === true || Array.isArray(maybeGroup.members);
+
+  if (isGroupChat) {
+    return (maybeGroup.name || '').trim() || 'Nhóm';
+  }
+
+  const user = chat as User;
+  // Giả định chat là User nếu không phải Group
+  return (user.name || user.username || 'Người dùng').trim();
+};
 
 export const formatMessagePreview = (content: string | undefined, maxLength: number = 50): string => {
   if (!content) return '';
@@ -96,17 +112,17 @@ export const renderMessageWithMentions = (
 };
 
 export default function Sidebar({
-                                  currentUser,
-                                  groups,
-                                  allUsers,
-                                  searchTerm,
-                                  setSearchTerm,
-                                  setShowCreateGroupModal,
-                                  selectedChat,
-                                  onSelectChat,
-                                  onChatAction,
-                                  onNavigateToMessage,
-                                }: SidebarProps) {
+  currentUser,
+  groups,
+  allUsers,
+  searchTerm,
+  setSearchTerm,
+  setShowCreateGroupModal,
+  selectedChat,
+  onSelectChat,
+  onChatAction,
+  onNavigateToMessage,
+}: SidebarProps) {
   const currentUserId = currentUser._id;
   const [activeTab, setActiveTab] = useState<'all' | 'contacts' | 'messages' | 'files'>('all');
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult>({
@@ -117,7 +133,7 @@ export default function Sidebar({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle global search
+  // Handle global search (API call logic)
   const handleGlobalSearch = useCallback(
     async (term: string) => {
       if (!term.trim() || !currentUser) {
@@ -127,12 +143,15 @@ export default function Sidebar({
 
       const lowerCaseTerm = term.toLowerCase();
 
-      // 1. Tìm liên hệ/nhóm (bao gồm cả chat đã ẩn)
+      // 1. Tìm liên hệ/nhóm (local search)
       const allChats = [...groups, ...allUsers];
-      const contactResults = allChats.filter((c) => c.name?.toLowerCase().includes(lowerCaseTerm)).slice(0, 10);
+      const contactResults = allChats
+        .filter((c) => getChatDisplayName(c).toLowerCase().includes(lowerCaseTerm))
+        .slice(0, 10);
 
       // 2. Gọi API tìm tin nhắn
       try {
+        // Giả định API endpoint và cấu trúc request/response
         const res = await fetch('/api/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -160,7 +179,7 @@ export default function Sidebar({
     [currentUser, groups, allUsers],
   );
 
-  // Debounce search
+  // Debounce search handler
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
 
@@ -180,7 +199,7 @@ export default function Sidebar({
     }, 400);
   };
 
-  // Phân loại messages
+  // --- Search Results Grouping (Memoized) ---
   const regularMessages = useMemo(
     () => globalSearchResults.messages.filter((msg) => msg.type !== 'file' && msg.type !== 'image'),
     [globalSearchResults.messages],
@@ -191,7 +210,6 @@ export default function Sidebar({
     [globalSearchResults.messages],
   );
 
-  // Group messages by conversation
   const groupedMessages = useMemo(() => {
     const groups = new Map();
     regularMessages.forEach((msg) => {
@@ -212,7 +230,6 @@ export default function Sidebar({
     return Array.from(groups.values());
   }, [regularMessages]);
 
-  // Group files by conversation
   const groupedFiles = useMemo(() => {
     const groups = new Map();
     fileMessages.forEach((msg) => {
@@ -233,6 +250,8 @@ export default function Sidebar({
     return Array.from(groups.values());
   }, [fileMessages]);
 
+  const hasSearchResults = globalSearchResults.contacts.length > 0 || globalSearchResults.messages.length > 0;
+
   // Handle select contact from search
   const handleSelectContact = (contact: any) => {
     onSelectChat(contact);
@@ -240,14 +259,15 @@ export default function Sidebar({
     setGlobalSearchResults({ contacts: [], messages: [] });
   };
 
-  // Regular chat filtering (for non-search mode)
+  // --- Regular Chat List Logic (Memoized) ---
   const mixedChats = useMemo(() => [...groups, ...allUsers], [groups, allUsers]);
 
   const filteredChats = useMemo(() => {
     return mixedChats.filter((chat: any) => {
       const isHidden = chat.isHidden;
       const isSearching = searchTerm.trim() !== '';
-      const matchesSearch = chat.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const displayName = getChatDisplayName(chat);
+      const matchesSearch = displayName.toLowerCase().includes(searchTerm.toLowerCase());
 
       if (isSearching) {
         return matchesSearch;
@@ -264,71 +284,124 @@ export default function Sidebar({
       const aPinned = a.isPinned || false;
       const bPinned = b.isPinned || false;
 
+      // 1. Ưu tiên Ghim
       if (aPinned && !bPinned) return -1;
       if (!aPinned && bPinned) return 1;
+
+      // 2. Nếu không có tin nhắn (timeA === 0 && timeB === 0), sắp xếp theo tên
       if (timeA === 0 && timeB === 0) {
-        return (a.name || '').localeCompare(b.name || '');
+        const nameA = getChatDisplayName(a);
+        const nameB = getChatDisplayName(b);
+        return nameA.localeCompare(nameB);
       }
+
+      // 3. Sắp xếp theo thời gian tin nhắn mới nhất
       return timeB - timeA;
     });
   }, [filteredChats]);
 
-  const hasSearchResults =
-    globalSearchResults.contacts.length > 0 || globalSearchResults.messages.length > 0;
-
   return (
-    <aside className="relative flex flex-col h-full bg-white border-r border-gray-200 w-full md:w-80">
-      {/* Header Sidebar */}
-      <div className="p-4 border-b-[1px] border-b-gray-300 bg-gray-50 flex-col space-y-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-              {currentUser.name?.charAt(0).toUpperCase()}
+    <aside className="relative flex flex-col h-full bg-[#f4f6f9] border-r border-gray-200 w-full md:w-80">
+      {/* --- Thanh trên cùng kiểu Zalo --- */}
+      <div className="border-b border-blue-600/20">
+        {/* Top bar: avatar + action icons trên nền xanh (giống Zalo) */}
+        <div className="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-between text-white">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-white/20 overflow-hidden flex items-center justify-center text-sm font-semibold">
+              {currentUser.avatar ? (
+                <Image
+                  src={currentUser.avatar}
+                  alt={currentUser.name || 'User Avatar'}
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                currentUser.name?.charAt(0).toUpperCase()
+              )}
             </div>
-            <span className="font-semibold text-sm truncate max-w-[120px]">{currentUser.name}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold truncate max-w-[140px]">
+                {/* Hiển thị tên người dùng hiện tại */}
+                {currentUser.name || currentUser.username}
+              </span>
+              <span className="text-[11px] opacity-80 truncate max-w-[160px]">ID: {currentUser.username}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Nút mở Global Search (Đã bị loại bỏ khỏi Header Zalo design trong code cuối cùng, nhưng giữ lại logic cũ) */}
+            {/* Giữ lại logic của onShowGlobalSearch nếu cần, nhưng prop này không tồn tại trong SidebarProps của Đoạn 1, nên tôi tạm bỏ nút này để không gây lỗi. Nếu bạn cần, hãy thêm `onShowGlobalSearch` vào `SidebarProps` */}
+            {/* <button ... onClick={onShowGlobalSearch} ... /> */}
+
+            {/* Nút tạo nhóm mới */}
+            <button
+              onClick={() => setShowCreateGroupModal(true)}
+              className="w-8 h-8 hidden md:flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
+              title="Tạo nhóm chat mới"
+            >
+              <Image
+                src={IconGroup}
+                width={20}
+                height={20}
+                alt="Group Icon"
+                className="w-5 h-5 object-contain text-white"
+              />
+            </button>
           </div>
         </div>
 
-        {/* Search Container */}
-        <div className="flex items-center justify-between">
-          <div className="relative flex-1">
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Tìm kiếm tin nhắn, file, liên hệ..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="px-3 py-1 pr-10 text-sm w-full rounded-lg text-black bg-gray-100 focus:outline-none  focus:ring-1 focus:ring-blue-500"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setGlobalSearchResults({ contacts: [], messages: [] });
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+        {/* Thanh tìm kiếm bên dưới, nền sáng (Sử dụng cho logic Debounce Search) */}
+        <div className="px-3 py-3 bg-white shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Tìm kiếm tin nhắn, file, liên hệ..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-[#f1f3f5] text-gray-900 placeholder:text-gray-400 outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 border border-transparent transition-all"
+              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 1110.5 4a6.5 6.5 0 016.5 6.5z"
+                />
+              </svg>
+              {searchTerm && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setGlobalSearchResults({ contacts: [], messages: [] });
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
 
-          {/* Action Buttons */}
-          <div className="hidden md:flex items-center gap-2 ml-2">
-            <button
-              onClick={() => setShowCreateGroupModal(true)}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-            >
-              <img src={IconGroup.src} alt="Group Icon" className="w-6 h-6 object-contain" />
+            {/* Icon BB bên phải trên desktop */}
+            <button className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+              <Image src={IconBB} width={20} height={20} alt="BB Icon" className="w-5 h-5 object-contain" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Content Area - Chat List hoặc Search Results */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-white">
         {/* Hiển thị khi ĐANG TÌM KIẾM */}
         {searchTerm.trim() ? (
           <SearchResults

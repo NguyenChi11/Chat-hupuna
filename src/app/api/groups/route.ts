@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addRow, getAllRows, getCollection } from '@/lib/mongoDBCRUD';
-import {
-  GROUP_COLLECTION_NAME,
-  GroupConversation,
-  GroupConversationCreate,
-  GroupMemberSchema,
-} from '@/types/Group';
+import { GROUP_COLLECTION_NAME, GroupConversation, GroupConversationCreate, GroupMemberSchema } from '@/types/Group';
 import { ObjectId } from 'mongodb';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
@@ -48,9 +43,19 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing _id' }, { status: 400 });
         }
 
-        const userIdStr = _id.toString(); // chuẩn hóa thành string
+        // Chuẩn hóa _id của user thành string để so sánh
+        const userIdStr = String(_id);
 
-        const filters = { 'members._id': userIdStr, isGroup: true };
+        // Hỗ trợ cả trường hợp members._id lưu dạng string hoặc ObjectId
+        const orFilters: Record<string, unknown>[] = [{ 'members._id': userIdStr }];
+        if (ObjectId.isValid(userIdStr)) {
+          orFilters.push({ 'members._id': new ObjectId(userIdStr) });
+        }
+
+        const filters = {
+          isGroup: true,
+          $or: orFilters,
+        };
         const result = await getAllRows<GroupConversation>(GROUP_COLLECTION_NAME, { filters });
         const conversations = result.data || [];
         if (!conversations.length) return NextResponse.json(result);
@@ -136,11 +141,14 @@ export async function POST(req: NextRequest) {
               }
             }
 
+            // Nếu nhóm chưa có tin nhắn nào, ưu tiên dùng thời gian tạo nhóm để sort trên sidebar
+            const fallbackTime = typeof group.createdAt === 'number' ? group.createdAt : Date.now();
+
             return {
               ...group,
               unreadCount,
               lastMessage: lastMessagePreview, // Trả về chuỗi đã có tên người gửi
-              lastMessageAt: lastMsgObj ? lastMsgObj.timestamp : null,
+              lastMessageAt: lastMsgObj ? lastMsgObj.timestamp : fallbackTime,
               isRecall: lastMsgObj ? lastMsgObj.isRecalled || false : false,
               isPinned,
               isHidden,

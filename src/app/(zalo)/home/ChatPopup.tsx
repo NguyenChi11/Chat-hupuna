@@ -161,6 +161,7 @@ export default function ChatWindow({
   const chatName = selectedChat.name;
 
   const [showSearchSidebar, setShowSearchSidebar] = useState(false);
+  const chatAvatar = (selectedChat as { avatar?: string }).avatar;
 
   const sendMessageProcess = useCallback(
     async (msgData: MessageCreate) => {
@@ -495,7 +496,6 @@ export default function ChatWindow({
 
         await sendNotifyMessage(notificationText);
         // 🔥 END BƯỚC MỚI
-
       } else {
         // Nếu API fail, roll back local state
         setPinnedMessage(message.isPinned ? message : null);
@@ -508,7 +508,6 @@ export default function ChatWindow({
       setPinnedMessage(message.isPinned ? message : null);
     }
   };
-
 
   //useEffect ghim tin nhắn
   useEffect(() => {
@@ -853,6 +852,7 @@ export default function ChatWindow({
           onOpenMembers={() => setOpenMember(true)}
           showSearchSidebar={showSearchSidebar}
           onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
+          avatar={chatAvatar}
         />
         <PinnedMessagesSection
           allPinnedMessages={allPinnedMessages}
@@ -957,8 +957,6 @@ export default function ChatWindow({
           />
         </div>
       )}
-
-
 
       {openMember && isGroup && (
         <ModalMembers
