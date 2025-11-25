@@ -21,7 +21,7 @@ io.on('connection', (socket) => {
 
     // Logic Update Sidebar cho send_message
     const lastMessage = `${data.senderName}: ${data.type != 'text' ? `[${data.type ?? 'Unknown'}]` : data.content}`;
-    const sidebarData = { ...data, lastMessage }; // Giữ nguyên data gốc
+    const sidebarData = { ...data, lastMessage };
 
     if (data.isGroup && data.members) {
       data.members.forEach((memberId) => {
@@ -36,37 +36,67 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- 🔥 SỬA LOGIC THU HỒI TẠI ĐÂY ---
-  socket.on('recall_message', (data) => {
-    // data nhận được từ client: { _id, roomId, sender, receiver, isGroup, members... }
-
-    // 1. Báo cho Chat Window (cập nhật bong bóng chat ngay lập tức)
-    io.in(data.roomId).emit('message_recalled', {
+  // 🔥 THÊM SOCKET EVENT CHO EDIT MESSAGE
+  socket.on('edit_message', (data) => {
+    // Broadcast cho người khác trong room (KHÔNG bao gồm người gửi)
+    socket.to(data.roomId).emit('message_edited', {
       _id: data._id,
       roomId: data.roomId,
+      content: data.newContent,
+      editedAt: data.editedAt,
+      originalContent: data.originalContent,
     });
 
-    // 2. Update Sidebar (Quan trọng: Phải ghi đè nội dung hiển thị)
-    // const sidebarData = {
-    //   ...data,
-    //   content: 'Tin nhắn đã bị thu hồi', // Ghi đè nội dung hiển thị ở sidebar
-    //   type: 'recall', // Đổi type để frontend có thể style (vd: chữ nghiêng, màu xám)
-    //   isRecalled: true,
-    // };
+    // Update Sidebar
+    const sidebarData = {
+        _id: data._id,
+        roomId: data.roomId,
+        sender: data.sender,
+        senderName: data.senderName,
+        content: data.newContent, // ✅ Field đúng
+        lastMessage: `${data.senderName}: ${data.newContent}`,
+        type: 'text',
+        timestamp: data.editedAt || Date.now(),
+        editedAt: data.editedAt,
+        isGroup: data.isGroup,
+        members: data.members,
+        receiver: data.receiver,
+    };
 
-    // Gửi cho Group
     if (data.isGroup && data.members) {
       data.members.forEach((memberId) => {
         const idStr = typeof memberId === 'object' ? memberId._id : memberId;
         io.to(idStr).emit('update_sidebar', sidebarData);
       });
-    }
-    // Gửi cho 1-1
-    else if (data.receiver) {
+    } else if (data.receiver) {
       io.to(data.receiver).emit('update_sidebar', sidebarData);
     }
+    if (data.sender) {
+      io.to(data.sender).emit('update_sidebar', sidebarData);
+    }
+  });
 
-    // Gửi cho chính mình (Sender) để sidebar mình cũng cập nhật
+  socket.on('recall_message', (data) => {
+    io.in(data.roomId).emit('message_recalled', {
+      _id: data._id,
+      roomId: data.roomId,
+    });
+
+    const sidebarData = {
+      ...data,
+      content: 'Tin nhắn đã bị thu hồi',
+      type: 'recall',
+      isRecalled: true,
+    };
+
+    if (data.isGroup && data.members) {
+      data.members.forEach((memberId) => {
+        const idStr = typeof memberId === 'object' ? memberId._id : memberId;
+        io.to(idStr).emit('update_sidebar', sidebarData);
+      });
+    } else if (data.receiver) {
+      io.to(data.receiver).emit('update_sidebar', sidebarData);
+    }
     if (data.sender) {
       io.to(data.sender).emit('update_sidebar', sidebarData);
     }
@@ -77,4 +107,4 @@ io.on('connection', (socket) => {
   });
 });
 
-console.log('Socket.io server running on port 3001');
+console.log('Socket.io server running on port 3002');

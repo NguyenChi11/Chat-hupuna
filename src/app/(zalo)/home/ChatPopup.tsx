@@ -136,7 +136,8 @@ export default function ChatWindow({
   const [allPinnedMessages, setAllPinnedMessages] = useState<Message[]>([]);
   const [showPinnedList, setShowPinnedList] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
-
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState(''); // Lưu nội dung đang chỉnh sửa
   const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
     return [user1Id, user2Id].sort().join('_');
   };
@@ -307,13 +308,16 @@ export default function ChatWindow({
     if (!contextMenu || !contextMenu.visible) return null;
 
     const { x, y, message: msg } = contextMenu;
-    const isMe = (msg.sender as any)._id === currentUser._id;
+    const isMe =
+      typeof msg.sender === 'object' && msg.sender !== null
+        ? msg.sender._id === currentUser._id
+        : msg.sender === currentUser._id;
     const isText = msg.type === 'text';
     const isRecalled = msg.isRecalled;
     const canCopy = isText && !isRecalled;
     const canDownload = (msg.type === 'image' || msg.type === 'file' || msg.type === 'sticker') && msg.fileUrl;
     const canRecall = isMe && !isRecalled;
-
+    const canEdit = isMe && isText && !isRecalled;
     const style = {
       top: y,
       left: x > window.innerWidth - 200 ? x - 180 : x,
@@ -362,6 +366,23 @@ export default function ChatWindow({
               <path d="M7 6V5h6v1h-6zM3 8v10a2 2 0 002 2h10a2 2 0 002-2V8h-2V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2H3zm12 2v8H5v-8h10z" />
             </svg>
             Copy
+          </MenuItem>
+        )}
+
+        {canEdit && (
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setEditingMessageId(msg._id);
+              setEditContent(msg.content || '');
+              closeContextMenu();
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+            </svg>
+            Chỉnh sửa
           </MenuItem>
         )}
 
@@ -750,16 +771,43 @@ export default function ChatWindow({
 
   useEffect(() => {
     if (!roomId) return;
+
     socketRef.current = io(SOCKET_URL);
     socketRef.current.emit('join_room', roomId);
 
     socketRef.current.on('receive_message', (data: Message) => {
+      console.log('📨 [CLIENT] Received message:', data);
       setMessages((prev) => [...prev, data]);
 
-      // Chỉ thông báo & phát tiếng khi tin nhắn không phải của chính mình
       if (data.sender !== currentUser._id) {
         playMessageSound();
         showMessageNotification(data);
+      }
+    });
+
+    // 🔥 LISTENER CHO MESSAGE_EDITED
+    socketRef.current.on('message_edited', (data: {
+      _id: string;
+      roomId: string;
+      content: string;
+      editedAt: number;
+      originalContent?: string;
+    }) => {
+
+      if (data.roomId === roomId) {
+        setMessages((prevMessages) => {
+          const updated = prevMessages.map((msg) =>
+            msg._id === data._id
+              ? {
+                ...msg,
+                content: data.content,
+                editedAt: data.editedAt,
+                originalContent: data.originalContent || msg.originalContent || msg.content
+              }
+              : msg
+          );
+          return updated;
+        });
       }
     });
 
@@ -772,6 +820,7 @@ export default function ChatWindow({
     });
 
     return () => {
+      console.log('🔌 [CLIENT] Disconnecting socket');
       socketRef.current?.disconnect();
     };
   }, [roomId, currentUser._id, playMessageSound, showMessageNotification]);
@@ -970,6 +1019,63 @@ export default function ChatWindow({
 
   if (!selectedChat) return null;
 
+  const handleSaveEdit = async (messageId: string, newContent: string) => {
+    if (!newContent.trim()) return;
+
+    const originalMessage = messages.find(m => m._id === messageId);
+    if (!originalMessage) return;
+
+    const editedAtTimestamp = Date.now();
+    const originalContentText = originalMessage.originalContent || originalMessage.content || '';
+
+    console.log('🟢 [CLIENT] Starting edit:', { messageId, newContent, roomId });
+
+    // 1. Optimistic Update
+    setMessages(prev => prev.map(m =>
+      m._id === messageId
+        ? { ...m, content: newContent, editedAt: editedAtTimestamp, originalContent: originalContentText }
+        : m
+    ));
+    setEditingMessageId(null);
+
+    // 2. Gọi API Backend
+    try {
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'editMessage',
+          data: { messageId, newContent },
+        }),
+      });
+
+      console.log('📡 [CLIENT] API response:', response.status);
+
+      // 3. EMIT SOCKET EVENT
+      const socketData = {
+        _id: messageId,
+        roomId: roomId,
+        newContent: newContent,
+        editedAt: editedAtTimestamp,
+        originalContent: originalContentText,
+        sender: currentUser._id,
+        senderName: currentUser.name,
+        isGroup: isGroup,
+        receiver: isGroup ? null : getId(selectedChat),
+        members: isGroup ? (selectedChat as GroupConversation).members : [],
+      };
+
+      console.log('🚀 [CLIENT] Emitting edit_message:', socketData);
+      socketRef.current?.emit('edit_message', socketData);
+
+    } catch (e) {
+      console.error("❌ [CLIENT] Chỉnh sửa thất bại:", e);
+      alert("Lỗi khi lưu chỉnh sửa.");
+      setMessages(prev => prev.map(m =>
+        m._id === messageId ? originalMessage : m
+      ));
+    }
+  };
   return (
     <main className="flex h-full bg-gray-700">
       <div
@@ -1011,6 +1117,11 @@ export default function ChatWindow({
             getSenderInfo={getSenderInfo}
             renderMessageContent={renderMessageContent}
             onOpenMedia={(url, type) => setPreviewMedia({ url, type })}
+            editingMessageId={editingMessageId}
+            setEditingMessageId={setEditingMessageId}
+            editContent={editContent}
+            setEditContent={setEditContent}
+            onSaveEdit={handleSaveEdit} // Hàm lưu API
           />
           <div ref={messagesEndRef} />
         </div>

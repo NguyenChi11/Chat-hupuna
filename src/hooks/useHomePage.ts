@@ -318,15 +318,22 @@ export function useHomePage() {
         if (data.senderName) senderName = data.senderName;
       }
 
-      // 2. Format nội dung tin nhắn hiển thị
+      // 2. 🔥 Format nội dung tin nhắn - Ưu tiên lastMessage nếu có
       let contentDisplay = '';
-      if (data.isRecalled) {
+
+      // Nếu server đã gửi kèm lastMessage (đã format sẵn), dùng luôn
+      if (data.lastMessage) {
+        contentDisplay = data.lastMessage;
+      }
+      // Nếu là tin nhắn bị thu hồi
+      else if (data.isRecalled) {
         contentDisplay = isMyMsg ? 'Bạn: Tin nhắn đã bị thu hồi' : `${senderName}: Tin nhắn đã bị thu hồi`;
-      } else {
-        const rawContent = data.type === 'text' ? data.content : `[${data.type}]`;
+      }
+      // Nếu là tin nhắn text bình thường
+      else {
+        const rawContent = data.type === 'text' ? (data.content || '') : `[${data.type || 'Unknown'}]`;
         contentDisplay = `${senderName}: ${rawContent}`;
       }
-
       // 3. CẬP NHẬT STATE
       if (data.isGroup) {
         setGroups((prev) => {
@@ -338,7 +345,7 @@ export function useHomePage() {
           const updatedGroup = {
             ...prev[index],
             lastMessage: contentDisplay,
-            lastMessageAt: Date.now(),
+            lastMessageAt: data.timestamp || Date.now(),
             isRecall: data.isRecalled || false,
             unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
           };
@@ -358,7 +365,7 @@ export function useHomePage() {
           const updatedUser = {
             ...prev[index],
             lastMessage: contentDisplay,
-            lastMessageAt: Date.now(),
+            lastMessageAt: data.timestamp || Date.now(),
             isRecall: data.isRecalled || false,
             unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
           };

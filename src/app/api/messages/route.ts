@@ -496,6 +496,36 @@ export async function POST(req: NextRequest) {
           },
         });
       }
+
+      case 'editMessage': {
+        const { messageId, newContent } = data;
+
+        // 1. 🔥 LẤY TIN NHẮN HIỆN TẠI ĐỂ LƯU NỘI DUNG GỐC
+        const existingMsg = await getRowByIdOrCode<Message>(collectionName, { _id: messageId });
+
+        // 2. Xác định nội dung gốc (nếu originalContent chưa tồn tại)
+        const originalContentToSave = existingMsg?.row.originalContent || existingMsg?.row.content;
+
+        if (!messageId || !newContent || typeof newContent !== 'string' || !existingMsg) {
+          return NextResponse.json({ error: 'Invalid data or message not found' }, { status: 400 });
+        }
+
+        // 3. Cập nhật data
+        const updateData = {
+          content: newContent,
+          editedAt: Date.now(),
+          originalContent: originalContentToSave,
+        };
+
+        const result = await updateByField<Message>(
+          collectionName,
+          '_id',
+          messageId,
+          updateData
+        );
+
+        return NextResponse.json({ success: true, result });
+      }
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }

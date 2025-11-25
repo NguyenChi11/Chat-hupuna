@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import type { Message } from '@/types/Message';
 import type { User } from '@/types/User';
-import { isVideoFile, getProxyUrl } from '@/utils/utils';
+import { getProxyUrl, isVideoFile } from '@/utils/utils';
 import ReplyIcon from '@/public/icons/reply-icon.svg';
 
 interface SenderInfo {
@@ -27,6 +27,11 @@ interface MessageListProps {
   getSenderInfo: (sender: User | string) => SenderInfo;
   renderMessageContent: (content: string, mentionedUserIds?: string[], isMe?: boolean) => React.ReactNode;
   onOpenMedia: (url: string, type: 'image' | 'video') => void;
+  editingMessageId: string | null;
+  setEditingMessageId: React.Dispatch<React.SetStateAction<string | null>>;
+  editContent: string;
+  setEditContent: React.Dispatch<React.SetStateAction<string>>;
+  onSaveEdit: (messageId: string, newContent: string) => Promise<void>;
 }
 
 export default function MessageList({
@@ -43,9 +48,33 @@ export default function MessageList({
   getSenderInfo,
   renderMessageContent,
   onOpenMedia,
+  editingMessageId,
+  setEditingMessageId,
+  editContent,
+  setEditContent,
+  onSaveEdit,
 }: MessageListProps) {
+  const [showOldContentModal, setShowOldContentModal] = useState<string | null>(null);
+  // Modal hiển thị nội dung gốc
+  const OldContentModal = ({ originalContent, onClose }: { originalContent: string; onClose: () => void }) => (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+        <h3 className="text-lg font-bold mb-3 border-b pb-2 text-gray-800">Nội dung gốc</h3>
+        <p className="whitespace-pre-wrap text-gray-700 mb-4 text-sm leading-relaxed">{originalContent}</p>
+        <button
+          onClick={onClose}
+          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+        >
+          Đóng
+        </button>
+      </div>
+    </div>
+  );
   return (
     <>
+      {showOldContentModal && (
+        <OldContentModal originalContent={showOldContentModal} onClose={() => setShowOldContentModal(null)} />
+      )}
       {Array.from(messagesGrouped.entries()).map(([dateKey, msgs]) => (
         <React.Fragment key={dateKey}>
           {/* Thanh hiển thị Ngày (Sticky ở trên) */}
@@ -63,7 +92,8 @@ export default function MessageList({
 
             const uploadProgress = uploadingFiles[msg._id];
             const isUploading = uploadProgress !== undefined;
-
+            const isEditing = msg._id === editingMessageId;
+            const isEdited = msg.editedAt && !isEditing;
             if (msg.type === 'notify') {
               let contentDisplay = msg.content;
 
@@ -97,7 +127,7 @@ export default function MessageList({
             }
 
             const avatarChar = senderInfo.name ? senderInfo.name.charAt(0).toUpperCase() : '?';
-            const senderName = allUsersMap.get(msg.sender) || senderInfo.name;
+            const senderName = allUsersMap.get(senderInfo._id) || senderInfo.name;
 
             const isRecalled = msg.isRecalled === true;
             const isVideo = msg.type === 'video' || isVideoFile(msg.fileName) || isVideoFile(msg.fileUrl);
@@ -190,119 +220,177 @@ export default function MessageList({
                       <p className="text-gray-500 text-[10px] pb-1 font-medium">{senderName}</p>
                     )}
 
+                    {/* Nội dung tin nhắn */}
                     {isRecalled ? (
                       <p className="text-sm text-gray-500">Tin nhắn đã bị thu hồi</p>
                     ) : (
                       <>
-                        {msg.type === 'text' && (
-                          <div>{renderMessageContent(msg.content || '', msg.mentions, isMe)}</div>
-                        )}
-
-                        {msg.type === 'sticker' && msg.fileUrl && (
-                          <Image
-                            src={msg.fileUrl}
-                            alt="Sticker"
-                            width={128}
-                            height={128}
-                            className="w-32 h-32 object-contain hover:scale-105 transition-transform"
-                          />
-                        )}
-
-                        {msg.type === 'image' && msg.fileUrl && (
-                          <div
-                            className="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-200 relative overflow-hidden cursor-zoom-in"
-                            onClick={() => {
-                              if (isUploading) return;
-                              const url = getProxyUrl(msg.fileUrl as string);
-                              onOpenMedia(url, 'image');
-                            }}
-                          >
-                            <Image
-                              src={isUploading ? msg.fileUrl : getProxyUrl(msg.fileUrl)}
-                              alt="Ảnh gửi"
-                              width={400}
-                              height={300}
-                              className={`bg-blue-500 transition-all duration-200 rounded-lg max-w-full cursor-pointer ${isUploading ? 'opacity-50' : 'hover:opacity-90'}`}
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://placehold.co/400x300?text=Error';
+                        {/* Chế độ chỉnh sửa */}
+                        {isEditing && msg.type === 'text' ? (
+                          <div className="space-y-2">
+                            <textarea
+                              autoFocus
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              className="w-full p-2 border rounded text-sm resize-none"
+                              rows={3}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  void onSaveEdit(msg._id, editContent);
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingMessageId(null);
+                                }
                               }}
                             />
-
-                            {isUploading && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                  {Math.round(uploadProgress)}%
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {msg.type === 'file' && msg.fileUrl && !isVideo && (
-                          <a
-                            href={msg.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center space-x-3 bg-gray-50 p-2 rounded border border-gray-200 hover:bg-gray-100"
-                          >
-                            <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full text-blue-500">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path d="M8 2a2 2 0 00-2 2v3h2V4h4v12H8v-3H6v3a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2H8z" />
-                                <path d="M5 9l-3 3 3 3v-2h4v-2H5V9z" />
-                              </svg>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-800 truncate">
-                                {msg.fileName || 'Tập tin đính kèm'}
-                              </p>
-                              <p className="text-[10px] text-gray-500 truncate">{msg.fileUrl}</p>
-                            </div>
-                          </a>
-                        )}
-
-                        {isVideo && msg.fileUrl && (
-                          <div className="relative max-w-full cursor-zoom-in">
-                            <video
-                              src={isUploading ? (msg.fileUrl as string) : getProxyUrl(msg.fileUrl as string)}
-                              controls={!isUploading}
-                              className={`max-w-full rounded-lg bg-black ${isUploading ? 'opacity-60' : ''}`}
-                            />
-
-                            {isUploading && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white text-xs font-semibold">
-                                <div className="mb-1">Đang tải video...</div>
-                                <div>{Math.round(uploadProgress)}%</div>
-                              </div>
-                            )}
-
-                            {!isUploading && (
+                            <div className="flex gap-2 text-xs">
                               <button
-                                type="button"
-                                className="absolute inset-0 bg-transparent"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  const url = getProxyUrl(msg.fileUrl as string);
-                                  onOpenMedia(url, 'video');
-                                }}
+                                onClick={() => void onSaveEdit(msg._id, editContent)}
+                                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                              >
+                                Lưu
+                              </button>
+                              <button
+                                onClick={() => setEditingMessageId(null)}
+                                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Hiển thị tin nhắn text */}
+                            {msg.type === 'text' && (
+                              <div>{renderMessageContent(msg.content || '', msg.mentions, isMe)}</div>
+                            )}
+
+                            {/* Sticker */}
+                            {msg.type === 'sticker' && msg.fileUrl && (
+                              <Image
+                                src={msg.fileUrl}
+                                alt="Sticker"
+                                width={128}
+                                height={128}
+                                className="w-32 h-32 object-contain hover:scale-105 transition-transform"
                               />
                             )}
-                          </div>
+
+                            {/* Image */}
+                            {msg.type === 'image' && msg.fileUrl && (
+                              <div
+                                className="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-200 relative overflow-hidden cursor-zoom-in"
+                                onClick={() => {
+                                  if (isUploading) return;
+                                  const url = getProxyUrl(msg.fileUrl as string);
+                                  onOpenMedia(url, 'image');
+                                }}
+                              >
+                                <Image
+                                  src={isUploading ? msg.fileUrl : getProxyUrl(msg.fileUrl)}
+                                  alt="Ảnh gửi"
+                                  width={400}
+                                  height={300}
+                                  className={`bg-blue-500 transition-all duration-200 rounded-lg max-w-full cursor-pointer ${isUploading ? 'opacity-50' : 'hover:opacity-90'}`}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x300?text=Error';
+                                  }}
+                                />
+
+                                {isUploading && (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                      {Math.round(uploadProgress)}%
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* File */}
+                            {msg.type === 'file' && msg.fileUrl && !isVideo && (
+                              <a
+                                href={msg.fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center space-x-3 bg-gray-50 p-2 rounded border border-gray-200 hover:bg-gray-100"
+                              >
+                                <div className="w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full text-blue-500">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    className="w-5 h-5"
+                                  >
+                                    <path d="M8 2a2 2 0 00-2 2v3h2V4h4v12H8v-3H6v3a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2H8z" />
+                                    <path d="M5 9l-3 3 3 3v-2h4v-2H5V9z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-gray-800 truncate">
+                                    {msg.fileName || 'Tập tin đính kèm'}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 truncate">{msg.fileUrl}</p>
+                                </div>
+                              </a>
+                            )}
+
+                            {/* Video */}
+                            {isVideo && msg.fileUrl && (
+                              <div className="relative max-w-full cursor-zoom-in">
+                                <video
+                                  src={isUploading ? (msg.fileUrl as string) : getProxyUrl(msg.fileUrl as string)}
+                                  controls={!isUploading}
+                                  className={`max-w-full rounded-lg bg-black ${isUploading ? 'opacity-60' : ''}`}
+                                />
+
+                                {isUploading && (
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white text-xs font-semibold">
+                                    <div className="mb-1">Đang tải video...</div>
+                                    <div>{Math.round(uploadProgress)}%</div>
+                                  </div>
+                                )}
+
+                                {!isUploading && (
+                                  <button
+                                    type="button"
+                                    className="absolute inset-0 bg-transparent"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const url = getProxyUrl(msg.fileUrl as string);
+                                      onOpenMedia(url, 'video');
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     )}
-                    <p className={`text-[10px] text-gray-500 mt-0.5 ${isMe ? 'text-right' : 'text-left'}`}>
-                      {/* Kiểm tra và định dạng thời gian */}
-                      {new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
+
+                    {/* Thời gian và trạng thái đã chỉnh sửa */}
+                    <div className={`flex items-center gap-2 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <p className="text-[10px] text-gray-500">
+                        {new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+
+                      {/* Hiển thị "Đã chỉnh sửa" với nút xem nội dung gốc */}
+                      {isEdited && msg.originalContent && (
+                        <button
+                          onClick={() => setShowOldContentModal(msg.originalContent || '')}
+                          className="text-[10px] text-blue-500 hover:text-blue-700 hover:underline"
+                          title="Xem nội dung gốc"
+                        >
+                          Đã chỉnh sửa
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
