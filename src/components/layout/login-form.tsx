@@ -35,7 +35,7 @@ export default function LoginForm() {
       if (result.success) {
         toast({ type: 'success', message: 'Đăng nhập thành công!', duration: 3000 });
 
-        const { _id, username, name } = result.user;
+        const { _id, username, name, avatar, role, department, status } = result.user as User;
 
         // 🔥 CHỈ CẦN LƯU INFO ĐỂ HIỂN THỊ UI
         // Token (session_token) đã được lưu vào Cookie HttpOnly bởi API
@@ -46,6 +46,10 @@ export default function LoginForm() {
               _id,
               username,
               name,
+              avatar,
+              role,
+              department,
+              status,
               version: APP_VERSION,
             }),
           );

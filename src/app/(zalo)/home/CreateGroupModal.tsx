@@ -222,7 +222,7 @@ export default function CreateGroupModal({
                         <div className="w-10 h-10 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0">
                           {user.avatar ? (
                             <Image
-                              src={user.avatar}
+                              src={getProxyUrl(user.avatar)}
                               alt=""
                               className="w-full h-full object-cover"
                               width={40}

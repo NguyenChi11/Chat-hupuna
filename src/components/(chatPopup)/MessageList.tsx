@@ -267,16 +267,31 @@ export default function MessageList({
 
                         {isVideo && msg.fileUrl && (
                           <div className="relative max-w-full cursor-zoom-in">
-                            <video src={msg.fileUrl} controls className="max-w-full rounded-lg" />
-                            <button
-                              type="button"
-                              className="absolute inset-0 bg-transparent"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onOpenMedia(msg.fileUrl as string, 'video');
-                              }}
+                            <video
+                              src={isUploading ? (msg.fileUrl as string) : getProxyUrl(msg.fileUrl as string)}
+                              controls={!isUploading}
+                              className={`max-w-full rounded-lg bg-black ${isUploading ? 'opacity-60' : ''}`}
                             />
+
+                            {isUploading && (
+                              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white text-xs font-semibold">
+                                <div className="mb-1">Đang tải video...</div>
+                                <div>{Math.round(uploadProgress)}%</div>
+                              </div>
+                            )}
+
+                            {!isUploading && (
+                              <button
+                                type="button"
+                                className="absolute inset-0 bg-transparent"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const url = getProxyUrl(msg.fileUrl as string);
+                                  onOpenMedia(url, 'video');
+                                }}
+                              />
+                            )}
                           </div>
                         )}
                       </>

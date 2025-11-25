@@ -264,7 +264,16 @@ export async function POST(req: NextRequest) {
 
         const res = NextResponse.json({
           success: true,
-          user: { _id: found._id, name: found.name, username: found.username },
+          // Trả về đầy đủ thông tin cần thiết cho FE (bao gồm avatar)
+          user: {
+            _id: found._id,
+            name: found.name,
+            username: found.username,
+            avatar: found.avatar,
+            role: found.role,
+            department: found.department,
+            status: found.status,
+          },
         });
 
         // 2. Set Cookie HttpOnly (Thay thế cho session DB)

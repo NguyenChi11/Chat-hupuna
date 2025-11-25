@@ -44,7 +44,7 @@ export default function ChatInput({
   return (
     <div className="flex items-center space-x-2">
       <button
-        className="p-2 rounded-full hover:bg-gray-100 text-gray-600 relative"
+        className="p-2 rounded-full hover:bg-gray-100 text-gray-600 relative w-10 h-10"
         onClick={onToggleEmojiPicker}
         aria-pressed={showEmojiPicker}
       >
