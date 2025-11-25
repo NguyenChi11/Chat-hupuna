@@ -6,7 +6,12 @@ import SearchResults from '@/components/(chatPopup)/SearchResults';
 import { User } from '../../types/User';
 import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Group';
 import Image from 'next/image';
-import MessageFilter from '@/components/(chatPopup)/MessageFilter';
+import { getProxyUrl } from '../../utils/utils';
+import ICSearch from '@/components/svg/ICSearch';
+import ICGroupPeople from '@/components/svg/ICGroupPeople';
+import ICPersonPlus from '@/components/svg/ICPersonPlus';
+import MessageFilter from '../(chatPopup)/MessageFilter';
+
 interface SidebarProps {
   currentUser: User;
   groups: GroupConversation[];
@@ -109,17 +114,17 @@ export const renderMessageWithMentions = (
 };
 
 export default function Sidebar({
-                                  currentUser,
-                                  groups,
-                                  allUsers,
-                                  searchTerm,
-                                  setSearchTerm,
-                                  setShowCreateGroupModal,
-                                  selectedChat,
-                                  onSelectChat,
-                                  onChatAction,
-                                  onNavigateToMessage,
-                                }: SidebarProps) {
+  currentUser,
+  groups,
+  allUsers,
+  searchTerm,
+  setSearchTerm,
+  setShowCreateGroupModal,
+  selectedChat,
+  onSelectChat,
+  onChatAction,
+  onNavigateToMessage,
+}: SidebarProps) {
   const currentUserId = currentUser._id;
   const [activeTab, setActiveTab] = useState<'all' | 'contacts' | 'messages' | 'files'>('all');
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult>({
@@ -268,12 +273,10 @@ export default function Sidebar({
     let filtered = mixedChats.filter((chat: any) => {
       const isHidden = chat.isHidden;
       const displayName = getChatDisplayName(chat);
-      const matchesSearch = isSearchActive
-        ? displayName.toLowerCase().includes(searchTerm.toLowerCase())
-        : true;
+      const matchesSearch = isSearchActive ? displayName.toLowerCase().includes(searchTerm.toLowerCase()) : true;
 
       // Khi search: hiển thị cả hidden, khi không search: ẩn hidden
-      return isSearchActive ? matchesSearch : (!isHidden && matchesSearch);
+      return isSearchActive ? matchesSearch : !isHidden && matchesSearch;
     });
 
     // 2. Áp dụng filter read/unread (chỉ khi KHÔNG search)
@@ -329,9 +332,9 @@ export default function Sidebar({
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-white/20 overflow-hidden flex items-center justify-center text-sm font-semibold">
               {currentUser.avatar ? (
-                <Image
-                  src={currentUser.avatar}
-                  alt={currentUser.name || 'User Avatar'}
+                <img
+                  src={getProxyUrl(currentUser.avatar)}
+                  alt={currentUser.name}
                   width={32}
                   height={32}
                   className="w-full h-full object-cover"
@@ -346,23 +349,6 @@ export default function Sidebar({
               </span>
               <span className="text-[11px] opacity-80 truncate max-w-[160px]">ID: {currentUser.username}</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {/* Nút tạo nhóm mới */}
-            <button
-              onClick={() => setShowCreateGroupModal(true)}
-              className="w-8 h-8 hidden md:flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
-              title="Tạo nhóm chat mới"
-            >
-              <Image
-                src={IconGroup}
-                width={20}
-                height={20}
-                alt="Group Icon"
-                className="w-5 h-5 object-contain text-white"
-              />
-            </button>
           </div>
         </div>
 
@@ -407,22 +393,20 @@ export default function Sidebar({
               )}
             </div>
 
-            {/* Icon BB */}
-            <button className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-              <Image src={IconBB} width={20} height={20} alt="BB Icon" className="w-5 h-5 object-contain" />
+            {/* Nút tạo nhóm mới */}
+            <button
+              onClick={() => setShowCreateGroupModal(true)}
+              className="w-8 h-8 hidden md:flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
+              title="Tạo nhóm chat mới"
+            >
+              <ICGroupPeople className="w-5 h-5" stroke="#000000" />
             </button>
           </div>
         </div>
       </div>
 
       {/* 🔥 Filter Buttons - CHỈ hiện khi KHÔNG search */}
-      {!isSearchActive && (
-        <MessageFilter
-          filterType={filterType}
-          setFilterType={setFilterType}
-          counts={filterCounts}
-        />
-      )}
+      {!isSearchActive && <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />}
       {/* Content Area - Chat List hoặc Search Results */}
       <div className="flex-1 overflow-y-auto bg-white">
         {/* Hiển thị khi ĐANG TÌM KIẾM */}
