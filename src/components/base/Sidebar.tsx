@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import React from 'react';
 import ChatItem from './ChatItem'; // Import component con
 import IconBB from '@/public/icons/bb.svg';
@@ -5,6 +6,10 @@ import IconGroup from '@/public/icons/group.svg';
 import { User } from '../../types/User';
 import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Group';
 import Image from 'next/image';
+import { getProxyUrl } from '../../utils/utils';
+import ICSearch from '@/components/svg/ICSearch';
+import ICGroupPeople from '@/components/svg/ICGroupPeople';
+import ICPersonPlus from '@/components/svg/ICPersonPlus';
 
 interface SidebarProps {
   currentUser: User;
@@ -160,8 +165,8 @@ export default function Sidebar({
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-white/20 overflow-hidden flex items-center justify-center text-sm font-semibold">
               {currentUser.avatar ? (
-                <Image
-                  src={currentUser.avatar}
+                <img
+                  src={getProxyUrl(currentUser.avatar)}
                   alt={currentUser.name}
                   width={32}
                   height={32}
@@ -178,45 +183,6 @@ export default function Sidebar({
               </span>
               <span className="text-[11px] opacity-80 truncate max-w-[160px]">ID: {currentUser.username}</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {/* Nút mở Global Search */}
-            <button
-              onClick={onShowGlobalSearch}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
-              title="Tìm kiếm tin nhắn/liên hệ"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                className="w-5 h-5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 1110.5 4a6.5 6.5 0 016.5 6.5z"
-                />
-              </svg>
-            </button>
-
-            {/* Nút tạo nhóm mới */}
-            <button
-              onClick={() => setShowCreateGroupModal(true)}
-              className="w-8 h-8 hidden md:flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
-              title="Tạo nhóm chat mới"
-            >
-              <Image
-                src={IconGroup}
-                width={20}
-                height={20}
-                alt="Group Icon"
-                className="w-5 h-5 object-contain text-white"
-              />
-            </button>
           </div>
         </div>
 
@@ -247,9 +213,13 @@ export default function Sidebar({
               </svg>
             </div>
 
-            {/* Icon BB bên phải trên desktop */}
-            <button className="hidden md:flex w-8 h-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-              <Image src={IconBB} width={20} height={20} alt="BB Icon" className="w-5 h-5 object-contain" />
+            {/* Nút tạo nhóm mới */}
+            <button
+              onClick={() => setShowCreateGroupModal(true)}
+              className="w-8 h-8 hidden md:flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
+              title="Tạo nhóm chat mới"
+            >
+              <ICGroupPeople className="w-5 h-5" stroke="#000000" />
             </button>
           </div>
         </div>

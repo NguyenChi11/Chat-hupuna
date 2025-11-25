@@ -32,6 +32,11 @@ import { cookieBase } from '../../utils/cookie';
 import { User } from '../../types/User';
 import Image from 'next/image';
 import { getProxyUrl } from '../../utils/utils';
+import Messenger from '@/components/svg/Messenger';
+import ICGloabl from '@/components/svg/ICGloabl';
+import ICSitting from '@/components/svg/ICSitting';
+import ICPerson from '@/components/svg/ICPerson';
+import ICQuestion from '@/components/svg/ICQuestion';
 
 export default function SidebarMenu() {
   const router = useRouter();
@@ -164,7 +169,7 @@ export default function SidebarMenu() {
                 onClick={() => setShowModal(true)}
                 className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 transition-colors cursor-pointer"
               >
-                <Image src={IconUser} width={20} height={20} alt="User Icon" className="w-5 h-5" />
+                <ICPerson className="w-5 h-5" stroke="#000000" />
                 <span className="text-sm text-gray-800">Thông tin tài khoản</span>
               </button>
 
@@ -173,7 +178,7 @@ export default function SidebarMenu() {
                 className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 transition-colors cursor-pointer"
                 onClick={() => setShowSettingsPanel(true)}
               >
-                <img src={IconST1.src} alt="Settings Icon" className="w-5 h-5" />
+                <ICSitting className="w-5 h-5" stroke="#000000" />
                 <span className="text-sm text-gray-800">Cài đặt</span>
               </button>
 
@@ -184,7 +189,7 @@ export default function SidebarMenu() {
                   onClick={() => setShowLang((prev) => !prev)}
                 >
                   <div className="flex items-center gap-3">
-                    <Image src={IconLG} width={20} height={20} alt="Language Icon" className="w-5 h-5" />
+                    <ICGloabl className="w-5 h-5" stroke="#000000" />
                     <span className="text-sm text-gray-800">Ngôn ngữ</span>
                   </div>
                   <img src={IconAR2.src} alt="AR2" className="w-4 h-4" />
@@ -211,7 +216,7 @@ export default function SidebarMenu() {
                   onClick={() => setShowSupport((prev) => !prev)}
                 >
                   <div className="flex items-center gap-3">
-                    <Image src={IconHP} width={20} height={20} alt="Support Icon" className="w-5 h-5" />
+                    <ICQuestion className="w-5 h-5" stroke="#000000" />
                     <span className="text-sm text-gray-800">Hỗ trợ</span>
                   </div>
                   <img src={IconAR2.src} alt="AR2" className="w-4 h-4" />
@@ -268,7 +273,7 @@ export default function SidebarMenu() {
             className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'home' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
             onClick={handleTrangChu}
           >
-            <Image src={MessgeIcon} alt="" width={35} height={35} className="w-6 h-6" />
+            <Messenger className="w-6 h-6 text-white" />
           </button>
           <button
             className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'directory' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}

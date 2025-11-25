@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import IconGroup from '@/public/icons/group.svg'; // Đảm bảo đường dẫn đúng
@@ -7,6 +9,15 @@ import SearchIcon from '@/public/icons/icon-search.svg'; // Đảm bảo đườ
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
 import { User } from '../../types/User';
 import { MemberInfo, GroupRole } from '../../types/Group';
+import { getProxyUrl } from '../../utils/utils';
+import ICPeopleGroup from '@/components/svg/ICPeopleGroup';
+import ICClose from '@/components/svg/ICClose';
+import ICPersonPlus from '@/components/svg/ICPersonPlus';
+import ICUpload from '@/components/svg/ICUpload';
+import ICTrashCan from '@/components/svg/ICTrashCan';
+import ICTick from '@/components/svg/ICTick';
+import { useToast } from './toast';
+import { confirmAlert } from './alert';
 
 interface Props {
   isOpen: boolean;
@@ -43,6 +54,7 @@ export default function GroupMembersModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [localMembers, setLocalMembers] = useState<MemberInfo[]>([]);
   const [loadingAction, setLoadingAction] = useState<string | null>(null); // Để hiện loading khi kick/promote
+  const toast = useToast();
 
   useEffect(() => {
     const valid = members.filter(isMemberInfo);
@@ -132,11 +144,19 @@ export default function GroupMembersModal({
         }
         if (reLoad) reLoad();
       } else {
-        alert('Thao tác thất bại!');
+        toast({
+          type: 'error',
+          message: 'Thao tác thất bại, vui lòng thử lại.',
+          duration: 3000,
+        });
       }
     } catch (e) {
       console.error(e);
-      alert('Lỗi kết nối');
+      toast({
+        type: 'error',
+        message: 'Lỗi kết nối, vui lòng kiểm tra mạng và thử lại.',
+        duration: 3000,
+      });
     } finally {
       setLoadingAction(null);
     }
@@ -171,19 +191,7 @@ export default function GroupMembersModal({
         <div className="flex-none px-4 py-3 border-b bg-[#f3f6fb] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                className="w-5 h-5"
-              >
-                <path d="M7 7a3 3 0 116 0 3 3 0 01-6 0z" />
-                <path d="M4 21v-1a5 5 0 015-5h2" />
-                <path d="M16 11a3 3 0 110-6 3 3 0 010 6z" />
-                <path d="M21 21v-1a5 5 0 00-4-4.9" />
-              </svg>
+              <ICPeopleGroup className="w-5 h-5" stroke="#ffffff" />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-800 truncate">Thành viên nhóm</p>
@@ -197,16 +205,7 @@ export default function GroupMembersModal({
             className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
             aria-label="Đóng"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-4 h-4"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <ICClose className="w-4 h-4" stroke="#000000" />
           </button>
         </div>
 
@@ -221,7 +220,7 @@ export default function GroupMembersModal({
                 className="w-full py-3 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-semibold text-sm transition-all active:scale-95 group"
               >
                 <div className="p-1.5 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                  <Image src={IconGroup.src} width={16} height={16} alt="" className="w-4 h-4" />
+                  <ICPersonPlus className="w-4 h-4" stroke="#000000" />
                 </div>
                 Thêm thành viên mới
               </button>
@@ -268,8 +267,8 @@ export default function GroupMembersModal({
                     <div className="w-11 h-11 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0 border border-gray-100">
                       {member.avatar ? (
                         <img
-                          src={member.avatar}
-                          alt=""
+                          src={getProxyUrl(member.avatar)}
+                          alt={member.name}
                           className="w-full h-full object-cover"
                           onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                             e.currentTarget.style.display = 'none';
@@ -308,18 +307,7 @@ export default function GroupMembersModal({
                             className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors tooltip-top"
                             title="Bổ nhiệm làm Phó nhóm"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
+                            <ICTick className="w-5 h-5" stroke="#2eff00" />
                           </button>
                         )}
 
@@ -330,18 +318,7 @@ export default function GroupMembersModal({
                             className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-full transition-colors"
                             title="Bãi nhiệm xuống Thành viên"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M11.47 2.47a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06l-3.22-3.22V16.5a.75.75 0 01-1.5 0V4.81L8.03 8.03a.75.75 0 01-1.06-1.06l4.5-4.5zM3 15.75a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
+                            <ICUpload className="w-5 h-5" stroke="#000000" />
                           </button>
                         )}
 
@@ -349,25 +326,18 @@ export default function GroupMembersModal({
                         {canKick(memberRole) && (
                           <button
                             onClick={() => {
-                              if (confirm(`Xóa ${member.name} khỏi nhóm?`)) handleAction('kick', memberId);
+                              confirmAlert({
+                                title: 'Xác nhận',
+                                message: `Xóa ${member.name} khỏi nhóm?`,
+                                okText: 'Xóa',
+                                cancelText: 'Hủy',
+                                onOk: () => handleAction('kick', memberId),
+                              });
                             }}
                             className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
                             title="Mời ra khỏi nhóm"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={2}
-                              stroke="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                              />
-                            </svg>
+                            <ICTrashCan className="w-5 h-5" stroke="#ff0000" />
                           </button>
                         )}
                       </div>

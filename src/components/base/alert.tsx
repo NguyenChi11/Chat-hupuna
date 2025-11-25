@@ -17,7 +17,7 @@ export function confirmAlert(options: ConfirmOptions) {
 
   // tạo container gắn vào body
   const container = document.createElement('div');
-  container.className = 'fixed inset-0 pt-8 flex items-start justify-center bg-black/30 bg-opacity-40 z-[9999]';
+  container.className = 'fixed inset-0 flex items-center justify-center bg-black/30 bg-opacity-40 z-[9999]';
   document.body.appendChild(container);
 
   const root = createRoot(container);

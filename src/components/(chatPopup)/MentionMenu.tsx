@@ -1,9 +1,12 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { RefObject } from 'react';
 
 import type { User } from '@/types/User';
 import type { MemberInfo } from '@/types/Group';
+import { getProxyUrl } from '../../utils/utils';
 
 interface MentionMenuProps {
   showMentionMenu: boolean;
@@ -31,9 +34,10 @@ export default function MentionMenu({
         <p className="text-xs text-gray-600 font-medium">Chọn người để mention</p>
       </div>
       {mentionSuggestions.map((user, index) => {
-        const userId = user._id || (user as any).id;
+        const member = user as MemberInfo;
+        const userId: string = member.id ?? user._id;
         const userName = user.name || 'User';
-        const userAvatar = (user as any).avatar;
+        const userAvatar = user.avatar;
 
         return (
           <button
@@ -44,7 +48,7 @@ export default function MentionMenu({
             }`}
           >
             {userAvatar ? (
-              <img src={userAvatar} alt={userName} className="w-10 h-10 rounded-full object-cover" />
+              <img src={getProxyUrl(userAvatar)} alt={userName} className="w-10 h-10 rounded-full object-cover" />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-white flex items-center justify-center font-semibold">
                 {userName.charAt(0).toUpperCase()}
@@ -55,7 +59,12 @@ export default function MentionMenu({
               <p className="text-xs text-gray-500">@{userName.toLowerCase().replace(/\s+/g, '')}</p>
             </div>
             {index === selectedMentionIndex && (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-blue-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-5 h-5 text-blue-500"
+              >
                 <path
                   fillRule="evenodd"
                   d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
@@ -69,5 +78,3 @@ export default function MentionMenu({
     </div>
   );
 }
-
-
