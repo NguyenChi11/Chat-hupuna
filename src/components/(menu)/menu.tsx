@@ -52,24 +52,25 @@ export default function SidebarMenu() {
     setShowLogoutConfirm(true);
   };
 
-  // Hàm thực hiện hành động cuối cùng
   const finalizeLogout = async () => {
     const res = await fetch('/api/users', {
       method: 'POST',
       body: JSON.stringify({ action: 'logout' }),
     });
-    const data = await res.json();
-    if (!data.success) throw new Error('Logout failed');
-    return data.success;
+
+    if (!res.ok) {
+      throw new Error('API Logout failed');
+    }
+    return true;
   };
 
   const handleFinalLogout = async () => {
     try {
-      await finalizeLogout(); // gọi API xóa cookie
+      await finalizeLogout();
       cookieBase.remove('session_token'); // xóa client cache
-      router.push('/login'); // redirect
+      router.push('/login');
     } catch (error) {
-      console.error(error);
+      console.error('Lỗi khi đăng xuất:', error);
       alert('Có lỗi xảy ra khi đăng xuất.');
     }
   };
