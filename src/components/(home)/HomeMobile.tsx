@@ -47,12 +47,6 @@ export default function HomeMobile({
     <div className="block md:hidden relative w-full h-full">
       {selectedChat ? (
         <div className="absolute inset-0 w-full h-full bg-white flex flex-col z-50">
-          <div className="flex items-center p-3 border-b border-gray-200 bg-white">
-            <button onClick={onBackFromChat} className="mr-3 px-3 py-1 bg-gray-100 rounded-full">
-              ← Quay lại
-            </button>
-            <span className="font-bold">{selectedChat.name}</span>
-          </div>
           <ChatWindow
             reLoad={fetchAllData}
             allUsers={allUsers}
@@ -62,6 +56,8 @@ export default function HomeMobile({
             onChatAction={onChatAction}
             scrollToMessageId={scrollToMessageId}
             onScrollComplete={onScrollComplete}
+            // Nút quay lại sẽ được render bên trong ChatHeader (mobile)
+            onBackFromChat={onBackFromChat}
           />
         </div>
       ) : (

@@ -3,11 +3,9 @@
 import React, { useRef } from 'react';
 import IconEdit from '@/public/icons/edit.svg';
 import IconClock from '@/public/icons/clock.svg';
-import IconNotification from '@/public/icons/notification.svg';
 import IconPin from '@/public/icons/pin.svg';
 import IconGroup from '@/public/icons/group.svg';
 import IconGroup1 from '@/public/icons/group1.svg';
-import IconWR from '@/public/icons/warning.svg';
 import ArrowRightICon from '@/public/icons/arrow-right-icon.svg';
 import ModalMembers from '../../../components/base/ModalMembers';
 import { ChatItem, GroupConversation, MemberInfo } from '../../../types/Group';
@@ -16,6 +14,7 @@ import { Message } from '../../../types/Message';
 import { getProxyUrl } from '../../../utils/utils';
 import Image from 'next/image';
 import { useChatInfoPopup } from '@/hooks/useChatInfoPopup';
+import MediaPreviewModal from '@/components/(chatPopup)/MediaPreviewModal';
 
 interface ChatInfoPopupProps {
   currentUser: User;
@@ -755,46 +754,12 @@ export default function ChatInfoPopup({
         </div>
       )}
 
-      {previewMedia && (
-        <div
-          className="fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center"
-          onClick={() => setPreviewMedia(null)}
-        >
-          <div
-            className="relative max-w-4xl w-full px-4"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <button
-              type="button"
-              className="absolute -top-2 right-4 text-white bg-black/60 hover:bg-black rounded-full p-1"
-              onClick={() => setPreviewMedia(null)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-
-            <div className="flex items-center justify-center max-h-[80vh]">
-              {previewMedia.type === 'image' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewMedia.url}
-                  alt="Xem ảnh"
-                  className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
-                />
-              ) : (
-                <video src={previewMedia.url} controls autoPlay className="max-h-[80vh] w-full rounded-lg bg-black" />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <MediaPreviewModal
+        media={previewMedia}
+        chatName={chatName}
+        isGroup={isGroup}
+        onClose={() => setPreviewMedia(null)}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import ReplyBanner from '@/components/(chatPopup)/ReplyBanner';
 import MentionMenu from '@/components/(chatPopup)/MentionMenu';
 import ChatInput from '@/components/(chatPopup)/ChatInput';
 import MessageList from '@/components/(chatPopup)/MessageList';
+import MediaPreviewModal from '@/components/(chatPopup)/MediaPreviewModal';
 import { useChatMentions } from '@/hooks/useChatMentions';
 import { useChatUpload } from '@/hooks/useChatUpload';
 import { useChatVoiceInput } from '@/hooks/useChatVoiceInput';
@@ -53,6 +54,7 @@ interface ChatWindowProps {
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroupChat: boolean) => void;
   scrollToMessageId?: string | null; // 🔥 MỚI: ID tin nhắn cần scroll đến
   onScrollComplete?: () => void;
+  onBackFromChat?: () => void;
 }
 
 declare global {
@@ -115,6 +117,7 @@ export default function ChatWindow({
   onChatAction,
   scrollToMessageId, // 🔥 Thêm
   onScrollComplete,
+  onBackFromChat,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [showPopup, setShowPopup] = useState(false);
@@ -194,6 +197,12 @@ export default function ChatWindow({
     sendMessageProcess,
     setMessages,
   });
+  const uploadingValues = Object.values(uploadingFiles);
+  const hasUploading = uploadingValues.length > 0;
+  const overallUploadPercent = hasUploading
+    ? uploadingValues.reduce((sum, v) => sum + v, 0) / uploadingValues.length
+    : 0;
+  const uploadingCount = uploadingValues.length;
 
   const { memberCount, activeMembers, handleMemberRemoved, handleRoleChange, handleMembersAdded } = useChatMembers({
     selectedChat,
@@ -709,12 +718,13 @@ export default function ChatWindow({
     }
   }, [roomId]);
 
+  // Chỉ load lại dữ liệu khi roomId thay đổi (tránh gọi API lại khi click cùng một group nhiều lần)
   useEffect(() => {
-    if (!selectedChat) return;
+    if (!roomId) return;
     setMessages([]);
-    fetchMessages();
-    fetchPinnedMessages();
-  }, [selectedChat, roomId, fetchMessages, fetchPinnedMessages]);
+    void fetchMessages();
+    void fetchPinnedMessages();
+  }, [roomId, fetchMessages, fetchPinnedMessages]);
 
   const allUsersMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -798,7 +808,6 @@ export default function ChatWindow({
 
   const markAsRead = useCallback(async () => {
     if (!roomId || !currentUser) return;
-    if (markedReadRef.current === roomId) return;
     try {
       await markAsReadApi(roomId, getId(currentUser));
       markedReadRef.current = roomId;
@@ -808,10 +817,12 @@ export default function ChatWindow({
     }
   }, [roomId, currentUser, reLoad]);
 
+  // Chỉ gọi markAsRead một lần cho mỗi roomId
   useEffect(() => {
-    markedReadRef.current = null;
-    markAsRead();
-  }, [roomId, markAsRead]);
+    if (!roomId || !currentUser) return;
+    if (markedReadRef.current === roomId) return;
+    void markAsRead();
+  }, [roomId, currentUser, markAsRead]);
 
   // Đóng mention menu khi click bên ngoài
   useEffect(() => {
@@ -931,8 +942,6 @@ export default function ChatWindow({
     });
   };
 
-  if (!selectedChat) return null;
-
   // Xin quyền thông báo 1 lần khi mở cửa sổ chat
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -959,6 +968,8 @@ export default function ChatWindow({
     return () => window.removeEventListener('click', initAudio);
   }, []);
 
+  if (!selectedChat) return null;
+
   return (
     <main className="flex h-full bg-gray-700">
       <div
@@ -974,6 +985,7 @@ export default function ChatWindow({
           showSearchSidebar={showSearchSidebar}
           onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
           avatar={chatAvatar}
+          onBackFromChat={onBackFromChat}
         />
         <PinnedMessagesSection
           allPinnedMessages={allPinnedMessages}
@@ -1003,8 +1015,8 @@ export default function ChatWindow({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Phần Footer (Input Chat) giữ nguyên */}
-        <div className="bg-white p-2 sm:p-3 border-t border-gray-200 relative">
+        {/* Phần Footer (Input Chat) */}
+        <div className="bg-white p-2 sm:p-3 border-t border-gray-200 relative space-y-2">
           {/* ... Popup Picker & Inputs ... */}
           <EmojiStickerPicker
             showEmojiPicker={showEmojiPicker}
@@ -1026,6 +1038,25 @@ export default function ChatWindow({
               mentionMenuRef={mentionMenuRef}
               onSelectMention={selectMention}
             />
+          )}
+
+          {/* Thanh loading tổng khi đang tải ảnh / video */}
+          {hasUploading && (
+            <div className="mb-1">
+              <div className="flex items-center justify-between text-[11px] text-gray-500 mb-0.5">
+                <span>
+                  Đang tải {uploadingCount} tệp
+                  {uploadingCount > 1 ? '' : ''}...
+                </span>
+                <span className="font-medium">{Math.round(overallUploadPercent)}%</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 transition-all duration-200"
+                  style={{ width: `${Math.max(5, Math.round(overallUploadPercent))}%` }}
+                />
+              </div>
+            </div>
           )}
 
           <ChatInput
@@ -1105,47 +1136,12 @@ export default function ChatWindow({
 
       {contextMenu && contextMenu.visible && <ContextMenuRenderer />}
 
-      {previewMedia && (
-        <div
-          className="fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center"
-          onClick={() => setPreviewMedia(null)}
-        >
-          <div
-            className="relative max-w-4xl w-full px-4"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <button
-              type="button"
-              className="absolute -top-2 right-4 text-white bg-black/60 hover:bg-black rounded-full p-1"
-              onClick={() => setPreviewMedia(null)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-
-            <div className="flex items-center justify-center max-h-[80vh]">
-              {previewMedia.type === 'image' ? (
-                <Image
-                  src={previewMedia.url}
-                  alt="Xem ảnh"
-                  width={1200}
-                  height={800}
-                  className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
-                />
-              ) : (
-                <video src={previewMedia.url} controls autoPlay className="max-h-[80vh] w-full rounded-lg bg-black" />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <MediaPreviewModal
+        media={previewMedia}
+        chatName={chatName}
+        isGroup={isGroup}
+        onClose={() => setPreviewMedia(null)}
+      />
     </main>
   );
 }

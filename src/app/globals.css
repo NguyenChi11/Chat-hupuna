@@ -14,3 +14,9 @@
 .animate-showModal {
   animation: showModal 0.3s ease-out forwards;
 }
+
+@media (max-width: 639px) {
+  html {
+    font-size: 4.267vw;
+  }
+}

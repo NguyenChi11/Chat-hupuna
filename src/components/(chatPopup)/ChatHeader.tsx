@@ -8,6 +8,7 @@ import IconShow from '@/public/icons/show.svg';
 import IconShow1 from '@/public/icons/show2.svg';
 import Image from 'next/image';
 import { getProxyUrl } from '../../utils/utils';
+import ICBack from '@/components/svg/ICBack';
 
 interface ChatHeaderProps {
   chatName: string;
@@ -19,6 +20,7 @@ interface ChatHeaderProps {
   showSearchSidebar: boolean;
   onToggleSearchSidebar: () => void;
   avatar?: string;
+  onBackFromChat?: () => void;
 }
 
 export default function ChatHeader({
@@ -31,12 +33,24 @@ export default function ChatHeader({
   showSearchSidebar,
   onToggleSearchSidebar,
   avatar,
+  onBackFromChat,
 }: ChatHeaderProps) {
   const avatarChar = chatName?.trim()?.charAt(0)?.toUpperCase() || (isGroup ? 'N' : 'U');
 
   return (
     <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-white shadow-sm">
       <div className="flex items-center space-x-3">
+        {/* Nút quay lại (chỉ hiện nếu có callback, chủ yếu cho mobile) */}
+        {onBackFromChat && (
+          <button
+            type="button"
+            onClick={onBackFromChat}
+            className="mr-1 px-3 py-3 bg-gray-100 rounded-full text-sm text-gray-700 hover:bg-gray-200 md:hidden"
+          >
+            <ICBack className="w-5 h-5 sm:w-6 sm:h-6 object-contain" stroke="#000000" />
+          </button>
+        )}
+
         {/* Avatar nhóm hoặc user */}
         <div className="relative flex-shrink-0">
           <div
