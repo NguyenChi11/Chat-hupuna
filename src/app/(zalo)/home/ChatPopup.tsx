@@ -10,9 +10,6 @@ import { Message, MessageCreate } from '../../../types/Message';
 import { ChatItem, GroupConversation } from '../../../types/Group';
 
 import { EmojiClickData } from 'emoji-picker-react';
-
-import PinIcon from '@/public/icons/pin-icon.svg';
-import Image from 'next/image';
 import ChatHeader from '@/components/(chatPopup)/ChatHeader';
 import PinnedMessagesSection from '@/components/(chatPopup)/PinnedMessagesSection';
 import EmojiStickerPicker from '@/components/(chatPopup)/EmojiStickerPicker';
@@ -21,22 +18,25 @@ import MentionMenu from '@/components/(chatPopup)/MentionMenu';
 import ChatInput from '@/components/(chatPopup)/ChatInput';
 import MessageList from '@/components/(chatPopup)/MessageList';
 import MediaPreviewModal from '@/components/(chatPopup)/MediaPreviewModal';
+import UploadProgressBar from '@/components/(chatPopup)/UploadProgressBar';
+import MessageContextMenu, { type ContextMenuState } from '@/components/(chatPopup)/MessageContextMenu';
 import { useChatMentions } from '@/hooks/useChatMentions';
 import { useChatUpload } from '@/hooks/useChatUpload';
 import { useChatVoiceInput } from '@/hooks/useChatVoiceInput';
 import { useChatMembers } from '@/hooks/useChatMembers';
+import { useChatNotifications } from '@/hooks/useChatNotifications';
 import {
   createMessageApi,
   readMessagesApi,
   readPinnedMessagesApi,
-  togglePinMessageApi,
   recallMessageApi,
   markAsReadApi,
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
 import { isVideoFile } from '@/utils/utils';
-
-const MESSAGE_SOUND_URL = 'https://assets.mixkit.co/sfx/preview/mixkit-message-pop-alert-2354.mp3';
+import { insertTextAtCursor } from '@/utils/chatInput';
+import { groupMessagesByDate } from '@/utils/chatMessages';
+import { ChatProvider } from '@/context/ChatContext';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -101,13 +101,6 @@ const getId = (u: User | ChatItem | string | undefined | null): string => {
   return '';
 };
 
-interface ContextMenuState {
-  visible: boolean;
-  x: number;
-  y: number;
-  message: Message;
-}
-
 export default function ChatWindow({
   selectedChat,
   currentUser,
@@ -125,7 +118,6 @@ export default function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const markedReadRef = useRef<string | null>(null);
-  const messageAudioRef = useRef<HTMLAudioElement | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pickerTab, setPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -275,201 +267,7 @@ export default function ChatWindow({
     setContextMenu(null);
   }, []);
 
-  const MenuItem = ({
-    children,
-    onClick,
-    isRed = false,
-    isAnchor = false,
-    href = '#',
-    download = '',
-  }: {
-    children: React.ReactNode;
-    onClick: (e: React.MouseEvent<HTMLElement | HTMLAnchorElement>) => void;
-    isRed?: boolean;
-    isAnchor?: boolean;
-    href?: string;
-    download?: string;
-  }) => {
-    const className = `w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-3 ${isRed ? 'text-red-500' : 'text-gray-700'}`;
-
-    return isAnchor ? (
-      <a href={href} download={download} onClick={onClick} target="_blank" rel="noreferrer" className={className}>
-        {children}
-      </a>
-    ) : (
-      <button onClick={onClick} className={className} type="button">
-        {children}
-      </button>
-    );
-  };
-
-  const ContextMenuRenderer = () => {
-    if (!contextMenu || !contextMenu.visible) return null;
-
-    const { x, y, message: msg } = contextMenu;
-    // sender trong Message là userId (string), dùng helper getId để so sánh an toàn
-    const isMe = getId(msg.sender) === currentUser._id;
-    const isText = msg.type === 'text';
-    const isRecalled = msg.isRecalled;
-    const canCopy = isText && !isRecalled;
-    const canDownload = (msg.type === 'image' || msg.type === 'file' || msg.type === 'sticker') && msg.fileUrl;
-    const canRecall = isMe && !isRecalled;
-
-    const style = {
-      top: y,
-      left: x > window.innerWidth - 200 ? x - 180 : x,
-    };
-
-    return (
-      <div
-        data-context-menu="true"
-        className="fixed z-[9999] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 w-44 text-sm"
-        style={style}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        {!isRecalled && (
-          <MenuItem
-            onClick={(e) => {
-              console.log('🔵 [Reply] MenuItem clicked');
-              e.stopPropagation();
-              e.preventDefault();
-              handlePinMessage(msg);
-              closeContextMenu();
-            }}
-          >
-            <Image src={PinIcon} className="text-black" title="Ghim tin nhắn" width={20} height={20} alt="" />
-            Ghim tin nhắn
-          </MenuItem>
-        )}
-
-        {canCopy && (
-          <MenuItem
-            onClick={async (e) => {
-              console.log('🟢 [Copy] MenuItem clicked');
-              e.stopPropagation();
-              e.preventDefault();
-              try {
-                await navigator.clipboard.writeText(msg.content || '');
-                console.log('✅ Copy thành công:', msg.content);
-              } catch (err) {
-                console.error('❌ Copy lỗi:', err);
-                alert('Sao chép thất bại!');
-              } finally {
-                closeContextMenu();
-              }
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path d="M7 6V5h6v1h-6zM3 8v10a2 2 0 002 2h10a2 2 0 002-2V8h-2V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2H3zm12 2v8H5v-8h10z" />
-            </svg>
-            Copy
-          </MenuItem>
-        )}
-
-        {canDownload && (
-          <MenuItem
-            isAnchor={true}
-            href={msg.fileUrl}
-            download={msg.fileName || 'file_chat'}
-            onClick={(e) => {
-              console.log('🟡 [Download] MenuItem clicked');
-              e.stopPropagation();
-
-              setTimeout(() => closeContextMenu(), 100);
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
-              <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
-            </svg>
-            Tải xuống
-          </MenuItem>
-        )}
-
-        {canRecall && (
-          <MenuItem
-            isRed={true}
-            onClick={(e) => {
-              console.log('🔴 [Recall] MenuItem clicked');
-              e.stopPropagation();
-              e.preventDefault();
-              handleRecallMessage(msg._id);
-              closeContextMenu();
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-              <path
-                fillRule="evenodd"
-                d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Thu hồi
-          </MenuItem>
-        )}
-      </div>
-    );
-  };
-
-  const playMessageSound = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      if (!messageAudioRef.current) {
-        messageAudioRef.current = new Audio(MESSAGE_SOUND_URL);
-      }
-      const audio = messageAudioRef.current;
-      audio.currentTime = 0;
-      void audio.play().catch(() => {
-        // ignore autoplay errors
-      });
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const showMessageNotification = useCallback(
-    (msg: Message) => {
-      if (typeof window === 'undefined') return;
-      if (!('Notification' in window)) return;
-
-      // Nếu chưa xin quyền, xin ngay lúc nhận tin nhắn
-      if (Notification.permission === 'default') {
-        Notification.requestPermission().then((permission) => {
-          if (permission === 'granted') {
-            new Notification(chatName || 'Tin nhắn mới', {
-              body:
-                msg.content ||
-                (msg.type === 'image'
-                  ? 'Đã gửi cho bạn một ảnh.'
-                  : msg.type === 'video' || isVideoFile(msg.fileName)
-                    ? 'Đã gửi cho bạn một video.'
-                    : msg.type === 'file'
-                      ? 'Đã gửi cho bạn một file.'
-                      : 'Bạn có tin nhắn mới.'),
-            });
-          }
-        });
-        return;
-      }
-
-      if (Notification.permission !== 'granted') return;
-
-      const body =
-        msg.content ||
-        (msg.type === 'image'
-          ? 'Đã gửi cho bạn một ảnh.'
-          : msg.type === 'video' || isVideoFile(msg.fileName)
-            ? 'Đã gửi cho bạn một video.'
-            : msg.type === 'file'
-              ? 'Đã gửi cho bạn một file.'
-              : 'Bạn có tin nhắn mới.');
-
-      new Notification(chatName || 'Tin nhắn mới', {
-        body,
-      });
-    },
-    [chatName],
-  );
+  const { playMessageSound, showMessageNotification } = useChatNotifications({ chatName });
 
   useEffect(() => {
     if (!contextMenu?.visible) return;
@@ -490,22 +288,6 @@ export default function ChatWindow({
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [contextMenu, closeContextMenu]);
-
-  const groupMessagesByDate = (msgs: Message[]) => {
-    const groups = new Map<string, Message[]>();
-    msgs.forEach((msg) => {
-      const dateKey = new Date(msg.timestamp).toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-      if (!groups.has(dateKey)) {
-        groups.set(dateKey, []);
-      }
-      groups.get(dateKey)!.push(msg);
-    });
-    return groups;
-  };
 
   useEffect(() => {
     if (!scrollToMessageId || messages.length === 0) return;
@@ -632,42 +414,6 @@ export default function ChatWindow({
     editableRef,
     handleInputChangeEditable,
   });
-
-  const insertTextAtCursor = (editable: HTMLDivElement, text: string) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      editable.appendChild(document.createTextNode(text));
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-
-    // Đảm bảo range nằm bên trong editable
-    let current: Node | null = range.commonAncestorContainer;
-    let isInside = false;
-    while (current) {
-      if (current === editable) {
-        isInside = true;
-        break;
-      }
-      current = current.parentNode;
-    }
-
-    if (!isInside) {
-      editable.appendChild(document.createTextNode(text));
-      return;
-    }
-
-    range.deleteContents();
-    const textNode = document.createTextNode(text);
-    range.insertNode(textNode);
-
-    // Di chuyển caret sau emoji vừa chèn
-    range.setStartAfter(textNode);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  };
 
   const onEmojiClick = useCallback(
     (emojiData: EmojiClickData) => {
@@ -943,207 +689,181 @@ export default function ChatWindow({
     });
   };
 
-  // Xin quyền thông báo 1 lần khi mở cửa sổ chat
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!('Notification' in window)) return;
-    if (Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {
-        // ignore
-      });
-    }
-  }, []);
-
-  // Khởi tạo audio sau lần click đầu tiên (để tránh bị chặn autoplay)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const initAudio = () => {
-      if (!messageAudioRef.current) {
-        messageAudioRef.current = new Audio(MESSAGE_SOUND_URL);
-      }
-      window.removeEventListener('click', initAudio);
-    };
-
-    window.addEventListener('click', initAudio);
-    return () => window.removeEventListener('click', initAudio);
-  }, []);
-
-  if (!selectedChat) return null;
+  const chatContextValue = useMemo(
+    () => ({
+      currentUser,
+      allUsers,
+      selectedChat,
+      messages,
+      isGroup,
+      chatName,
+    }),
+    [currentUser, allUsers, selectedChat, messages, isGroup, chatName],
+  );
 
   return (
-    <main className="flex h-full bg-gray-700 sm:overflow-y-hidden overflow-y-auto no-scrollbar">
-      <div
-        className={`flex flex-col h-full  bg-gray-200 transition-all duration-300 ${showPopup ? 'sm:w-[calc(100%-21.875rem)]' : 'w-full'} border-r border-gray-200`}
-      >
-        <ChatHeader
-          chatName={chatName}
-          isGroup={isGroup}
-          memberCount={memberCount}
-          showPopup={showPopup}
-          onTogglePopup={() => setShowPopup((prev) => !prev)}
-          onOpenMembers={() => setOpenMember(true)}
-          showSearchSidebar={showSearchSidebar}
-          onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
-          avatar={chatAvatar}
-          onBackFromChat={onBackFromChat}
-        />
-        <PinnedMessagesSection
-          allPinnedMessages={allPinnedMessages}
-          showPinnedList={showPinnedList}
-          onOpenPinnedList={() => setShowPinnedList(true)}
-          onClosePinnedList={() => setShowPinnedList(false)}
-          onJumpToMessage={handleJumpToMessage}
-          getSenderName={getSenderName}
-        />
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-100 flex flex-col">
-          <MessageList
-            messagesGrouped={messagesGrouped}
-            messages={messages}
-            currentUser={currentUser}
-            allUsersMap={allUsersMap}
-            uploadingFiles={uploadingFiles}
-            highlightedMsgId={highlightedMsgId}
-            isGroup={isGroup}
-            onContextMenu={handleContextMenu}
-            onReply={handleReplyTo}
-            onJumpToMessage={handleJumpToMessage}
-            getSenderInfo={getSenderInfo}
-            renderMessageContent={renderMessageContent}
-            onOpenMedia={(url, type) => setPreviewMedia({ url, type })}
-          />
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Phần Footer (Input Chat) */}
-        <div className="bg-white p-2 sm:p-3 border-t border-gray-200 relative space-y-2">
-          {/* ... Popup Picker & Inputs ... */}
-          <EmojiStickerPicker
-            showEmojiPicker={showEmojiPicker}
-            pickerTab={pickerTab}
-            setPickerTab={setPickerTab}
-            onEmojiClick={onEmojiClick}
-            stickers={STICKERS}
-            onSelectSticker={handleSendSticker}
-          />
-
-          <ReplyBanner replyingTo={replyingTo} getSenderName={getSenderName} onCancel={() => setReplyingTo(null)} />
-
-          {/* Chỉ cho phép mention (@) trong nhóm, không áp dụng cho chat 1-1 */}
-          {isGroup && (
-            <MentionMenu
-              showMentionMenu={showMentionMenu}
-              mentionSuggestions={mentionSuggestionsWithAll}
-              selectedMentionIndex={selectedMentionIndex}
-              mentionMenuRef={mentionMenuRef}
-              onSelectMention={selectMention}
-            />
-          )}
-
-          {/* Thanh loading tổng khi đang tải ảnh / video */}
-          {hasUploading && (
-            <div className="mb-1">
-              <div className="flex items-center justify-between text-[11px] text-gray-500 mb-0.5">
-                <span>
-                  Đang tải {uploadingCount} tệp
-                  {uploadingCount > 1 ? '' : ''}...
-                </span>
-                <span className="font-medium">{Math.round(overallUploadPercent)}%</span>
-              </div>
-              <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 transition-all duration-200"
-                  style={{ width: `${Math.max(5, Math.round(overallUploadPercent))}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          <ChatInput
-            showEmojiPicker={showEmojiPicker}
-            onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
-            isListening={isListening}
-            onVoiceInput={handleVoiceInput}
-            editableRef={editableRef}
-            onInputEditable={handleInputChangeEditable}
-            onKeyDownEditable={handleKeyDownCombined}
-            onPasteEditable={(e) => {
-              e.preventDefault();
-              const text = e.clipboardData.getData('text/plain');
-              document.execCommand('insertText', false, text);
-              handleInputChangeEditable();
-            }}
-            onSendMessage={handleSendMessage}
-            onSelectImage={(file) => {
-              const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
-              const msgType = isVideo ? 'file' : 'image';
-              handleUploadAndSend(file, msgType);
-            }}
-            onSelectFile={(file) => handleUploadAndSend(file, 'file')}
-            onFocusEditable={() => setShowEmojiPicker(false)}
-          />
-        </div>
-      </div>
-
-      {showPopup && (
-        <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
-          <ChatInfoPopup
-            messages={messages}
+    <ChatProvider value={chatContextValue}>
+      <main className="flex h-full bg-gray-700 sm:overflow-y-hidden overflow-y-auto no-scrollbar">
+        <div
+          className={`flex flex-col h-full  bg-gray-200 transition-all duration-300 ${showPopup ? 'sm:w-[calc(100%-21.875rem)]' : 'w-full'} border-r border-gray-200`}
+        >
+          <ChatHeader
             chatName={chatName}
-            allUsers={allUsers}
-            currentUser={currentUser}
-            selectedChat={selectedChat}
             isGroup={isGroup}
-            onClose={() => setShowPopup(false)}
-            onShowCreateGroup={onShowCreateGroup}
-            onMembersAdded={handleMembersAdded}
-            members={activeMembers}
-            onMemberRemoved={handleMemberRemoved}
-            onRoleChange={handleRoleChange}
-            onJumpToMessage={handleJumpToMessage}
-            onChatAction={onChatAction}
-            reLoad={reLoad}
-            onLeftGroup={onBackFromChat}
+            memberCount={memberCount}
+            showPopup={showPopup}
+            onTogglePopup={() => setShowPopup((prev) => !prev)}
+            onOpenMembers={() => setOpenMember(true)}
+            showSearchSidebar={showSearchSidebar}
+            onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
+            avatar={chatAvatar}
+            onBackFromChat={onBackFromChat}
           />
-        </div>
-      )}
-      {showSearchSidebar && (
-        <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
-          <SearchSidebar
-            isOpen={showSearchSidebar}
-            onClose={() => setShowSearchSidebar(false)}
-            roomId={roomId}
+          <PinnedMessagesSection
+            allPinnedMessages={allPinnedMessages}
+            showPinnedList={showPinnedList}
+            onOpenPinnedList={() => setShowPinnedList(true)}
+            onClosePinnedList={() => setShowPinnedList(false)}
             onJumpToMessage={handleJumpToMessage}
             getSenderName={getSenderName}
           />
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-100 flex flex-col">
+            <MessageList
+              messagesGrouped={messagesGrouped}
+              messages={messages}
+              currentUser={currentUser}
+              allUsersMap={allUsersMap}
+              uploadingFiles={uploadingFiles}
+              highlightedMsgId={highlightedMsgId}
+              isGroup={isGroup}
+              onContextMenu={handleContextMenu}
+              onReply={handleReplyTo}
+              onJumpToMessage={handleJumpToMessage}
+              getSenderInfo={getSenderInfo}
+              renderMessageContent={renderMessageContent}
+              onOpenMedia={(url, type) => setPreviewMedia({ url, type })}
+            />
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Phần Footer (Input Chat) */}
+          <div className="bg-white p-2 sm:p-3 border-t border-gray-200 relative space-y-2">
+            {/* ... Popup Picker & Inputs ... */}
+            <EmojiStickerPicker
+              showEmojiPicker={showEmojiPicker}
+              pickerTab={pickerTab}
+              setPickerTab={setPickerTab}
+              onEmojiClick={onEmojiClick}
+              stickers={STICKERS}
+              onSelectSticker={handleSendSticker}
+            />
+
+            <ReplyBanner replyingTo={replyingTo} getSenderName={getSenderName} onCancel={() => setReplyingTo(null)} />
+
+            {/* Chỉ cho phép mention (@) trong nhóm, không áp dụng cho chat 1-1 */}
+            {isGroup && (
+              <MentionMenu
+                showMentionMenu={showMentionMenu}
+                mentionSuggestions={mentionSuggestionsWithAll}
+                selectedMentionIndex={selectedMentionIndex}
+                mentionMenuRef={mentionMenuRef}
+                onSelectMention={selectMention}
+              />
+            )}
+
+            {/* Thanh loading tổng khi đang tải ảnh / video */}
+            {hasUploading && (
+              <UploadProgressBar uploadingCount={uploadingCount} overallUploadPercent={overallUploadPercent} />
+            )}
+
+            <ChatInput
+              showEmojiPicker={showEmojiPicker}
+              onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
+              isListening={isListening}
+              onVoiceInput={handleVoiceInput}
+              editableRef={editableRef}
+              onInputEditable={handleInputChangeEditable}
+              onKeyDownEditable={handleKeyDownCombined}
+              onPasteEditable={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+                handleInputChangeEditable();
+              }}
+              onSendMessage={handleSendMessage}
+              onSelectImage={(file) => {
+                const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
+                const msgType = isVideo ? 'file' : 'image';
+                handleUploadAndSend(file, msgType);
+              }}
+              onSelectFile={(file) => handleUploadAndSend(file, 'file')}
+              onFocusEditable={() => setShowEmojiPicker(false)}
+            />
+          </div>
         </div>
-      )}
 
-      {openMember && isGroup && (
-        <ModalMembers
-          conversationId={selectedChat._id}
-          currentUser={currentUser}
-          reLoad={reLoad}
-          isOpen={openMember}
-          onClose={() => setOpenMember(false)}
-          members={activeMembers}
-          groupName={chatName}
-          allUsers={allUsers}
-          onMembersAdded={handleMembersAdded}
-          onMemberRemoved={handleMemberRemoved}
-          onRoleChange={handleRoleChange}
+        {showPopup && (
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
+            <ChatInfoPopup
+              onClose={() => setShowPopup(false)}
+              onShowCreateGroup={onShowCreateGroup}
+              onMembersAdded={handleMembersAdded}
+              members={activeMembers}
+              onMemberRemoved={handleMemberRemoved}
+              onRoleChange={handleRoleChange}
+              onJumpToMessage={handleJumpToMessage}
+              onChatAction={onChatAction}
+              reLoad={reLoad}
+              onLeftGroup={onBackFromChat}
+            />
+          </div>
+        )}
+        {showSearchSidebar && (
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
+            <SearchSidebar
+              isOpen={showSearchSidebar}
+              onClose={() => setShowSearchSidebar(false)}
+              roomId={roomId}
+              onJumpToMessage={handleJumpToMessage}
+              getSenderName={getSenderName}
+            />
+          </div>
+        )}
+
+        {openMember && isGroup && (
+          <ModalMembers
+            conversationId={selectedChat._id}
+            currentUser={currentUser}
+            reLoad={reLoad}
+            isOpen={openMember}
+            onClose={() => setOpenMember(false)}
+            members={activeMembers}
+            groupName={chatName}
+            allUsers={allUsers}
+            onMembersAdded={handleMembersAdded}
+            onMemberRemoved={handleMemberRemoved}
+            onRoleChange={handleRoleChange}
+          />
+        )}
+
+        {contextMenu && contextMenu.visible && (
+          <MessageContextMenu
+            contextMenu={contextMenu}
+            currentUserId={String(currentUser._id)}
+            onClose={closeContextMenu}
+            onPinMessage={handlePinMessage}
+            onRecallMessage={handleRecallMessage}
+          />
+        )}
+
+        <MediaPreviewModal
+          media={previewMedia}
+          chatName={chatName}
+          isGroup={isGroup}
+          onClose={() => setPreviewMedia(null)}
         />
-      )}
-
-      {contextMenu && contextMenu.visible && <ContextMenuRenderer />}
-
-      <MediaPreviewModal
-        media={previewMedia}
-        chatName={chatName}
-        isGroup={isGroup}
-        onClose={() => setPreviewMedia(null)}
-      />
-    </main>
+      </main>
+    </ChatProvider>
   );
 }

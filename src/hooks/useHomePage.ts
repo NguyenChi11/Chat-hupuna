@@ -95,7 +95,11 @@ export function useHomePage() {
           if (!isGroupChat) return prev;
 
           const updated = data.data.find((g: GroupConversation) => g._id === maybeGroup._id);
-          return updated || prev;
+          // Nếu không tìm thấy nhóm trong danh sách mới (có thể đã bị giải tán), xóa selectedChat
+          if (!updated) {
+            return null;
+          }
+          return updated;
         });
       }
     } catch (e) {

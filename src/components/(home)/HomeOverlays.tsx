@@ -77,7 +77,6 @@ export default function HomeOverlays({
           searchTerm={globalSearchTerm}
           results={globalSearchResults}
           allUsers={allUsers}
-          currentUser={currentUser}
           onClose={onCloseGlobalSearch}
           onSearch={onSearch}
           onNavigateToMessage={onNavigateToMessage}
