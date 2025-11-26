@@ -2,6 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Message } from '@/types/Message';
 import PinIcon from '@/public/icons/pin-icon.svg';
+import ICPin from '../svg/ICPin';
 
 const getId = (u: Message['sender'] | string | undefined | null): string => {
   if (!u) return '';
@@ -27,7 +28,14 @@ interface MenuItemProps {
   download?: string;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ children, onClick, isRed = false, isAnchor = false, href = '#', download = '' }) => {
+const MenuItem: React.FC<MenuItemProps> = ({
+  children,
+  onClick,
+  isRed = false,
+  isAnchor = false,
+  href = '#',
+  download = '',
+}) => {
   const className = `w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-3 ${isRed ? 'text-red-500' : 'text-gray-700'}`;
 
   if (isAnchor) {
@@ -51,6 +59,9 @@ interface MessageContextMenuProps {
   onClose: () => void;
   onPinMessage: (msg: Message) => void;
   onRecallMessage: (messageId: string) => void;
+  setEditingMessageId?: (id: string | null) => void;
+  setEditContent?: (content: string) => void;
+  closeContextMenu?: () => void;
 }
 
 const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
@@ -59,6 +70,9 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   onClose,
   onPinMessage,
   onRecallMessage,
+  setEditingMessageId,
+  setEditContent,
+  closeContextMenu,
 }) => {
   if (!contextMenu || !contextMenu.visible) return null;
 
@@ -69,7 +83,8 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   const canCopy = isText && !isRecalled;
   const canDownload = (msg.type === 'image' || msg.type === 'file' || msg.type === 'sticker') && msg.fileUrl;
   const canRecall = isMe && !isRecalled;
-
+  const isCurrentlyPinned = msg.isPinned === true;
+  const canEdit = isMe && isText && !isRecalled;
   const style = {
     top: y,
     left: x > window.innerWidth - 200 ? x - 180 : x,
@@ -91,8 +106,36 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
             onClose();
           }}
         >
-          <Image src={PinIcon} className="text-black" title="Ghim tin nhắn" width={20} height={20} alt="" />
-          Ghim tin nhắn
+          {isCurrentlyPinned ? (
+            <p className="text-red-500 flex gap-2">
+              <ICPin className="w-5 h-5" stroke="#ff0000" />
+              Bỏ ghim tin nhắn
+            </p>
+          ) : (
+            <p className="flex gap-2">
+              <ICPin className="w-5 h-5" stroke="#1f1f1f" />
+              Ghim tin nhắn
+            </p>
+          )}
+        </MenuItem>
+      )}
+
+      {canEdit && (
+        <MenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (setEditingMessageId && setEditContent && closeContextMenu) {
+              setEditingMessageId(msg._id);
+              setEditContent(msg.content || '');
+              closeContextMenu();
+            }
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+          </svg>
+          Chỉnh sửa
         </MenuItem>
       )}
 
@@ -161,5 +204,3 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 };
 
 export default MessageContextMenu;
-
-

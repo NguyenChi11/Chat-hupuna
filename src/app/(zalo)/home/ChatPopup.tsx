@@ -726,6 +726,63 @@ export default function ChatWindow({
     [currentUser, allUsers, selectedChat, messages, isGroup, chatName],
   );
 
+  const handleSaveEdit = async (messageId: string, newContent: string) => {
+    if (!newContent.trim()) return;
+
+    const originalMessage = messages.find((m) => m._id === messageId);
+    if (!originalMessage) return;
+
+    const editedAtTimestamp = Date.now();
+    const originalContentText = originalMessage.originalContent || originalMessage.content || '';
+
+    console.log('🟢 [CLIENT] Starting edit:', { messageId, newContent, roomId });
+
+    // 1. Optimistic Update
+    setMessages((prev) =>
+      prev.map((m) =>
+        m._id === messageId
+          ? { ...m, content: newContent, editedAt: editedAtTimestamp, originalContent: originalContentText }
+          : m,
+      ),
+    );
+    setEditingMessageId(null);
+
+    // 2. Gọi API Backend
+    try {
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'editMessage',
+          data: { messageId, newContent },
+        }),
+      });
+
+      console.log('📡 [CLIENT] API response:', response.status);
+
+      // 3. EMIT SOCKET EVENT
+      const socketData = {
+        _id: messageId,
+        roomId: roomId,
+        newContent: newContent,
+        editedAt: editedAtTimestamp,
+        originalContent: originalContentText,
+        sender: currentUser._id,
+        senderName: currentUser.name,
+        isGroup: isGroup,
+        receiver: isGroup ? null : getId(selectedChat),
+        members: isGroup ? (selectedChat as GroupConversation).members : [],
+      };
+
+      console.log('🚀 [CLIENT] Emitting edit_message:', socketData);
+      socketRef.current?.emit('edit_message', socketData);
+    } catch (e) {
+      console.error('❌ [CLIENT] Chỉnh sửa thất bại:', e);
+      alert('Lỗi khi lưu chỉnh sửa.');
+      setMessages((prev) => prev.map((m) => (m._id === messageId ? originalMessage : m)));
+    }
+  };
+
   return (
     <ChatProvider value={chatContextValue}>
       <main className="flex h-full bg-gray-700 sm:overflow-y-hidden overflow-y-auto no-scrollbar">
@@ -768,6 +825,11 @@ export default function ChatWindow({
               getSenderInfo={getSenderInfo}
               renderMessageContent={renderMessageContent}
               onOpenMedia={(url, type) => setPreviewMedia({ url, type })}
+              editingMessageId={editingMessageId}
+              setEditingMessageId={setEditingMessageId}
+              editContent={editContent}
+              setEditContent={setEditContent}
+              onSaveEdit={handleSaveEdit} // Hàm lưu API
             />
             <div ref={messagesEndRef} />
           </div>
@@ -822,7 +884,11 @@ export default function ChatWindow({
                 const msgType = isVideo ? 'file' : 'image';
                 handleUploadAndSend(file, msgType);
               }}
-              onSelectFile={(file) => handleUploadAndSend(file, 'file')}
+              onSelectFile={(file) => {
+                const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
+                const msgType = isVideo ? 'video' : 'file';
+                handleUploadAndSend(file, msgType);
+              }}
               onFocusEditable={() => setShowEmojiPicker(false)}
             />
           </div>
@@ -879,6 +945,9 @@ export default function ChatWindow({
             onClose={closeContextMenu}
             onPinMessage={handlePinMessage}
             onRecallMessage={handleRecallMessage}
+            setEditingMessageId={setEditingMessageId}
+            setEditContent={setEditContent}
+            closeContextMenu={closeContextMenu}
           />
         )}
 

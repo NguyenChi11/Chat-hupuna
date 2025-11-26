@@ -55,21 +55,32 @@ export function useChatInfoPopup({ selectedChat, isGroup, messages, onChatAction
 
   // Media (ảnh / video)
   const mediaList = useMemo(() => {
-    if (!messages) return [];
     return messages
       .filter((msg) => {
-        if (msg.isRecalled) return false;
+        // Lọc image
         if (msg.type === 'image') return true;
-        if (msg.type === 'file' && isVideoFile(msg.fileName)) return true;
+
+        // Lọc video (type === 'video')
+        if (msg.type === 'video') return true;
+
+        // 🔥 QUAN TRỌNG: Lọc file nhưng là video (dựa vào đuôi)
+        if (msg.type === 'file' && msg.fileUrl && isVideoFile(msg.fileUrl)) {
+          return true;
+        }
+
         return false;
       })
       .map((msg) => ({
         id: msg._id,
-        type: msg.type === 'image' ? 'image' : 'video',
-        url: msg.fileUrl || msg.content || msg.previewUrl || '',
+        type: msg.type === 'image'
+          ? 'image'
+          : (msg.type === 'video' || isVideoFile(msg.fileUrl || ''))
+            ? 'video'
+            : 'file',
+        url: msg.fileUrl || '',
         fileName: msg.fileName,
       }))
-      .reverse();
+      .reverse(); // Hiển thị mới nhất trước
   }, [messages]);
 
   // File

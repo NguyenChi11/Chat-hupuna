@@ -54,29 +54,10 @@ export default function MessageList({
   setEditContent,
   onSaveEdit,
 }: MessageListProps) {
-  const [showOldContent, setShowOldContent] = useState(false);
   const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
-  // Modal hiển thị nội dung gốc
-  // const OldContentModal = ({ originalContent, onClose }: { originalContent: string; onClose: () => void }) => (
-  //   <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
-  //     <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
-  //       <h3 className="text-lg font-bold mb-3 border-b-[1px] border-b-gray-300 pb-2 text-gray-800">Nội dung gốc</h3>
-  //       <p className="whitespace-pre-wrap text-gray-700 mb-4 text-sm leading-relaxed">{originalContent}</p>
-  //       <button
-  //         onClick={onClose}
-  //         className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-  //       >
-  //         Đóng
-  //       </button>
-  //     </div>
-  //   </div>
-  // );
 
   return (
     <>
-      {/*{showOldContentModal && (*/}
-      {/*  <OldContentModal originalContent={showOldContentModal} onClose={() => setShowOldContentModal(null)} />*/}
-      {/*)}*/}
       {Array.from(messagesGrouped.entries()).map(([dateKey, msgs]) => (
         <React.Fragment key={dateKey}>
           {/* Thanh hiển thị Ngày (Sticky ở trên) */}
@@ -116,11 +97,7 @@ export default function MessageList({
                 </div>
               );
             }
-            function minutesToHourString(min: number) {
-              const h = Math.floor(min / 60);
-              const m = min % 60;
-              return `${h} giờ ${m} phút`;
-            }
+
             // Dùng msgs (tin nhắn trong ngày hiện tại) để kiểm tra nhóm
             const prevMsgInGroup = index > 0 ? msgs[index - 1] : null;
             let isGrouped = false;
@@ -328,7 +305,9 @@ export default function MessageList({
                                   <p className="text-xs sm:font-medium text-[0.5rem] text-gray-800 truncate">
                                     {msg.fileName || 'Tập tin đính kèm'}
                                   </p>
-                                  <p className="text-[0.625rem] sm:text-[0.75rem] text-gray-500 truncate">{msg.fileUrl}</p>
+                                  <p className="text-[0.625rem] sm:text-[0.75rem] text-gray-500 truncate">
+                                    {msg.fileUrl}
+                                  </p>
                                 </div>
                               </a>
                             )}
@@ -375,10 +354,7 @@ export default function MessageList({
                       <div className="  border-t border-gray-300 ">
                         {expandedOriginalId === msg._id && (
                           <div className="text-xs text-gray-500 space-y-1 flex items-center justify-between">
-                            <p className="whitespace-pre-wrap bg-blue-100 pt-2 pb-1 rounded">
-                              {msg.originalContent}
-                            </p>
-
+                            <p className="whitespace-pre-wrap bg-blue-100 pt-2 pb-1 rounded">{msg.originalContent}</p>
                           </div>
                         )}
                       </div>
@@ -387,12 +363,9 @@ export default function MessageList({
                     <div className={`flex items-center gap-2 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                       {/* Hiển thị "Đã chỉnh sửa" với nút xem nội dung gốc */}
                       {isEdited && (
-                        <span className="text-[10px] text-blue-500 hover:underline hover:cursor-pointer"
-                              onClick={() =>
-                                setExpandedOriginalId(prev =>
-                                  prev === msg._id ? null : msg._id
-                                )
-                              }
+                        <span
+                          className="text-[10px] text-blue-500 hover:underline hover:cursor-pointer"
+                          onClick={() => setExpandedOriginalId((prev) => (prev === msg._id ? null : msg._id))}
                         >
                           {expandedOriginalId === msg._id ? <p>Ẩn chỉnh sửa</p> : <p>Đã chỉnh sửa</p>}
                         </span>
