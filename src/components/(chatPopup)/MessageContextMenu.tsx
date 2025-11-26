@@ -6,8 +6,10 @@ import PinIcon from '@/public/icons/pin-icon.svg';
 const getId = (u: Message['sender'] | string | undefined | null): string => {
   if (!u) return '';
   if (typeof u === 'string') return u;
-  if (typeof u === 'object' && '_id' in u && u._id != null) return String(u._id);
-  if (typeof u === 'object' && 'id' in u && u.id != null) return String(u.id);
+  if (typeof u === 'object' && u !== null && '_id' in u && (u as { _id?: unknown })._id != null)
+    return String((u as { _id: unknown })._id);
+  if (typeof u === 'object' && u !== null && 'id' in u && (u as { id?: unknown }).id != null)
+    return String((u as { id: unknown }).id);
   return '';
 };
 
@@ -27,7 +29,14 @@ interface MenuItemProps {
   download?: string;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ children, onClick, isRed = false, isAnchor = false, href = '#', download = '' }) => {
+const MenuItem: React.FC<MenuItemProps> = ({
+  children,
+  onClick,
+  isRed = false,
+  isAnchor = false,
+  href = '#',
+  download = '',
+}) => {
   const className = `w-full text-left px-3 py-2 hover:bg-gray-100 flex items-center gap-3 ${isRed ? 'text-red-500' : 'text-gray-700'}`;
 
   if (isAnchor) {
@@ -161,5 +170,3 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
 };
 
 export default MessageContextMenu;
-
-

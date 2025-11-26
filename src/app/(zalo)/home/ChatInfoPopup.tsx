@@ -8,6 +8,7 @@ import { useChatInfoPopup } from '@/hooks/useChatInfoPopup';
 import MediaPreviewModal from '@/components/(chatPopup)/MediaPreviewModal';
 import ChatInfoHeader from '../../../components/(chatPopup)/components/ChatInfoHeader';
 import GroupAvatarSection from '../../../components/(chatPopup)/components/GroupAvatarSection';
+import UserAvatarSection from '../../../components/(chatPopup)/components/UserAvatarSection';
 import ChatQuickActions from '../../../components/(chatPopup)/components/ChatQuickActions';
 import GroupDangerZone from '../../../components/(chatPopup)/components/GroupDangerZone';
 import GroupMembersSection from '../../../components/(chatPopup)/components/GroupMembersSection';
@@ -262,7 +263,7 @@ export default function ChatInfoPopup({
 
       // Đóng popup trước
       onClose();
-      
+
       // Chuyển về trang home (xóa selectedChat)
       if (onLeftGroup) {
         onLeftGroup();
@@ -289,16 +290,23 @@ export default function ChatInfoPopup({
       <div className="space-y-6 bg-gray-200">
         {/* Tên chat & Chức năng */}
         <div className="space-y-6 bg-white w-full mb-2">
-          <GroupAvatarSection
-            isGroup={isGroup}
-            groupAvatar={groupAvatar}
-            groupName={groupName}
-            chatName={chatName}
-            isGroupAvatarUploading={isGroupAvatarUploading}
-            avatarInputRef={avatarInputRef}
-            onChangeGroupAvatar={handleChangeGroupAvatar}
-            onRenameGroup={handleRenameGroup}
-          />
+          {isGroup ? (
+            <GroupAvatarSection
+              isGroup={isGroup}
+              groupAvatar={groupAvatar}
+              groupName={groupName}
+              chatName={chatName}
+              isGroupAvatarUploading={isGroupAvatarUploading}
+              avatarInputRef={avatarInputRef}
+              onChangeGroupAvatar={handleChangeGroupAvatar}
+              onRenameGroup={handleRenameGroup}
+            />
+          ) : (
+            <UserAvatarSection
+              userName={(selectedChat as User).name || (selectedChat as User).username || 'Người dùng'}
+              userAvatar={(selectedChat as User).avatar}
+            />
+          )}
 
           <ChatQuickActions
             localIsPinned={localIsPinned}

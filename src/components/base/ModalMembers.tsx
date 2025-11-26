@@ -97,17 +97,19 @@ export default function GroupMembersModal({
     const targetMember = localMembers.find((m) => String(m._id || m.id) === targetUserId);
     const targetName = targetMember ? targetMember.name : 'Thành viên';
 
-    type GroupActionPayload =
+  type GroupActionPayload =
       | {
           conversationId: string;
           targetUserId: string;
           action: 'kickMember';
+          _id?: string;
         }
       | {
           conversationId: string;
           targetUserId: string;
           action: 'changeRole';
           data: { role: 'ADMIN' | 'MEMBER' };
+          _id: string;
         };
 
     const payload: GroupActionPayload =
@@ -116,12 +118,14 @@ export default function GroupMembersModal({
             conversationId,
             targetUserId,
             action: 'kickMember',
+            _id: myId,
           }
         : {
             conversationId,
             targetUserId,
             action: 'changeRole',
             data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
+            _id: myId,
           };
 
     try {

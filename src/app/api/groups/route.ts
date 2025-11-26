@@ -308,13 +308,31 @@ export async function POST(req: NextRequest) {
       }
 
       case 'changeRole': {
-        if (!conversationId || !targetUserId || !data?.role) {
+        if (!conversationId || !targetUserId || !data?.role || !currentUserId) {
           return NextResponse.json({ error: 'Missing info' }, { status: 400 });
         }
-        // Update role của member có _id == targetUserId
+        const group = await collection.findOne({
+          _id: new ObjectId(conversationId),
+        } as unknown as Filter<GroupConversation>);
+        if (!group) {
+          return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+        }
+        const members: MemberInput[] = Array.isArray(group.members) ? (group.members as MemberInput[]) : [];
+        const ownerMember = members.find(
+          (m) => m && typeof m === 'object' && m.role === 'OWNER' && '_id' in m && m._id,
+        ) as GroupMemberSchema | undefined;
+        const ownerId = ownerMember ? String(ownerMember._id) : null;
+        const userIdStr = String(currentUserId);
+        if (!ownerId || ownerId !== userIdStr) {
+          return NextResponse.json({ error: 'Only owner can change roles' }, { status: 403 });
+        }
+        const requestedRole = String(data.role);
+        if (!['ADMIN', 'MEMBER'].includes(requestedRole)) {
+          return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+        }
         const result = await collection.updateOne(
           { _id: new ObjectId(conversationId), 'members._id': targetUserId } as unknown as Filter<GroupConversation>,
-          { $set: { 'members.$.role': data.role as GroupRole } } as unknown as UpdateFilter<GroupConversation>,
+          { $set: { 'members.$.role': requestedRole as GroupRole } } as unknown as UpdateFilter<GroupConversation>,
         );
         return NextResponse.json({ success: true, result });
       }
@@ -376,10 +394,13 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: true });
         }
 
-        // Ưu tiên chọn ADMIN làm OWNER, nếu không có thì lấy thành viên đầu tiên
-        const nextOwner = otherMembers.find((m) => typeof m === 'object' && m.role === 'ADMIN') || otherMembers[0];
-
-        const nextOwnerId = String(typeof nextOwner === 'object' && '_id' in nextOwner ? nextOwner._id : nextOwner);
+        const adminCandidate = otherMembers.find((m) => typeof m === 'object' && m.role === 'ADMIN');
+        const nextOwnerCandidate = adminCandidate || otherMembers[Math.floor(Math.random() * otherMembers.length)];
+        const nextOwnerId = String(
+          typeof nextOwnerCandidate === 'object' && '_id' in nextOwnerCandidate
+            ? nextOwnerCandidate._id
+            : nextOwnerCandidate,
+        );
 
         // 1) Nâng quyền người kế nhiệm lên OWNER
         await collection.updateOne(
@@ -411,19 +432,10 @@ export async function POST(req: NextRequest) {
 
         const userIdStr = String(currentUserId);
 
-        // Xác định OWNER: ưu tiên createdBy, sau đó member có role === 'OWNER'
-        const createdByStr = group.createdBy ? String(group.createdBy) : null;
-        let ownerId: string | null = createdByStr;
-
-        if (!ownerId && Array.isArray(group.members)) {
-          const ownerMember = (group.members as MemberInput[]).find(
-            (m) => m && typeof m === 'object' && m.role === 'OWNER' && m._id,
-          );
-          if (ownerMember) {
-            ownerId = String(typeof ownerMember === 'object' && '_id' in ownerMember ? ownerMember._id : '');
-          }
-        }
-
+        const ownerMember = Array.isArray(group.members)
+          ? (group.members as MemberInput[]).find((m) => m && typeof m === 'object' && m.role === 'OWNER' && '_id' in m)
+          : null;
+        const ownerId = ownerMember ? String((ownerMember as { _id: string | ObjectId })._id) : null;
         if (!ownerId || ownerId !== userIdStr) {
           return NextResponse.json({ error: 'Only owner can disband group' }, { status: 403 });
         }
