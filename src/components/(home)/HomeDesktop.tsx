@@ -8,6 +8,21 @@ import HomeWelcomeBanner from './HomeWelcomeBanner';
 import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
 
+interface Message {
+  _id: string;
+  content?: string;
+  type: 'text' | 'image' | 'file' | 'sticker';
+  fileName?: string;
+  timestamp: number;
+  sender: string;
+  senderName: string;
+  roomId: string;
+  roomName: string;
+  isGroupChat: boolean;
+  partnerId?: string;
+  partnerName?: string;
+  fileUrl?: string;
+}
 interface HomeDesktopProps {
   currentUser: User;
   groups: GroupConversation[];
@@ -23,7 +38,7 @@ interface HomeDesktopProps {
   onScrollComplete: () => void;
   fetchAllData: () => Promise<void> | void;
   onShowGlobalSearch: () => void;
-  onNavigateToMessage: (message: any) => void;
+  onNavigateToMessage: (message: Message) => void;
 }
 
 export default function HomeDesktop({

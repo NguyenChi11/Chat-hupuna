@@ -5,20 +5,20 @@ import { File } from 'megajs';
 export const runtime = 'nodejs';
 
 // Nhận diện lỗi giới hạn băng thông của Mega
-function isMegaBandwidthError(error: any) {
-  const msg = String(error?.message ?? error ?? '');
+function isMegaBandwidthError(error: unknown) {
+  const hasMessage = typeof error === 'object' && error !== null && 'message' in (error as Record<string, unknown>);
+  const msg = String(hasMessage ? (error as { message?: unknown }).message : (error ?? ''));
   return msg.includes('Bandwidth limit reached');
 }
 
 // Lấy số giây còn lại trước khi Mega reset băng thông (nếu có)
-function getMegaRetryAfterSeconds(error: any): number | undefined {
-  const msg = String(error?.message ?? error ?? '');
+function getMegaRetryAfterSeconds(error: unknown): number | undefined {
+  const hasMessage = typeof error === 'object' && error !== null && 'message' in (error as Record<string, unknown>);
+  const msg = String(hasMessage ? (error as { message?: unknown }).message : (error ?? ''));
   const match = msg.match(/Bandwidth limit reached:\s*(\d+)\s*seconds/);
   if (match) return Number(match[1]);
-  const timeLimit = (error as any)?.timeLimit;
-  if (typeof timeLimit === 'string' || typeof timeLimit === 'number') {
-    return Number(timeLimit);
-  }
+  const maybeTimeLimit = (error as { timeLimit?: unknown })?.timeLimit;
+  if (typeof maybeTimeLimit === 'string' || typeof maybeTimeLimit === 'number') return Number(maybeTimeLimit);
   return undefined;
 }
 
@@ -40,15 +40,20 @@ function nodeToWebStream(nodeStream: NodeJS.ReadableStream, abortSignal?: AbortS
       // Trạng thái để tránh đóng / báo lỗi controller nhiều lần
       let isClosedOrErrored = false;
 
-      const onData = (chunk: any) => {
+      const onData = (chunk: unknown) => {
         try {
           if (isClosedOrErrored) return;
-          const uint8 = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+          let uint8: Uint8Array;
+          if (chunk instanceof Uint8Array) uint8 = chunk;
+          else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(chunk)) uint8 = new Uint8Array(chunk as Buffer);
+          else if (chunk instanceof ArrayBuffer) uint8 = new Uint8Array(chunk);
+          else if (typeof chunk === 'string') uint8 = new Uint8Array(Buffer.from(chunk));
+          else uint8 = new Uint8Array();
           controller.enqueue(uint8);
         } catch (err) {
           if (!isClosedOrErrored) {
             isClosedOrErrored = true;
-            controller.error(err);
+            controller.error(err instanceof Error ? err : new Error(String(err)));
           }
         }
       };
@@ -60,10 +65,10 @@ function nodeToWebStream(nodeStream: NodeJS.ReadableStream, abortSignal?: AbortS
         }
       };
 
-      const onError = (err: any) => {
+      const onError = (err: unknown) => {
         if (!isClosedOrErrored) {
           isClosedOrErrored = true;
-          controller.error(err);
+          controller.error(err instanceof Error ? err : new Error(String(err)));
         }
       };
 
@@ -74,18 +79,12 @@ function nodeToWebStream(nodeStream: NodeJS.ReadableStream, abortSignal?: AbortS
       if (abortSignal) {
         abortSignal.addEventListener('abort', () => {
           try {
-            if (typeof (nodeStream as any).removeListener === 'function') {
-              nodeStream.removeListener('data', onData);
-              nodeStream.removeListener('end', onEnd);
-              nodeStream.removeListener('error', onError);
-            }
             nodeStream.removeListener('data', onData);
             nodeStream.removeListener('end', onEnd);
             nodeStream.removeListener('error', onError);
             // Hủy stream Node khi client hủy request
-            if (typeof (nodeStream as any).destroy === 'function') {
-              (nodeStream as any).destroy();
-            }
+            const maybeDestroy = (nodeStream as { destroy?: (err?: Error) => void }).destroy;
+            if (typeof maybeDestroy === 'function') maybeDestroy();
           } catch {
             // ignore
           } finally {
@@ -103,9 +102,8 @@ function nodeToWebStream(nodeStream: NodeJS.ReadableStream, abortSignal?: AbortS
       }
     },
     cancel() {
-      if (typeof (nodeStream as any).destroy === 'function') {
-        (nodeStream as any).destroy();
-      }
+      const maybeDestroy = (nodeStream as { destroy?: (err?: Error) => void }).destroy;
+      if (typeof maybeDestroy === 'function') maybeDestroy();
     },
   });
 }
@@ -160,7 +158,7 @@ export async function GET(req: NextRequest) {
       // Tạo luồng đọc CHỈ phần dữ liệu client cần (start -> end)
       let nodeStream: NodeJS.ReadableStream;
       try {
-        nodeStream = file.download({ start, end }) as any;
+        nodeStream = file.download({ start, end }) as NodeJS.ReadableStream;
       } catch (err) {
         if (isMegaBandwidthError(err)) {
           const retryAfter = getMegaRetryAfterSeconds(err);
@@ -194,7 +192,7 @@ export async function GET(req: NextRequest) {
       // 3. Trường hợp không có Range (Download thường hoặc ảnh)
       let nodeStream: NodeJS.ReadableStream;
       try {
-        nodeStream = file.download({}) as any;
+        nodeStream = file.download({}) as NodeJS.ReadableStream;
       } catch (err) {
         if (isMegaBandwidthError(err)) {
           const retryAfter = getMegaRetryAfterSeconds(err);

@@ -7,7 +7,7 @@ import React from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination } from 'swiper/modules';
 
-import { banners } from '@/app/(zalo)/home/dataBanner';
+import { banners } from '@/data/dataBanner';
 import { User } from '@/types/User';
 import Image from 'next/image';
 import { getProxyUrl } from '@/utils/utils';

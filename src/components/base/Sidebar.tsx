@@ -1,13 +1,10 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import ChatItem from './ChatItem';
-import IconBB from '@/public/icons/bb.svg';
-import IconGroup from '@/public/icons/group.svg';
 import SearchResults from '@/components/(chatPopup)/SearchResults';
 import { User } from '../../types/User';
 import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Group';
 import { getProxyUrl } from '../../utils/utils';
 import ICGroupPeople from '@/components/svg/ICGroupPeople';
-import ICPersonPlus from '@/components/svg/ICPersonPlus';
 import MessageFilter, { FilterType } from '../(chatPopup)/MessageFilter';
 import Image from 'next/image';
 

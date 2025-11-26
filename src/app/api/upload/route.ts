@@ -56,9 +56,11 @@ export async function POST(req: NextRequest) {
     };
 
     return NextResponse.json({ success: true, link: result.link, data: messageData });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ Lỗi:', err);
     setProgress(uploadId, -1); // Báo lỗi
-    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

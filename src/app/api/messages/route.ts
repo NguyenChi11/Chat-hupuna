@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { addRow, deleteByField, getAllRows, getRowByIdOrCode, updateByField, updateMany } from '@/lib/mongoDBCRUD';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
+import { GroupConversation, GroupMemberSchema, MemberInfo } from '@/types/Group';
 import { ObjectId } from 'mongodb';
+
+type MongoFilters = Record<string, unknown>;
+type MemberInput = string | GroupMemberSchema | MemberInfo | { id?: string; _id?: string };
+type GroupSummary = { _id: string; name: string; avatar?: string; isGroup: boolean; members: string[] };
 
 export async function POST(req: NextRequest) {
   const {
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
       case 'read': {
         const { roomId, isPinned, searchQuery, ...otherFilters } = filters || {};
 
-        let mongoFilters: any = { ...otherFilters };
+        const mongoFilters: MongoFilters = { ...otherFilters };
         if (roomId) {
           mongoFilters.roomId = roomId;
         }
@@ -61,10 +66,7 @@ export async function POST(req: NextRequest) {
           const searchRegex = new RegExp(escapedTerm, 'i');
 
           // Thêm điều kiện $or để tìm trong content hoặc fileName
-          mongoFilters.$or = [
-            { content: { $regex: searchRegex } },
-            { fileName: { $regex: searchRegex } },
-          ];
+          mongoFilters.$or = [{ content: { $regex: searchRegex } }, { fileName: { $regex: searchRegex } }];
         }
 
         // 1. Lấy tin nhắn với filter đã cập nhật
@@ -93,7 +95,8 @@ export async function POST(req: NextRequest) {
           filters: { _id: { $in: senderIds } },
           limit: 999999,
         });
-        const userMap = new Map(usersResult.data?.map((u) => [String(u._id), u]) || []);
+        const userMap = new Map<string, User>();
+        (usersResult.data || []).forEach((u) => userMap.set(String(u._id), u));
 
         // Map info vào message
         const enrichedMessages = messages.map((msg) => {
@@ -199,10 +202,10 @@ export async function POST(req: NextRequest) {
 
         // ========== BƯỚC 1: LẤY DANH SÁCH GROUP MÀ USER LÀ THÀNH VIÊN ==========
         const groupRoomIds: string[] = [];
-        const groupMap = new Map<string, any>();
+        const groupMap = new Map<string, GroupSummary>();
 
         try {
-          const allGroupsResult = await getAllRows<any>('Groups', {
+          const allGroupsResult = await getAllRows<GroupConversation>('Groups', {
             filters: {},
             limit: 9999,
           });
@@ -210,49 +213,36 @@ export async function POST(req: NextRequest) {
           console.log('📊 [API] Total groups in DB:', allGroupsResult.data?.length || 0);
 
           // 🔥 SỬA LẠI: Filter groups mà user là thành viên
-          const userGroups = (allGroupsResult.data || []).filter((g: any) => {
-            // Check trong mảng members
+          const getMemberId = (m: MemberInput): string | null => {
+            if (!m) return null;
+            if (typeof m === 'string') return m;
+            if (typeof m === 'object') {
+              if ('_id' in m && m._id) return String(m._id);
+              if ('id' in m && m.id) return String(m.id);
+            }
+            return null;
+          };
+
+          const userGroups = (allGroupsResult.data || []).filter((g) => {
             if (g.members && Array.isArray(g.members)) {
-              const isMemberInArray = g.members.some((m: any) => {
-                const memberId = typeof m === 'string' ? m : String(m._id || m.id || m);
+              const isMemberInArray = (g.members as MemberInput[]).some((m) => {
+                const memberId = getMemberId(m);
                 return String(memberId) === String(searchUserId);
               });
-
               if (isMemberInArray) return true;
             }
-
-            // // 🔥 THÊM: Check trong isPinnedBy object
-            // if (g.isPinnedBy && typeof g.isPinnedBy === 'object') {
-            //   if (g.isPinnedBy[searchUserId] !== undefined) {
-            //     console.log(`✅ Found user ${searchUserId} in isPinnedBy of group ${g.name}`);
-            //     return true;
-            //   }
-            // }
-            //
-            // // 🔥 THÊM: Check trong isHiddenBy object (nếu có)
-            // if (g.isHiddenBy && typeof g.isHiddenBy === 'object') {
-            //   if (g.isHiddenBy[searchUserId] !== undefined) {
-            //     return true;
-            //   }
-            // }
-
             return false;
           });
 
           console.log('✅ [API] User groups found:', userGroups.length);
 
-          userGroups.forEach((g: any) => {
+          userGroups.forEach((g) => {
             const gId = String(g._id);
             groupRoomIds.push(gId);
 
-            // 🔥 Parse members array đúng cách
             let membersList: string[] = [];
             if (g.members && Array.isArray(g.members)) {
-              membersList = g.members.map((m: any) => {
-                if (typeof m === 'string') return m;
-                if (m && typeof m === 'object') return String(m._id || m.id || m);
-                return String(m);
-              });
+              membersList = (g.members as MemberInput[]).map((m) => getMemberId(m) || String(m));
             }
 
             groupMap.set(gId, {
@@ -282,7 +272,7 @@ export async function POST(req: NextRequest) {
 
         // ========== BƯỚC 3: LẤY DANH SÁCH ROOMID CHAT 1-1 ==========
         const oneToOneRoomIds: string[] = [];
-        const userMap = new Map<string, any>();
+        const userMap = new Map<string, User>();
 
         try {
           const allUsersResult = await getAllRows<User>(USERS_COLLECTION_NAME, {
@@ -334,7 +324,7 @@ export async function POST(req: NextRequest) {
         const searchResults = await getAllRows<Message>(collectionName, {
           filters: searchFilters,
           limit: data.limit || 100,
-          sort: { timestamp: -1 },
+          sort: { field: 'timestamp', order: 'desc' },
         });
 
         const foundMessages: Message[] = searchResults.data || [];
@@ -357,7 +347,15 @@ export async function POST(req: NextRequest) {
           const senderUser = userMap.get(senderId);
           const isMyMessage = senderId === searchUserId;
 
-          let chatInfo: any = {
+          const chatInfo: {
+            roomId: string;
+            roomName: string;
+            roomAvatar: string | null | undefined;
+            isGroupChat: boolean;
+            partnerId: string | null;
+            partnerName: string;
+            partnerAvatar: string | null | undefined;
+          } = {
             roomId: msg.roomId,
             roomName: 'Cuộc trò chuyện',
             roomAvatar: null,
@@ -374,11 +372,11 @@ export async function POST(req: NextRequest) {
             const group = groupMap.get(msg.roomId);
             chatInfo.isGroupChat = true;
             chatInfo.roomId = msg.roomId;
-            chatInfo.roomName = group.name || 'Nhóm';
-            chatInfo.roomAvatar = group.avatar || null;
+            chatInfo.roomName = group?.name || 'Nhóm';
+            chatInfo.roomAvatar = group?.avatar || null;
             chatInfo.partnerId = null;
 
-            console.log(`✅ [ENRICH] Message in GROUP: "${group.name}" (${msg.roomId})`);
+            console.log(`✅ [ENRICH] Message in GROUP: "${group?.name}" (${msg.roomId})`);
           } else {
             // Chat 1-1
             chatInfo.isGroupChat = false;

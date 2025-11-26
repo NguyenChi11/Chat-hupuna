@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addRow, getAllRows, getCollection } from '@/lib/mongoDBCRUD';
 import { GROUP_COLLECTION_NAME, GroupConversation, GroupConversationCreate, GroupMemberSchema } from '@/types/Group';
-import { ObjectId } from 'mongodb';
+import { ObjectId, Filter, UpdateFilter } from 'mongodb';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
+import { MemberInfo, GroupRole } from '@/types/Group';
+
+type MemberInput =
+  | string
+  | GroupMemberSchema
+  | MemberInfo
+  | { id?: string; _id?: string; role?: GroupRole; name?: string; avatar?: string };
+
+interface GroupApiRequestBody {
+  action: string;
+  data?: Record<string, unknown>;
+  _id?: string;
+  conversationId?: string;
+  newMembers?: string[];
+  targetUserId?: string;
+}
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const body = (await req.json()) as GroupApiRequestBody;
   const { action, data, _id, conversationId, newMembers, targetUserId } = body;
   const currentUserId = _id;
   try {
@@ -14,7 +30,7 @@ export async function POST(req: NextRequest) {
     switch (action) {
       // --- TẠO MỘT NHÓM MỚI (Giữ nguyên logic của bạn) ---
       case 'createGroup': {
-        if (!data || !data.name || !data.members || data.members.length < 2) {
+        if (!data || !data.name || !Array.isArray(data.members) || data.members.length < 2) {
           return NextResponse.json({ error: 'Missing data or not enough members' }, { status: 400 });
         }
 
@@ -26,10 +42,10 @@ export async function POST(req: NextRequest) {
         }));
 
         const finalData: GroupConversationCreate = {
-          name: data.name,
+          name: data.name as string,
           members: membersWithRole, // 🔥 Lưu object có role
           isGroup: true,
-          createdBy: data.createdBy,
+          createdBy: data.createdBy as string,
           createdAt: Date.now(),
         };
 
@@ -64,11 +80,11 @@ export async function POST(req: NextRequest) {
         const allMemberIds = Array.from(
           new Set(
             conversations.flatMap((conv) =>
-              (conv.members || []).map((m: any) => {
+              ((conv.members || []) as MemberInput[]).map((m) => {
                 if (!m) return undefined;
                 if (typeof m === 'string') return m;
-                if (typeof m === 'object' && '_id' in m) return String(m._id);
-                if (typeof m === 'object' && 'id' in m) return String((m as any).id);
+                if (typeof m === 'object' && '_id' in m && m._id) return String(m._id);
+                if (typeof m === 'object' && 'id' in m && m.id) return String(m.id);
                 return undefined;
               }),
             ),
@@ -76,7 +92,9 @@ export async function POST(req: NextRequest) {
         ).filter((id) => !!id);
 
         // 2. Query User Info
-        const allMemberObjectIds = allMemberIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
+        const allMemberObjectIds = allMemberIds
+          .filter((id): id is string => !!id && ObjectId.isValid(id))
+          .map((id) => new ObjectId(id));
         const usersResult = await getAllRows<User>(USERS_COLLECTION_NAME, {
           filters: { _id: { $in: allMemberObjectIds } },
         });
@@ -87,7 +105,7 @@ export async function POST(req: NextRequest) {
 
         // 3. Chuẩn hóa member & đảm bảo mỗi nhóm có ít nhất 1 OWNER
         const enrichedConversations = conversations.map((conv) => {
-          const rawMembers: any[] = Array.isArray(conv.members) ? (conv.members as any[]) : [];
+          const rawMembers: MemberInput[] = Array.isArray(conv.members) ? (conv.members as MemberInput[]) : [];
 
           // Tìm xem đã có OWNER chưa
           const hasOwner = rawMembers.some((m) => m && typeof m === 'object' && m.role === 'OWNER');
@@ -96,12 +114,12 @@ export async function POST(req: NextRequest) {
           let ownerIdToAssign: string | null = null;
           const createdByStr = conv.createdBy ? String(conv.createdBy) : null;
 
-          const getMemberId = (m: any): string | null => {
+          const getMemberId = (m: MemberInput): string | null => {
             if (!m) return null;
             if (typeof m === 'string') return m;
             if (typeof m === 'object') {
               if ('_id' in m && m._id) return String(m._id);
-              if ('id' in m && (m as any).id) return String((m as any).id);
+              if ('id' in m && m.id) return String(m.id);
             }
             return null;
           };
@@ -115,9 +133,9 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          const normalizedMembers = rawMembers.map((mem: any) => {
+          const normalizedMembers: MemberInfo[] = rawMembers.map((mem) => {
             const memId = getMemberId(mem);
-            const base: any = typeof mem === 'object' ? { ...mem } : { _id: memId };
+            const base: Partial<MemberInfo> = typeof mem === 'object' ? { ...mem } : { _id: memId ?? '' };
 
             // Gán role mặc định nếu thiếu
             if (!base.role || !['OWNER', 'ADMIN', 'MEMBER'].includes(base.role)) {
@@ -132,17 +150,17 @@ export async function POST(req: NextRequest) {
 
             if (memberInfo) {
               return {
-                ...base,
-                _id: memId,
+                ...(base as MemberInfo),
+                _id: memId ?? '',
                 name: memberInfo.name,
                 avatar: memberInfo.avatar,
               };
             }
 
             return {
-              ...base,
-              _id: memId,
-              name: base.name || 'Unknown User',
+              ...(base as MemberInfo),
+              _id: memId ?? '',
+              name: base.name ?? 'Unknown User',
             };
           });
 
@@ -238,7 +256,7 @@ export async function POST(req: NextRequest) {
 
         try {
           // 2. Chuẩn bị Filter ID
-          const filter = { _id: new ObjectId(conversationId) };
+          const filter = { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>;
 
           // 3. Chuẩn hóa dữ liệu thành viên mới (String ID -> Object Member)
           // Lưu ý: Mặc định role là 'MEMBER' khi add thêm vào nhóm
@@ -251,15 +269,11 @@ export async function POST(req: NextRequest) {
 
           // 4. Thực hiện Update
           // Sử dụng collection.updateOne để thao tác trực tiếp và chính xác hơn với ObjectId
-          const result = await collection.updateOne(
-            filter as any,
-            {
-              $push: {
-                members: { $each: membersToAdd },
-              },
-            } as any,
-          );
-
+          const result = await collection.updateOne(filter, {
+            $push: {
+              members: { $each: membersToAdd },
+            },
+          } as unknown as UpdateFilter<GroupConversation>);
           return NextResponse.json({ success: true, result });
         } catch (err) {
           console.error('addMembers Error:', err);
@@ -273,8 +287,8 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await collection.updateOne(
-          { _id: new ObjectId(conversationId) } as any,
-          { $set: { avatar: data.avatar } } as any,
+          { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>,
+          { $set: { avatar: data.avatar as string } } as unknown as UpdateFilter<GroupConversation>,
         );
 
         return NextResponse.json({ success: true, result });
@@ -286,21 +300,21 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await collection.updateOne(
-          { _id: new ObjectId(conversationId) } as any,
-          { $set: { name: data.name } } as any,
+          { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>,
+          { $set: { name: data.name as string } } as unknown as UpdateFilter<GroupConversation>,
         );
 
         return NextResponse.json({ success: true, result });
       }
 
       case 'changeRole': {
-        if (!conversationId || !targetUserId || !data.role) {
+        if (!conversationId || !targetUserId || !data?.role) {
           return NextResponse.json({ error: 'Missing info' }, { status: 400 });
         }
         // Update role của member có _id == targetUserId
         const result = await collection.updateOne(
-          { _id: new ObjectId(conversationId), 'members._id': targetUserId } as any,
-          { $set: { 'members.$.role': data.role } } as any,
+          { _id: new ObjectId(conversationId), 'members._id': targetUserId } as unknown as Filter<GroupConversation>,
+          { $set: { 'members.$.role': data.role as GroupRole } } as unknown as UpdateFilter<GroupConversation>,
         );
         return NextResponse.json({ success: true, result });
       }
@@ -308,9 +322,10 @@ export async function POST(req: NextRequest) {
       // --- 🔥 PHÂN QUYỀN: KICK MEMBER ---
       case 'kickMember': {
         if (!conversationId || !targetUserId) return NextResponse.json({ error: 'Missing info' }, { status: 400 });
-        const result = await collection.updateOne({ _id: new ObjectId(conversationId) } as any, {
-          $pull: { members: { _id: targetUserId } } as any,
-        });
+        const result = await collection.updateOne(
+          { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>,
+          { $pull: { members: { _id: targetUserId } } } as unknown as UpdateFilter<GroupConversation>,
+        );
         return NextResponse.json({ success: true, result });
       }
 
@@ -323,52 +338,60 @@ export async function POST(req: NextRequest) {
         const userIdStr = String(currentUserId);
 
         // Lấy thông tin nhóm hiện tại
-        const group = await collection.findOne({ _id: new ObjectId(conversationId) } as any);
+        const group = await collection.findOne({
+          _id: new ObjectId(conversationId),
+        } as unknown as Filter<GroupConversation>);
         if (!group) {
           return NextResponse.json({ error: 'Group not found' }, { status: 404 });
         }
 
-        const members: any[] = Array.isArray(group.members) ? (group.members as any[]) : [];
+        const members: MemberInput[] = Array.isArray(group.members) ? (group.members as MemberInput[]) : [];
 
         // Xác định xem current user có phải OWNER không
-        const ownerMember = members.find((m) => m && String(m._id) === userIdStr && m.role === 'OWNER');
+        const ownerMember = members.find((m) => {
+          if (!m || typeof m === 'string') return false;
+          const id = typeof m === 'object' && '_id' in m ? String(m._id) : '';
+          return id === userIdStr && m.role === 'OWNER';
+        });
 
         if (!ownerMember) {
           // Không phải OWNER -> chỉ cần rời nhóm
-          const result = await collection.updateOne({ _id: new ObjectId(conversationId) } as any, {
-            $pull: { members: { _id: userIdStr } } as any,
-          });
+          const result = await collection.updateOne(
+            { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>,
+            { $pull: { members: { _id: userIdStr } } } as unknown as UpdateFilter<GroupConversation>,
+          );
           return NextResponse.json({ success: true, result });
         }
 
         // Nếu là OWNER: tìm người kế nhiệm
-        const otherMembers = members.filter((m) => m && String(m._id) !== userIdStr);
+        const otherMembers = members.filter(
+          (m) => m && typeof m === 'object' && '_id' in m && String(m._id) !== userIdStr,
+        );
 
         if (otherMembers.length === 0) {
           // Không còn ai trong nhóm -> xóa luôn nhóm
-          await collection.deleteOne({ _id: new ObjectId(conversationId) } as any);
+          await collection.deleteOne({ _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>);
           const msgCollection = await getCollection<Message>(MESSAGES_COLLECTION_NAME);
-          await msgCollection.deleteMany({ roomId: String(conversationId) } as any);
+          await msgCollection.deleteMany({ roomId: String(conversationId) } as unknown as Filter<Message>);
           return NextResponse.json({ success: true });
         }
 
         // Ưu tiên chọn ADMIN làm OWNER, nếu không có thì lấy thành viên đầu tiên
-        const nextOwner =
-          otherMembers.find((m) => m.role === 'ADMIN') ||
-          otherMembers[0];
+        const nextOwner = otherMembers.find((m) => typeof m === 'object' && m.role === 'ADMIN') || otherMembers[0];
 
-        const nextOwnerId = String(nextOwner._id);
+        const nextOwnerId = String(typeof nextOwner === 'object' && '_id' in nextOwner ? nextOwner._id : nextOwner);
 
         // 1) Nâng quyền người kế nhiệm lên OWNER
         await collection.updateOne(
-          { _id: new ObjectId(conversationId), 'members._id': nextOwnerId } as any,
-          { $set: { 'members.$.role': 'OWNER' } } as any,
+          { _id: new ObjectId(conversationId), 'members._id': nextOwnerId } as unknown as Filter<GroupConversation>,
+          { $set: { 'members.$.role': 'OWNER' } } as unknown as UpdateFilter<GroupConversation>,
         );
 
         // 2) Xóa OWNER cũ khỏi nhóm
-        const result = await collection.updateOne({ _id: new ObjectId(conversationId) } as any, {
-          $pull: { members: { _id: userIdStr } } as any,
-        });
+        const result = await collection.updateOne(
+          { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>,
+          { $pull: { members: { _id: userIdStr } } } as unknown as UpdateFilter<GroupConversation>,
+        );
 
         return NextResponse.json({ success: true, result });
       }
@@ -379,7 +402,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing info' }, { status: 400 });
         }
 
-        const group = await collection.findOne({ _id: new ObjectId(conversationId) } as any);
+        const group = await collection.findOne({
+          _id: new ObjectId(conversationId),
+        } as unknown as Filter<GroupConversation>);
         if (!group) {
           return NextResponse.json({ error: 'Group not found' }, { status: 404 });
         }
@@ -391,9 +416,11 @@ export async function POST(req: NextRequest) {
         let ownerId: string | null = createdByStr;
 
         if (!ownerId && Array.isArray(group.members)) {
-          const ownerMember = (group.members as any[]).find((m) => m && m.role === 'OWNER' && m._id);
+          const ownerMember = (group.members as MemberInput[]).find(
+            (m) => m && typeof m === 'object' && m.role === 'OWNER' && m._id,
+          );
           if (ownerMember) {
-            ownerId = String(ownerMember._id);
+            ownerId = String(typeof ownerMember === 'object' && '_id' in ownerMember ? ownerMember._id : '');
           }
         }
 
@@ -402,11 +429,11 @@ export async function POST(req: NextRequest) {
         }
 
         // Xóa nhóm
-        await collection.deleteOne({ _id: new ObjectId(conversationId) } as any);
+        await collection.deleteOne({ _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>);
 
         // Xóa toàn bộ tin nhắn của nhóm
         const msgCollection = await getCollection<Message>(MESSAGES_COLLECTION_NAME);
-        await msgCollection.deleteMany({ roomId: String(conversationId) } as any);
+        await msgCollection.deleteMany({ roomId: String(conversationId) } as unknown as Filter<Message>);
 
         return NextResponse.json({ success: true });
       }
@@ -417,7 +444,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing ID/Data' }, { status: 400 });
         }
 
-        const updateFields: any = {};
+        const updateFields: Record<string, boolean> = {};
 
         if (typeof data.isPinned === 'boolean') {
           // Cập nhật isPinnedBy.{currentUserId}
@@ -433,8 +460,8 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await collection.updateOne(
-          { _id: new ObjectId(conversationId) } as any,
-          { $set: updateFields } as any,
+          { _id: new ObjectId(conversationId) } as unknown as Filter<GroupConversation>,
+          { $set: updateFields } as unknown as UpdateFilter<GroupConversation>,
         );
 
         return NextResponse.json({ success: true, result });

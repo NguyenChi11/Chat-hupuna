@@ -7,6 +7,21 @@ import ChatWindow from '../../app/(zalo)/home/ChatPopup';
 
 import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
+interface Message {
+  _id: string;
+  content?: string;
+  type: 'text' | 'image' | 'file' | 'sticker';
+  fileName?: string;
+  timestamp: number;
+  sender: string;
+  senderName: string;
+  roomId: string;
+  roomName: string;
+  isGroupChat: boolean;
+  partnerId?: string;
+  partnerName?: string;
+  fileUrl?: string;
+}
 
 interface HomeMobileProps {
   currentUser: User;
@@ -23,7 +38,7 @@ interface HomeMobileProps {
   onScrollComplete: () => void;
   fetchAllData: () => Promise<void> | void;
   onShowGlobalSearch: () => void;
-  onNavigateToMessage: (message: any) => void;
+  onNavigateToMessage: (message: Message) => void;
 }
 
 export default function HomeMobile({

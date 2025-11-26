@@ -22,7 +22,6 @@ export interface Message {
 }
 export interface MessageCreate {
   [key: string]: unknown;
-
   roomId: string;
   sender: string;
   content?: string;
