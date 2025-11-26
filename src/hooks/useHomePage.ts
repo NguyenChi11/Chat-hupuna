@@ -8,7 +8,6 @@ import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
 import type { GlobalSearchMessage, GlobalSearchContact } from '@/components/(home)/HomeOverlays'; // Cập nhật đường dẫn nếu cần // Cập nhật đường dẫn nếu cần
 
-
 // Kiểu dữ liệu cho bản ghi tin nhắn trả về từ API globalSearch
 interface GlobalSearchMessageApi {
   _id: string;
@@ -28,7 +27,7 @@ interface GlobalSearchMessageApi {
   displayRoomName?: string;
 }
 
-const SOCKET_URL = 'http://localhost:3002'; // Đã thống nhất dùng 3001 từ component HomePage
+const SOCKET_URL = 'http://localhost:3001'; // Đã thống nhất dùng 3001 từ component HomePage
 
 export function useHomePage() {
   const router = useRouter();
@@ -309,76 +308,90 @@ export function useHomePage() {
     socketRef.current = io(SOCKET_URL);
     socketRef.current.emit('join_room', currentUser._id);
 
-    socketRef.current.on('update_sidebar', (data: any) => {
-      const isMyMsg = data.sender === currentUser._id;
+    socketRef.current.on(
+      'update_sidebar',
+      (data: {
+        sender: string;
+        receiver?: string;
+        roomId: string;
+        type: string;
+        content?: string;
+        isRecalled?: boolean;
+        lastMessage?: string;
+        timestamp?: number;
+        senderName?: string;
+        isGroup: boolean;
+      }) => {
+        const isMyMsg = data.sender === currentUser._id;
 
-      // 1. Xác định tên người gửi
-      let senderName = 'Người lạ';
-      if (isMyMsg) {
-        senderName = 'Bạn';
-      } else {
-        const foundUser = allUsers.find((u) => u._id === data.sender);
-        if (foundUser) senderName = foundUser.name || 'Người lạ';
-        if (data.senderName) senderName = data.senderName;
-      }
+        // 1. Xác định tên người gửi
+        let senderName = 'Người lạ';
+        if (isMyMsg) {
+          senderName = 'Bạn';
+        } else {
+          const foundUser = allUsers.find((u) => u._id === data.sender);
+          if (foundUser) senderName = foundUser.name || 'Người lạ';
+          if (data.senderName) senderName = data.senderName;
+        }
 
-      // 2. 🔥 Format nội dung tin nhắn - Ưu tiên lastMessage nếu có
-      let contentDisplay = '';
+        // 2. 🔥 Format nội dung tin nhắn - Ưu tiên lastMessage nếu có
+        let contentDisplay = '';
 
-      // Nếu server đã gửi kèm lastMessage (đã format sẵn), dùng luôn
-      if (data.lastMessage) {
-        contentDisplay = data.lastMessage;
-      }
-      // Nếu là tin nhắn bị thu hồi
-      else if (data.isRecalled) {
-        contentDisplay = isMyMsg ? 'Bạn: Tin nhắn đã bị thu hồi' : `${senderName}: Tin nhắn đã bị thu hồi`;
-      }
-      // Nếu là tin nhắn text bình thường
-      else {
-        const rawContent = data.type === 'text' ? (data.content || '') : `[${data.type || 'Unknown'}]`;
-        contentDisplay = `${senderName}: ${rawContent}`;
-      }
-      // 3. CẬP NHẬT STATE
-      if (data.isGroup) {
-        setGroups((prev) => {
-          const index = prev.findIndex((g) => g._id === data.roomId);
-          if (index === -1) {
-            fetchAllData();
-            return prev;
-          }
-          const updatedGroup = {
-            ...prev[index],
-            lastMessage: contentDisplay,
-            lastMessageAt: data.timestamp || Date.now(),
-            isRecall: data.isRecalled || false,
-            unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
-          };
-          const newGroups = [...prev];
-          newGroups.splice(index, 1);
-          return [updatedGroup, ...newGroups];
-        });
-      } else {
-        // --- Xử lý 1-1 (User List) ---
-        const partnerId = isMyMsg ? data.receiver : data.sender;
-        setAllUsers((prev) => {
-          const index = prev.findIndex((u) => u._id === partnerId);
-          if (index === -1) {
-            fetchAllData();
-            return prev;
-          }
-          const updatedUser = {
-            ...prev[index],
-            lastMessage: contentDisplay,
-            lastMessageAt: data.timestamp || Date.now(),
-            isRecall: data.isRecalled || false,
-            unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
-          };
-          const newUsers = [...prev];
-          newUsers.splice(index, 1);
-          return [updatedUser, ...newUsers];
-        });
-      }
-    });
+        // Nếu server đã gửi kèm lastMessage (đã format sẵn), dùng luôn
+        if (data.lastMessage) {
+          contentDisplay = data.lastMessage;
+        }
+        // Nếu là tin nhắn bị thu hồi
+        else if (data.isRecalled) {
+          contentDisplay = isMyMsg ? 'Bạn: Tin nhắn đã bị thu hồi' : `${senderName}: Tin nhắn đã bị thu hồi`;
+        }
+        // Nếu là tin nhắn text bình thường
+        else {
+          const rawContent = data.type === 'text' ? data.content || '' : `[${data.type || 'Unknown'}]`;
+          contentDisplay = `${senderName}: ${rawContent}`;
+        }
+        // 3. CẬP NHẬT STATE
+        if (data.isGroup) {
+          setGroups((prev) => {
+            const index = prev.findIndex((g) => g._id === data.roomId);
+            if (index === -1) {
+              fetchAllData();
+              return prev;
+            }
+            const updatedGroup = {
+              ...prev[index],
+              lastMessage: contentDisplay,
+              lastMessageAt: data.timestamp || Date.now(),
+              isRecall: data.isRecalled || false,
+              unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
+            };
+            const newGroups = [...prev];
+            newGroups.splice(index, 1);
+            return [updatedGroup, ...newGroups];
+          });
+        } else {
+          // --- Xử lý 1-1 (User List) ---
+          const partnerId = isMyMsg ? data.receiver : data.sender;
+          setAllUsers((prev) => {
+            const index = prev.findIndex((u) => u._id === partnerId);
+            if (index === -1) {
+              fetchAllData();
+              return prev;
+            }
+            const updatedUser = {
+              ...prev[index],
+              lastMessage: contentDisplay,
+              lastMessageAt: data.timestamp || Date.now(),
+              isRecall: data.isRecalled || false,
+              unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
+            };
+            const newUsers = [...prev];
+            newUsers.splice(index, 1);
+            return [updatedUser, ...newUsers];
+          });
+        }
+      },
+    );
 
     return () => {
       socketRef.current?.disconnect();

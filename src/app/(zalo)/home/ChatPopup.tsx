@@ -43,7 +43,7 @@ const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408201.png',
 ];
 
-const SOCKET_URL = 'http://localhost:3002';
+const SOCKET_URL = 'http://localhost:3001';
 
 interface ChatWindowProps {
   selectedChat: ChatItem;
