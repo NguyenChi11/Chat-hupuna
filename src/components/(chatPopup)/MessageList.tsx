@@ -140,7 +140,7 @@ export default function MessageList({
                       onReply(msg);
                     }}
                     // order-3 khi là người khác (ở cuối), order-1 khi là tôi (ở cuối, nhưng bị flex-row-reverse đảo)
-                    className={`invisible group-hover:visible self-end p-1 text-gray-400 hover:text-blue-500 transition-colors 
+                    className={`invisible group-hover:visible self-end p-1 text-gray-400 flex items-center justify-center hover:text-blue-500 transition-colors 
                       ${isMe ? 'order-1' : 'order-3'}
                     `}
                     title="Phản hồi"

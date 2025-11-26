@@ -10,7 +10,7 @@ const getId = (u: Message['sender'] | string | undefined | null): string => {
   if (typeof u === 'object' && u !== null && '_id' in u && (u as { _id?: unknown })._id != null)
     return String((u as { _id: unknown })._id);
   if (typeof u === 'object' && u !== null && 'id' in u && (u as { id?: unknown }).id != null)
-    return String((u as { id: unknown }).id);
+    return String((u as unknown as { id: unknown }).id);
   return '';
 };
 

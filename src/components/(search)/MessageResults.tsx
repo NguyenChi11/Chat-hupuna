@@ -3,7 +3,7 @@ import React from 'react';
 interface Message {
   _id: string;
   content?: string;
-  type: 'text' | 'image' | 'file' | 'sticker';
+  type: 'text' | 'image' | 'file' | 'sticker' | 'video';
   fileName?: string;
   timestamp: number;
   sender: string;
@@ -97,6 +97,11 @@ function MessageIcon({ type }: { type: Message['type'] }) {
         />
       </svg>
     ),
+    video: (
+      <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M4 5a3 3 0 00-3 3v8a3 3 0 003 3h10a3 3 0 003-3V8a3 3 0 00-3-3H4zm15.553 3.106l3.502-1.946A1 1 0 0124 7.06v9.88a1 1 0 01-.945.997l-3.502-1.946A2 2 0 0018 14.24V9.76a2 2 0 001.553-1.654z" />
+      </svg>
+    ),
     text: (
       <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -141,9 +146,7 @@ export default function MessageResults({
       <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
         <div className="w-1 h-4 bg-green-500 rounded-full" />
         Tin nhắn
-        <span className="text-xs text-gray-500 font-normal">
-          ({groupedMessages.length} cuộc trò chuyện)
-        </span>
+        <span className="text-xs text-gray-500 font-normal">({groupedMessages.length} cuộc trò chuyện)</span>
       </h4>
       <div className="space-y-3">
         {groupedMessages.map((group) => (

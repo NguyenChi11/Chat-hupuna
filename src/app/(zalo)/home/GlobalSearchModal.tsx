@@ -16,7 +16,7 @@ interface User {
 interface Message {
   _id: string;
   content?: string;
-  type: 'text' | 'image' | 'file' | 'sticker';
+  type: 'text' | 'image' | 'file' | 'sticker' | 'video';
   fileName?: string;
   timestamp: number;
   sender: string;
@@ -74,7 +74,7 @@ export default function GlobalSearchModal({
     const files: Message[] = [];
 
     results.messages.forEach((msg) => {
-      if (msg.type === 'file' || msg.type === 'image') {
+      if (msg.type === 'file' || msg.type === 'image' || msg.type === 'video') {
         files.push(msg);
       } else {
         regular.push(msg);

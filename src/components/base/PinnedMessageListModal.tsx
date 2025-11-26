@@ -8,8 +8,8 @@ interface Props {
   messages: Message[];
   onClose: () => void;
   onJumpToMessage: (messageId: string) => void;
-  onGetSenderName: (sender: string) => string; // Định nghĩa prop hàm lấy tên
-  onGetContentDisplay: (msg: Message) => string; // Định nghĩa prop hàm lấy nội dung
+  onGetSenderName: (sender: string | Message['sender']) => string;
+  onGetContentDisplay: (msg: Message) => string;
 }
 
 export default function PinnedMessageListModal({

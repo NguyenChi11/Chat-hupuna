@@ -881,7 +881,7 @@ export default function ChatWindow({
               onSendMessage={handleSendMessage}
               onSelectImage={(file) => {
                 const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
-                const msgType = isVideo ? 'file' : 'image';
+                const msgType = isVideo ? 'video' : 'image';
                 handleUploadAndSend(file, msgType);
               }}
               onSelectFile={(file) => {

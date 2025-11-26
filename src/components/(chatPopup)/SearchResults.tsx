@@ -6,7 +6,7 @@ import type { ChatItem as ChatItemType } from '@/types/Group';
 interface Message {
   _id: string;
   content?: string;
-  type: 'text' | 'image' | 'file' | 'sticker';
+  type: 'text' | 'image' | 'file' | 'sticker' | 'video';
   fileName?: string;
   timestamp: number;
   sender: string;

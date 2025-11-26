@@ -24,7 +24,7 @@ interface SidebarProps {
 interface Message {
   _id: string;
   content?: string;
-  type: 'text' | 'image' | 'file' | 'sticker';
+  type: 'text' | 'image' | 'file' | 'sticker' | 'video';
   fileName?: string;
   timestamp: number;
   sender: string;
@@ -200,12 +200,14 @@ export default function Sidebar({
 
   // --- Search Results Grouping (Memoized) ---
   const regularMessages = useMemo(
-    () => globalSearchResults.messages.filter((msg) => msg.type !== 'file' && msg.type !== 'image'),
+    () =>
+      globalSearchResults.messages.filter((msg) => msg.type !== 'file' && msg.type !== 'image' && msg.type !== 'video'),
     [globalSearchResults.messages],
   );
 
   const fileMessages = useMemo(
-    () => globalSearchResults.messages.filter((msg) => msg.type === 'file' || msg.type === 'image'),
+    () =>
+      globalSearchResults.messages.filter((msg) => msg.type === 'file' || msg.type === 'image' || msg.type === 'video'),
     [globalSearchResults.messages],
   );
 
