@@ -320,6 +320,7 @@ export default function MessageList({
                                 <video
                                   src={isUploading ? (msg.fileUrl as string) : getProxyUrl(msg.fileUrl as string)}
                                   controls={!isUploading}
+                                  preload="none"
                                   className={`absolute inset-0 w-full h-full object-contain ${isUploading ? 'opacity-60' : ''}`}
                                 />
 

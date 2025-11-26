@@ -1,4 +1,6 @@
 import React from 'react';
+import Image from 'next/image';
+import { getProxyUrl } from '@/utils/utils';
 import type { ChatItem as ChatItemType } from '@/types/Group';
 
 interface Message {
@@ -170,7 +172,7 @@ const ContactsSection = ({
       </h4>
       <div className="space-y-1">
         {contacts.map((contact) => {
-          const isGroupContact = Boolean((contact as any).isGroup);
+          const isGroupContact = Boolean((contact as ChatItemType & { isGroup?: boolean }).isGroup);
 
           return (
             <div
@@ -181,7 +183,13 @@ const ContactsSection = ({
               <div className="relative flex-shrink-0">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                   {contact.avatar ? (
-                    <img src={contact.avatar as string} className="w-full h-full object-cover" alt="" />
+                    <Image
+                      src={getProxyUrl(contact.avatar as string)}
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-cover"
+                      alt=""
+                    />
                   ) : (
                     String(contact.name ?? '')
                       .charAt(0)
@@ -375,14 +383,12 @@ const FilesSection = ({
                     <div className="flex-shrink-0">
                       {file.type === 'image' ? (
                         <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
-                          <img
-                            src={file.fileUrl}
-                            alt={file.fileName}
+                          <Image
+                            src={getProxyUrl(file.fileUrl as string)}
+                            width={48}
+                            height={48}
+                            alt={file.fileName || 'File'}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"%3E%3Crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3E%3C/rect%3E%3Ccircle cx="8.5" cy="8.5" r="1.5"%3E%3C/circle%3E%3Cpolyline points="21 15 16 10 5 21"%3E%3C/polyline%3E%3C/svg%3E';
-                            }}
                           />
                         </div>
                       ) : (
