@@ -1,7 +1,6 @@
 // lib/uploadStore.ts
 
 // 👇 KHAI BÁO KIỂU CHO GLOBAL
-/* eslint-disable no-var */
 declare global {
   var uploadProgressMap: Map<string, number> | undefined;
 }

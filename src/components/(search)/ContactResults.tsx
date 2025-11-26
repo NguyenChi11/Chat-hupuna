@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React from 'react';
 
 interface PhonebookContact {
@@ -57,7 +58,7 @@ export default function ContactResults({ contacts, searchTerm, onSelectContact }
             <div className="relative">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                 {phonebook.avatar ? (
-                  <img src={phonebook.avatar} className="w-full h-full object-cover" alt="" />
+                  <Image src={phonebook.avatar} className="w-full h-full object-cover" alt="" />
                 ) : (
                   phonebook.name?.charAt(0).toUpperCase()
                 )}
@@ -74,9 +75,7 @@ export default function ContactResults({ contacts, searchTerm, onSelectContact }
               <p className="font-medium text-gray-800 truncate">
                 <HighlightText text={phonebook.name} keyword={searchTerm} />
               </p>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
-                {phonebook.isGroup ? 'Nhóm' : 'Liên hệ'}
-              </p>
+              <p className="text-xs text-gray-500 flex items-center gap-1">{phonebook.isGroup ? 'Nhóm' : 'Liên hệ'}</p>
             </div>
             <svg
               className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors"

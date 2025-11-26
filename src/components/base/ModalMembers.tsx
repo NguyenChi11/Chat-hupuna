@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import IconGroup from '@/public/icons/group.svg'; // Đảm bảo đường dẫn đúng
+
 import SearchIcon from '@/public/icons/icon-search.svg'; // Đảm bảo đường dẫn đúng
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
 import { User } from '../../types/User';
@@ -97,7 +97,7 @@ export default function GroupMembersModal({
     const targetMember = localMembers.find((m) => String(m._id || m.id) === targetUserId);
     const targetName = targetMember ? targetMember.name : 'Thành viên';
 
-  type GroupActionPayload =
+    type GroupActionPayload =
       | {
           conversationId: string;
           targetUserId: string;

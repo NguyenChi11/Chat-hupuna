@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import React from 'react';
 
 interface Message {
@@ -133,12 +134,7 @@ interface MessageResultsProps {
   onNavigateToMessage: (message: Message) => void;
 }
 
-export default function MessageResults({
-  groupedMessages,
-  searchTerm,
-  allUsers,
-  onNavigateToMessage,
-}: MessageResultsProps) {
+export default function MessageResults({ groupedMessages, searchTerm, onNavigateToMessage }: MessageResultsProps) {
   if (groupedMessages.length === 0) return null;
 
   return (
@@ -158,7 +154,13 @@ export default function MessageResults({
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
                   {group.roomAvatar ? (
-                    <img src={group.roomAvatar} className="w-full h-full object-cover" alt="" />
+                    <Image
+                      width={40}
+                      height={40}
+                      src={group.roomAvatar}
+                      className="w-full h-full object-cover"
+                      alt=""
+                    />
                   ) : (
                     group.roomName.charAt(0).toUpperCase()
                   )}

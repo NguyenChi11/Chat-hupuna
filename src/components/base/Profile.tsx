@@ -9,7 +9,7 @@ interface AccountInfoModalProps {
   iconUpdateUrl?: string;
 }
 
-const AccountInfoModal: React.FC<AccountInfoModalProps> = ({ show, onClose, user, iconUpdateUrl }) => {
+const AccountInfoModal: React.FC<AccountInfoModalProps> = ({ show, onClose, user }) => {
   if (!show) return null;
 
   return (

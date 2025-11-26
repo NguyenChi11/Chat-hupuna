@@ -16,14 +16,7 @@ interface ChatItemProps {
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroupChat: boolean) => void;
 }
 
-export default function ChatItem({
-  item,
-  isGroup,
-  selectedChat,
-  onSelectChat,
-  currentUserId,
-  onChatAction,
-}: ChatItemProps) {
+export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, onChatAction }: ChatItemProps) {
   const isSelected = selectedChat?._id === item._id;
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);

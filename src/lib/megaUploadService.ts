@@ -20,7 +20,7 @@ export async function uploadToMega(
 
   await new Promise<void>((resolve, reject) => {
     storage.on('ready', () => resolve());
-    storage.on('error' as any, (err) => reject(err));
+    storage.on('error' as never, (err) => reject(err));
   });
 
   // --- BƯỚC 1 & 2: TẠO FOLDER (Giữ nguyên logic cũ) ---
@@ -42,13 +42,16 @@ export async function uploadToMega(
   }
 
   const link = await new Promise<string>((resolve, reject) => {
-    uploadTask.on('complete', (uploadedFile: any) => {
-      uploadedFile.link(false, (err: Error | null, url: string) => {
-        if (err) reject(err);
-        else resolve(url);
-      });
-    });
-    uploadTask.on('error', (err: any) => reject(err));
+    uploadTask.on(
+      'complete',
+      (uploadedFile: { link: (isPublic: boolean, cb: (err: Error | null, url: string) => void) => void }) => {
+        uploadedFile.link(false, (err: Error | null, url: string) => {
+          if (err) reject(err);
+          else resolve(url);
+        });
+      },
+    );
+    uploadTask.on('error', (err: Error) => reject(err));
   });
 
   return {

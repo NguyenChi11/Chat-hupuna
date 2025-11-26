@@ -55,7 +55,6 @@ export default function HomeDesktop({
   scrollToMessageId,
   onScrollComplete,
   fetchAllData,
-  onShowGlobalSearch,
   onNavigateToMessage,
 }: HomeDesktopProps) {
   return (

@@ -1,5 +1,6 @@
 import React from 'react';
 import Zicloud from '@/public/imgs/zCloud.png';
+import Image from 'next/image';
 
 interface ZaloCloudPopupProps {
   onClose: () => void; // bắt buộc có hàm onClose
@@ -27,7 +28,7 @@ const ZaloCloudPopup: React.FC<ZaloCloudPopupProps> = ({ onClose }) => {
 
       {/* Top Image Section */}
       <div className="bg-[#f0f7ff] p-4 flex flex-col items-center justify-center relative">
-        <img src={Zicloud.src} alt="ZCloud" className="w-100 h-40 object-contain" />
+        <Image src={Zicloud.src} alt="ZCloud" className="w-100 h-40 object-contain" />
 
         {/* Accent Elements */}
         <span className="absolute top-2 left-1/4 w-2 h-2 bg-red-500 rounded-full rotate-45"></span>

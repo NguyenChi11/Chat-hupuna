@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
     filters,
     field,
     value,
-    search,
     skip,
     limit,
     _id: requestId,
@@ -515,12 +514,7 @@ export async function POST(req: NextRequest) {
           originalContent: originalContentToSave,
         };
 
-        const result = await updateByField<Message>(
-          collectionName,
-          '_id',
-          messageId,
-          updateData
-        );
+        const result = await updateByField<Message>(collectionName, '_id', messageId, updateData);
 
         return NextResponse.json({ success: true, result });
       }

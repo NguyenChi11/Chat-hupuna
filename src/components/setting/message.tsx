@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ToggleSwitch from '../ui/toggleswitch';
 import IconAR2 from '@/public/icons/arrow2.svg';
 import RadioItem from '../ui/radioItem';
+import Image from 'next/image';
 
 type ExcelDisplayOption = 'Dạng hình' | 'Dạng chữ' | 'Luôn hỏi';
 
@@ -50,7 +51,7 @@ const MessageComponent = () => {
         <div className="flex items-center justify-between py-2 cursor-pointer">
           <span className="text-sm sm:text-base text-black font-medium">Quản lý tin nhắn nhanh</span>
           <span className="text-gray-400 flex-shrink-0">
-            <img src={IconAR2.src} className="w-4 h-4 sm:w-5 sm:h-5" alt="Arrow" />
+            <Image width={24} height={24} src={IconAR2.src} className="w-4 h-4 sm:w-5 sm:h-5" alt="Arrow" />
           </span>
         </div>
       </div>

@@ -55,7 +55,6 @@ export default function HomeMobile({
   scrollToMessageId,
   onScrollComplete,
   fetchAllData,
-  onShowGlobalSearch,
   onNavigateToMessage,
 }: HomeMobileProps) {
   return (

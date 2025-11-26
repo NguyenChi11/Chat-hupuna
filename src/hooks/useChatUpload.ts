@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { Message, MessageCreate, MessageType } from '@/types/Message';
 import { ChatItem, GroupConversation } from '@/types/Group';
 import { User } from '@/types/User';
-import { uploadFileWithProgress } from '@/utils/uploadHelper';
+import { uploadFileWithProgress, type UploadResponse } from '@/utils/uploadHelper';
 
 interface UseChatUploadParams {
   roomId: string;
@@ -101,10 +101,10 @@ export function useChatUpload({
       };
 
       try {
-        const res = await uploadFileWithProgress(`/api/upload?uploadId=${uploadId}`, formData, (clientRawPercent) => {
+        const res = (await uploadFileWithProgress(`/api/upload?uploadId=${uploadId}`, formData, (clientRawPercent) => {
           const unifiedPercent = clientRawPercent / 2;
           setUploadingFiles((prev) => ({ ...prev, [tempId]: unifiedPercent }));
-        });
+        })) as UploadResponse;
 
         if (res.success) {
           const finalMsg = res.data;

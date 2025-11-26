@@ -124,7 +124,7 @@ export default function ChatWindow({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const isGroup = 'isGroup' in selectedChat && selectedChat.isGroup === true;
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-  const [pinnedMessage, setPinnedMessage] = useState<Message | null>(null);
+  const [, setPinnedMessage] = useState<Message | null>(null);
   const [allPinnedMessages, setAllPinnedMessages] = useState<Message[]>([]);
   const [showPinnedList, setShowPinnedList] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);

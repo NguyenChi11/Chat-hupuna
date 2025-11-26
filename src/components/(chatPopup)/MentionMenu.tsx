@@ -1,7 +1,5 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import React, { RefObject } from 'react';
 
 import type { User } from '@/types/User';

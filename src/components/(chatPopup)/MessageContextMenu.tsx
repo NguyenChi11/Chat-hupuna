@@ -1,7 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
 import { Message } from '@/types/Message';
-import PinIcon from '@/public/icons/pin-icon.svg';
 import ICPin from '../svg/ICPin';
 
 const getId = (u: Message['sender'] | string | undefined | null): string => {

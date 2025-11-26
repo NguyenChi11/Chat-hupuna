@@ -2,10 +2,6 @@
 
 import React, { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
 
-import IamgeIcon from '@/public/icons/Image-icon.svg';
-import FileICon from '@/public/icons/file-icon.svg';
-import MicroIcon from '@/public/icons/micro-icon.svg';
-import Image from 'next/image';
 import ICFile from '@/components/svg/ICFile';
 import ICPicture from '@/components/svg/ICPicture';
 import ICVoice from '@/components/svg/ICVoice';

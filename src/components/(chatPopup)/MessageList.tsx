@@ -244,7 +244,7 @@ export default function MessageList({
                             )}
 
                             {msg.type === 'sticker' && msg.fileUrl && (
-                              <img
+                              <Image
                                 src={msg.fileUrl}
                                 alt="Sticker"
                                 width={128}

@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -11,13 +10,8 @@ import IconSao from '@/public/icons/sao.png';
 import IconTB from '@/public/icons/thongbao.png';
 import IconAR2 from '@/public/icons/arrow2.svg';
 
-import IconST1 from '@/public/icons/setting1.svg';
 import FlagVN from '@/public/icons/vn.svg';
 import FlagEN from '@/public/icons/en.svg';
-import IconUser from '@/public/icons/user1.svg';
-import IconLG from '@/public/icons/language.svg';
-import IconHP from '@/public/icons/help.svg';
-import MessgeIcon from '@/public/icons/message-icon.svg';
 import PhoneBookIcon from '@/public/icons/phonebook.svg';
 import CLoudZIcon from '@/public/icons/cloud-icon-z.svg';
 import CLoudIcon from '@/public/icons/cloud-icon.svg';
@@ -137,7 +131,7 @@ export default function SidebarMenu() {
           >
             {userInfo?.avatar ? (
               // Avatar thật từ thông tin user (qua proxy để load đúng ảnh từ Mega)
-              <img
+              <Image
                 src={getProxyUrl(userInfo.avatar)}
                 width={40}
                 height={40}
@@ -157,7 +151,7 @@ export default function SidebarMenu() {
               <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center text-sm font-semibold">
                   {userInfo?.avatar ? (
-                    <img
+                    <Image
                       src={getProxyUrl(userInfo.avatar)}
                       width={40}
                       height={40}
@@ -202,7 +196,7 @@ export default function SidebarMenu() {
                     <ICGloabl className="w-5 h-5" stroke="#000000" />
                     <span className="text-sm text-gray-800">Ngôn ngữ</span>
                   </div>
-                  <img src={IconAR2.src} alt="AR2" className="w-4 h-4" />
+                  <Image src={IconAR2} width={20} height={20} alt="AR2" className="w-4 h-4" />
                 </button>
 
                 {showLang && (
@@ -229,7 +223,7 @@ export default function SidebarMenu() {
                     <ICQuestion className="w-5 h-5" stroke="#000000" />
                     <span className="text-sm text-gray-800">Hỗ trợ</span>
                   </div>
-                  <img src={IconAR2.src} alt="AR2" className="w-4 h-4" />
+                  <Image src={IconAR2} width={20} height={20} alt="AR2" className="w-4 h-4" />
                 </button>
 
                 {showSupport && (

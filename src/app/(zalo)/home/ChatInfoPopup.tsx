@@ -60,9 +60,6 @@ export default function ChatInfoPopup({
   const [previewMedia, setPreviewMedia] = React.useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const [confirmAction, setConfirmAction] = React.useState<'leave' | 'disband' | null>(null);
 
-
-  const [showLeaveModal, setShowLeaveModal] = React.useState(false);
-  const [isLeavingGroup, setIsLeavingGroup] = React.useState(false);
   React.useEffect(() => {
     setGroupName(chatName || '');
   }, [chatName]);
@@ -123,8 +120,6 @@ export default function ChatInfoPopup({
       setIsGroupAvatarUploading(false);
     }
   };
-
-
 
   const {
     localIsPinned,

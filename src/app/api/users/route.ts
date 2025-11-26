@@ -77,8 +77,6 @@ export async function POST(req: NextRequest) {
     sort,
     currentUserId,
     roomId,
-    isPinned,
-    isHidden,
   } = body;
 
   try {
@@ -162,7 +160,6 @@ export async function POST(req: NextRequest) {
             };
           }),
         );
-        const visibleUsers = usersWithData.filter((u) => !u.isHidden && String(u._id) !== userIdStr);
         return NextResponse.json({ total: usersWithData.length, data: usersWithData });
       }
 
@@ -185,7 +182,7 @@ export async function POST(req: NextRequest) {
           );
           console.log(result);
           return NextResponse.json({ success: true });
-        } catch (error) {
+        } catch {
           return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
         }
 

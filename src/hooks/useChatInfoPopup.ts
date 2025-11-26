@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { ChatItem, GroupConversation } from '@/types/Group';
+import type { ChatItem } from '@/types/Group';
 import type { Message } from '@/types/Message';
 import { isLink, isVideoFile } from '@/utils/utils';
 
@@ -72,11 +72,8 @@ export function useChatInfoPopup({ selectedChat, isGroup, messages, onChatAction
       })
       .map((msg) => ({
         id: msg._id,
-        type: msg.type === 'image'
-          ? 'image'
-          : (msg.type === 'video' || isVideoFile(msg.fileUrl || ''))
-            ? 'video'
-            : 'file',
+        type:
+          msg.type === 'image' ? 'image' : msg.type === 'video' || isVideoFile(msg.fileUrl || '') ? 'video' : 'file',
         url: msg.fileUrl || '',
         fileName: msg.fileName,
       }))
@@ -131,5 +128,3 @@ export function useChatInfoPopup({ selectedChat, isGroup, messages, onChatAction
     linkList,
   };
 }
-
-

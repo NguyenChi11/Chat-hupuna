@@ -4,11 +4,26 @@
  * @param formData Dữ liệu form chứa file
  * @param onProgress Callback nhận % hoàn thành (0 -> 100)
  */
+import type { MessageCreate } from '@/types/Message';
+
+export interface UploadSuccessResponse {
+  success: true;
+  link: string;
+  data: MessageCreate;
+}
+
+export interface UploadErrorResponse {
+  success: false;
+  message: string;
+}
+
+export type UploadResponse = UploadSuccessResponse | UploadErrorResponse;
+
 export const uploadFileWithProgress = (
   url: string,
   formData: FormData,
   onProgress: (percent: number) => void,
-): Promise<any> => {
+): Promise<UploadResponse> => {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
@@ -28,9 +43,9 @@ export const uploadFileWithProgress = (
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           // Parse kết quả trả về từ server (JSON)
-          const response = JSON.parse(xhr.responseText);
+          const response = JSON.parse(xhr.responseText) as UploadResponse;
           resolve(response);
-        } catch (e) {
+        } catch {
           reject('Phản hồi từ server không phải JSON hợp lệ');
         }
       } else {

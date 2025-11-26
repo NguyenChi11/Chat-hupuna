@@ -91,7 +91,13 @@ export default function FileResults({ groupedFiles, searchTerm, onNavigateToMess
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold overflow-hidden">
                   {group.roomAvatar ? (
-                    <img src={group.roomAvatar} className="w-full h-full object-cover" alt="" />
+                    <Image
+                      width={40}
+                      height={40}
+                      src={group.roomAvatar}
+                      className="w-full h-full object-cover"
+                      alt=""
+                    />
                   ) : (
                     group.roomName.charAt(0).toUpperCase()
                   )}
