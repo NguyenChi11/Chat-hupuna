@@ -11,9 +11,9 @@ type ViewMode = 'view' | 'edit' | 'password';
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [viewer, setViewer] = useState<User | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('view');
+  const [, setViewMode] = useState<ViewMode>('view');
   const [isUploading, setIsUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
 

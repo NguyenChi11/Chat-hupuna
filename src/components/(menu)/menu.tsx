@@ -1,449 +1,405 @@
 'use client';
 
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 
-import IconTN from '@/public/icons/tinnhan.png';
-import IconDM from '@/public/icons/danhmuc.png';
-import IconTNTD from '@/public/icons/tntd.png';
-import IconSao from '@/public/icons/sao.png';
-import IconTB from '@/public/icons/thongbao.png';
-import IconAR2 from '@/public/icons/arrow2.svg';
-
-import FlagVN from '@/public/icons/vn.svg';
-import FlagEN from '@/public/icons/en.svg';
-import PhoneBookIcon from '@/public/icons/phonebook.svg';
-import CLoudZIcon from '@/public/icons/cloud-icon-z.svg';
-import CLoudIcon from '@/public/icons/cloud-icon.svg';
-import BagIcon from '@/public/icons/bag-icon.svg';
-import SettingsIcon from '@/public/icons/setting-icon.svg';
+import { cookieBase } from '../../utils/cookie';
+import { getProxyUrl } from '../../utils/utils';
+import { User } from '../../types/User';
 
 import PopupProfile from '../base/PopupProfile';
-import SettingsPanel from '../base/Setting';
 import ZaloContactCard from './help';
 import ZaloCloudPopup from './icloud';
-import { cookieBase } from '../../utils/cookie';
-import { User } from '../../types/User';
-import Image from 'next/image';
-import { getProxyUrl } from '../../utils/utils';
-import Messenger from '@/components/svg/Messenger';
-import ICGloabl from '@/components/svg/ICGloabl';
-import ICSitting from '@/components/svg/ICSitting';
-import ICPerson from '@/components/svg/ICPerson';
-import ICQuestion from '@/components/svg/ICQuestion';
+
+// React Icons - Modern & Clean
+import {
+  HiHome,
+  HiUserGroup,
+  HiCloud,
+  HiBriefcase,
+  HiCog,
+  HiQuestionMarkCircle,
+  HiOutlineTranslate,
+  HiLogout,
+  HiUserCircle,
+  HiChevronRight,
+  HiChevronDown,
+  HiLightningBolt,
+  HiCollection,
+  HiChatAlt2,
+  HiStar,
+  HiClock,
+} from 'react-icons/hi';
+import { MdCloudUpload } from 'react-icons/md';
+import { MenuItem } from '@/components/ui/MenuItem';
+import { NavButton } from '@/components/ui/NavButton';
+import { LangItem, SupportItem } from '@/components/ui/LangItem';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export default function SidebarMenu() {
   const router = useRouter();
-  const [active, setActive] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showBusinessTools, setShowBusinessTools] = useState<boolean>(false);
-  const [showSupport, setShowSupport] = useState<boolean>(false);
-  const [showModal, setShowModal] = useState(false);
-  const [showLang, setShowLang] = useState(false);
-  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const [showContactCard, setShowContactCard] = useState(false);
 
-  const settingsRef = useRef<HTMLDivElement | null>(null);
-  const businessRef = useRef<HTMLDivElement | null>(null);
+  // Single source of truth cho menu mở
+  const [openMenu, setOpenMenu] = useState<{
+    avatar: boolean;
+    business: boolean;
+    cloud: boolean;
+    submenu: 'lang' | 'support' | null;
+  }>({
+    avatar: false,
+    business: false,
+    cloud: false,
+    submenu: null,
+  });
+
+  const [activeItem, setActiveItem] = useState<string>('home');
+  const [showContactCard, setShowContactCard] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const [userInfo, setUserInfo] = useState<User | null>(null);
+
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const businessRef = useRef<HTMLDivElement>(null);
+
+  // Load user
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('info_user');
+      if (raw) setUserInfo(JSON.parse(raw));
+    } catch (e) {
+      console.error('Failed to parse info_user', e);
+    }
+  }, []);
+
+  // Click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setOpenMenu((prev) => ({ ...prev, avatar: false, submenu: null }));
+      }
+      if (businessRef.current && !businessRef.current.contains(e.target as Node)) {
+        setOpenMenu((prev) => ({ ...prev, business: false }));
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
+    setOpenMenu((prev) => ({ ...prev, avatar: false }));
   };
 
   const finalizeLogout = async () => {
     try {
-      // Gọi API logout để xoá cookie HttpOnly `session_token` trên server
       await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'logout' }),
       });
-    } catch (error) {
-      console.error('Logout API error:', error);
+    } catch (err) {
+      console.error('Logout error:', err);
     }
 
-    // Xóa session trên cookie (JWT) phía client (nếu có lưu thêm bản non-HttpOnly)
     cookieBase.remove('session_token');
     cookieBase.remove('remember_login');
-
-    // Xóa thông tin user & cài đặt remember_login ở localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('info_user');
-      localStorage.removeItem('remember_login');
-    }
-
+    localStorage.removeItem('info_user');
+    localStorage.removeItem('remember_login');
     router.push('/');
   };
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-        setShowSettings(false);
-        setShowSupport(false);
-      }
-      if (businessRef.current && !businessRef.current.contains(event.target as Node)) {
-        setShowBusinessTools(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
-  const handleTrangChu = () => {
-    setActive('home');
-    router.push('/home');
+  const navigate = useCallback(
+    (path: string, key: string) => {
+      setActiveItem(key);
+      router.push(path);
+    },
+    [router],
+  );
+
+  const toggleMenu = (menu: keyof typeof openMenu, value?: boolean) => {
+    setOpenMenu((prev) => ({
+      ...prev,
+      [menu]: value !== undefined ? value : !prev[menu],
+      submenu: menu === 'avatar' && value !== true ? null : prev.submenu,
+    }));
   };
-
-  const handleDanhBa = () => {
-    setActive('directory');
-    router.push('/directory');
-  };
-
-  const [userInfo, setUserInfo] = useState<User | null>(null);
-
-  useEffect(() => {
-    // Lấy thông tin user từ localStorage (đã được lưu sau khi login)
-    if (typeof window === 'undefined') return;
-
-    try {
-      const raw = localStorage.getItem('info_user');
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw) as User;
-      if (parsed && parsed._id) {
-        setUserInfo(parsed);
-      }
-    } catch (e) {
-      console.error('Không đọc được info_user từ localStorage', e);
-    }
-  }, []);
 
   return (
     <>
-      <div className="h-screen w-16 bg-blue-600 flex flex-col items-center py-4 text-white relative">
-        {/* Avatar (kiểu Zalo: click để mở menu tài khoản) */}
-        <div className="mb-6 relative" ref={settingsRef}>
+      {/* Sidebar */}
+      <div className="h-screen w-16 bg-gradient-to-b from-blue-600 to-blue-800 flex flex-col items-center py-5 text-white relative shadow-2xl">
+        {/* Avatar */}
+        <div ref={avatarRef} className="mb-8 relative">
           <button
-            onClick={() => setShowSettings((prev) => !prev)}
-            className="cursor-pointer w-10 h-10 rounded-full overflow-hidden border-2 border-white/60 hover:border-yellow-300 transition-colors bg-white/10 flex items-center justify-center"
+            onClick={() => toggleMenu('avatar')}
+            className="group relative w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/20 hover:ring-yellow-400 transition-all duration-300 shadow-lg"
           >
             {userInfo?.avatar ? (
-              // Avatar thật từ thông tin user (qua proxy để load đúng ảnh từ Mega)
               <Image
                 src={getProxyUrl(userInfo.avatar)}
-                width={40}
-                height={40}
+                width={44}
+                height={44}
                 alt={userInfo.name}
                 className="w-full h-full object-cover"
               />
             ) : (
-              // Fallback: ký tự đầu tên giống Zalo
-              <span className="text-sm font-semibold">{(userInfo?.name || 'U').charAt(0).toUpperCase()}</span>
+              <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl font-bold">
+                {(userInfo?.name || 'U').charAt(0).toUpperCase()}
+              </div>
             )}
+            <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
 
-          {/* Menu tài khoản bật khi click avatar */}
-          {showSettings && (
-            <div className="absolute left-14 top-0 w-64 bg-white text-black shadow-2xl rounded-xl py-2 z-50">
-              {/* Header nhỏ trong menu: tên + email/số điện thoại nếu có */}
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-                <div
-                  className="w-9 h-9 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center text-sm font-semibold hover:cursor-pointer"
-                  onClick={() => {
-                    setShowSettings(false);
-                    if (userInfo?._id) {
-                      router.push(`/profile?userId=${userInfo._id}`);
-                    } else {
-                      router.push('/profile');
-                    }
-                  }}
-                >
-                  {userInfo?.avatar ? (
-                    <Image
-                      src={getProxyUrl(userInfo.avatar)}
-                      width={40}
-                      height={40}
-                      alt={userInfo.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    (userInfo?.name || 'U').charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div
-                  className="min-w-0 hover:cursor-pointer"
-                  onClick={() => {
-                    setShowSettings(false);
-                    if (userInfo?._id) {
-                      router.push(`/profile?userId=${userInfo._id}`);
-                    } else {
-                      router.push('/profile');
-                    }
-                  }}
-                >
-                  <p className="text-sm font-semibold text-gray-900 truncate">{userInfo?.name || 'Tài khoản Hupuna'}</p>
-                  <p className="text-xs text-gray-500 truncate">{userInfo?.username}</p>
-                </div>
-              </div>
-
-              {/* Nút Thông tin tài khoản */}
-              <button
-                onClick={() => setShowModal(true)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <ICPerson className="w-5 h-5" stroke="#000000" />
-                <span className="text-sm text-gray-800">Thông tin tài khoản</span>
-              </button>
-
-              {/* Nút Cài đặt */}
-              <button
-                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 transition-colors cursor-pointer"
-                onClick={() => setShowSettingsPanel(true)}
-              >
-                <ICSitting className="w-5 h-5" stroke="#000000" />
-                <span className="text-sm text-gray-800">Cài đặt</span>
-              </button>
-
-              {/* Ngôn ngữ */}
-              <div className="relative">
-                <button
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => setShowLang((prev) => !prev)}
-                >
-                  <div className="flex items-center gap-3">
-                    <ICGloabl className="w-5 h-5" stroke="#000000" />
-                    <span className="text-sm text-gray-800">Ngôn ngữ</span>
-                  </div>
-                  <Image src={IconAR2} width={20} height={20} alt="AR2" className="w-4 h-4" />
-                </button>
-
-                {showLang && (
-                  <div className="absolute left-full top-0 ml-1 w-40 bg-white text-black shadow-xl rounded-lg py-2 z-50">
-                    <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
-                      <Image src={FlagVN} width={20} height={20} alt="VN" className="w-5 h-5 object-cover" />
-                      <span className="text-sm">Tiếng Việt</span>
-                    </button>
-                    <button className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 transition-colors cursor-pointer">
-                      <Image src={FlagEN} width={20} height={20} alt="EN" className="w-5 h-5 object-cover" />
-                      <span className="text-sm">Tiếng Anh</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Hỗ trợ */}
-              <div className="relative">
-                <button
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => setShowSupport((prev) => !prev)}
-                >
-                  <div className="flex items-center gap-3">
-                    <ICQuestion className="w-5 h-5" stroke="#000000" />
-                    <span className="text-sm text-gray-800">Hỗ trợ</span>
-                  </div>
-                  <Image src={IconAR2} width={20} height={20} alt="AR2" className="w-4 h-4" />
-                </button>
-
-                {showSupport && (
-                  <div className="absolute left-full top-0 ml-1 w-56 bg-white text-black shadow-xl rounded-lg z-50">
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors cursor-pointer text-sm"
-                      onClick={() => {
-                        setShowContactCard(true); // mở popup
-                        setShowSupport(false); // ẩn dropdown
-                      }}
-                    >
-                      Thông tin phiên bản
-                    </button>
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors cursor-pointer text-sm">
-                      Liên hệ
-                    </button>
-                    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors cursor-pointer text-sm">
-                      Gửi file log tới Zalo
-                    </button>
-                  </div>
-                )}
-
-                {/* Popup hiển thị ZaloContactCard */}
-                {showContactCard && (
-                  <div
-                    className="fixed inset-0 flex items-center justify-center z-50 bg-black/40 backdrop-blur-sm"
-                    onClick={() => setShowContactCard(false)} // click ra ngoài đóng popup
-                  >
-                    <ZaloContactCard />
-                  </div>
-                )}
-              </div>
-
-              {/* Đăng xuất */}
-              <button
-                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-gray-100 transition-colors cursor-pointer"
+          {/* Avatar Dropdown */}
+          {openMenu.avatar && userInfo && (
+            <div className="absolute left-16 top-0 w-72 bg-white text-gray-800 rounded-2xl shadow-2xl  z-50 animate-in fade-in slide-in-from-left-2 duration-200">
+              {/* User Header */}
+              <div
+                className="px-5 py-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-2xl text-white cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all"
                 onClick={() => {
-                  setShowSettings(false);
-                  handleLogout();
+                  setOpenMenu((prev) => ({ ...prev, avatar: false, submenu: null }));
+                  router.push('/profile');
                 }}
               >
-                Đăng xuất
-              </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-white/30">
+                    {userInfo.avatar ? (
+                      <Image
+                        src={getProxyUrl(userInfo.avatar)}
+                        width={48}
+                        height={48}
+                        alt=""
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-white/30 backdrop-blur flex items-center justify-center text-2xl font-bold">
+                        {(userInfo.name || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-lg truncate">{userInfo.name || 'Tài khoản'}</p>
+                    <p className="text-sm opacity-90 truncate">@{userInfo.username}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="py-2">
+                <MenuItem
+                  icon={<HiUserCircle />}
+                  label="Thông tin tài khoản"
+                  onClick={() => {
+                    setOpenMenu({ avatar: false, business: false, cloud: false, submenu: null });
+                    setShowAccountModal(true);
+                  }}
+                />
+
+                {/* === NGÔN NGỮ === */}
+                <div className="relative">
+                  <MenuItem
+                    icon={<HiOutlineTranslate />}
+                    label="Ngôn ngữ"
+                    trailing={
+                      openMenu.submenu === 'lang' ? (
+                        <HiChevronDown className="text-gray-400" />
+                      ) : (
+                        <HiChevronRight className="text-gray-400" />
+                      )
+                    }
+                    onClick={() =>
+                      setOpenMenu((prev) => ({
+                        ...prev,
+                        submenu: prev.submenu === 'lang' ? null : 'lang',
+                      }))
+                    }
+                  />
+                  {/* Submenu Ngôn ngữ - hiện bên phải */}
+                  {openMenu.submenu === 'lang' && (
+                    <div
+                      className="absolute left-full top-0 ml-2 w-52 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50"
+                      // Dừng sự kiện click ngoài để submenu không bị đóng ngay
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <LangItem label="Tiếng Việt" flag="VN" active />
+                      <LangItem label="English" flag="US" />
+                      <LangItem label="中文 (简体)" flag="CN" />
+                    </div>
+                  )}
+                </div>
+
+                {/* === HỖ TRỢ === */}
+                <div className="relative">
+                  <MenuItem
+                    icon={<HiQuestionMarkCircle />}
+                    label="Hỗ trợ"
+                    trailing={
+                      openMenu.submenu === 'support' ? (
+                        <HiChevronDown className="text-gray-400" />
+                      ) : (
+                        <HiChevronRight className="text-gray-400" />
+                      )
+                    }
+                    onClick={() =>
+                      setOpenMenu((prev) => ({
+                        ...prev,
+                        submenu: prev.submenu === 'support' ? null : 'support',
+                      }))
+                    }
+                  />
+                  {/* Submenu Hỗ trợ */}
+                  {openMenu.submenu === 'support' && (
+                    <div
+                      className="absolute left-full top-0 ml-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SupportItem
+                        label="Thông tin phiên bản"
+                        onClick={() => {
+                          setShowContactCard(true);
+                          setOpenMenu({ avatar: false, business: false, cloud: false, submenu: null });
+                        }}
+                      />
+                      <SupportItem label="Liên hệ hỗ trợ" />
+                      <SupportItem label="Gửi file log tới Zalo" />
+                      <SupportItem label="Hướng dẫn sử dụng" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Đăng xuất */}
+                <div className="border-t border-gray-200 mt-2 pt-2">
+                  <MenuItem
+                    icon={<HiLogout className="text-red-600" />}
+                    label="Đăng xuất"
+                    className="text-red-600 font-medium hover:bg-red-50"
+                    onClick={() => {
+                      setOpenMenu({ avatar: false, business: false, cloud: false, submenu: null });
+                      handleLogout();
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Menu trên */}
-        <div className="flex flex-col gap-2 flex-1 ">
-          <button
-            className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'home' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
-            onClick={handleTrangChu}
-          >
-            <Messenger className="w-6 h-6 text-white" />
-          </button>
-          <button
-            className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'directory' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
-            onClick={handleDanhBa}
-          >
-            <Image src={PhoneBookIcon} alt="" width={35} height={35} className="w-6 h-6" />
-          </button>
-        </div>
+        {/* Main Navigation */}
+        <nav className="flex-1 flex flex-col items-center gap-3">
+          <NavButton
+            icon={<HiHome />}
+            active={activeItem === 'home'}
+            onClick={() => navigate('/home', 'home')}
+            tooltip="Trang chủ"
+          />
+          <NavButton
+            icon={<HiUserGroup />}
+            active={activeItem === 'directory'}
+            onClick={() => navigate('/directory', 'directory')}
+            tooltip="Danh bạ"
+          />
+        </nav>
 
-        {/* Menu dưới */}
-        <div className="flex flex-col gap-4">
-          <div className="relative inline-block">
-            <button
-              className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'upload' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
-              onClick={() => setActive(active === 'upload' ? null : 'upload')}
-            >
-              <Image src={CLoudZIcon} alt="" width={35} height={35} className="w-6 h-6" />
-            </button>
-
-            {/* Popup */}
-            {active === 'upload' && (
-              <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2 z-50">
-                <ZaloCloudPopup onClose={() => setActive(null)} />
+        {/* Bottom Actions */}
+        <div className="flex flex-col gap-3">
+          {/* Cloud Z */}
+          <div className="relative">
+            <NavButton
+              icon={<MdCloudUpload />}
+              active={openMenu.cloud}
+              onClick={() => {
+                toggleMenu('cloud');
+                setActiveItem(openMenu.cloud ? '' : 'upload');
+              }}
+              tooltip="Cloud Z"
+            />
+            {openMenu.cloud && (
+              <div className="absolute left-16 top-1/2 -translate-y-1/2 z-50">
+                <ZaloCloudPopup
+                  onClose={() => {
+                    toggleMenu('cloud', false);
+                    setActiveItem('');
+                  }}
+                />
               </div>
             )}
           </div>
 
-          <button
-            className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'cloud' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
-            onClick={() => setActive('cloud')}
-          >
-            <Image src={CLoudIcon} alt="" width={32} height={32} className="w-6 h-6" />
-          </button>
+          <NavButton icon={<HiCloud />} tooltip="iCloud" onClick={() => {}} />
 
-          {/* Nút briefcase */}
-          <div className="relative" ref={businessRef}>
-            <button
-              className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${
-                active === 'briefcase' ? 'bg-blue-500' : 'hover:bg-blue-500'
-              }`}
-              onClick={() => {
-                setActive('briefcase');
-                setShowBusinessTools((prev) => !prev);
-              }}
-            >
-              <Image src={BagIcon} alt="" width={35} height={35} className="w-6 h-6" />
-            </button>
-
-            {showBusinessTools && (
-              <div className="absolute left-14 bottom-0 w-80 bg-white text-black shadow-lg rounded-lg p-4 z-50">
-                <h3 className="font-semibold text-gray-700 mb-3">Công cụ zBusiness</h3>
-                <div className="grid grid-cols-3 gap-x-4 gap-y-10 text-sm">
-                  <div className="flex flex-col items-center cursor-pointer">
-                    <Image src={IconTN} width={40} height={40} alt="Avatar" className="w-10 h-10 mb-1" />
-                    <span className="text-center">Tin nhắn nhanh</span>
-                  </div>
-                  <div className="flex flex-col items-center cursor-pointer text-gray-400 ml-1">
-                    <Image src={IconDM} width={40} height={40} alt="Avatar" className="w-13 h-11" />
-                    <span>Danh mục sản phẩm</span>
-                  </div>
-                  <div className="flex flex-col items-center cursor-pointer mr-8 text-gray-400">
-                    <Image src={IconTNTD} width={40} height={40} alt="Avatar" className="w-13 h-11" />
-                    <span className="text-center">Trả lời tự động</span>
-                  </div>
-                  <div className="flex flex-col items-center cursor-pointer">
-                    <Image src={IconSao} width={40} height={40} alt="Avatar" className="w-13 h-13" />
-                    <span>Tin đánh dấu</span>
-                  </div>
-                  <div className="flex flex-col items-center cursor-pointer text-gray-400">
-                    <Image src={IconTB} width={40} height={40} alt="Avatar" className="w-20 h-13" />
-                    <span>Tin đồng thời</span>
-                  </div>
+          {/* Business Tools */}
+          <div ref={businessRef} className="relative">
+            <NavButton
+              icon={<HiBriefcase />}
+              active={openMenu.business}
+              onClick={() => toggleMenu('business')}
+              tooltip="zBusiness"
+            />
+            {openMenu.business && (
+              <div className="absolute left-16 bottom-0 w-80 bg-white rounded-2xl shadow-2xl p-6 z-50 border border-gray-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-5">Công cụ zBusiness</h3>
+                <div className="grid grid-cols-3 gap-6">
+                  {[
+                    { icon: <HiLightningBolt className="text-yellow-500" />, label: 'Tin nhắn nhanh' },
+                    { icon: <HiCollection className="text-gray-400" />, label: 'Danh mục', disabled: true },
+                    { icon: <HiChatAlt2 className="text-gray-400" />, label: 'Trả lời tự động', disabled: true },
+                    { icon: <HiStar className="text-purple-500" />, label: 'Tin đánh dấu' },
+                    { icon: <HiClock className="text-gray-400" />, label: 'Tin đồng thời', disabled: true },
+                  ].map((tool, i) => (
+                    <div
+                      key={i}
+                      className={`flex flex-col items-center ${tool.disabled ? 'opacity-50' : 'cursor-pointer hover:scale-110 transition-transform'}`}
+                    >
+                      <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center text-3xl mb-2 shadow-md">
+                        {tool.icon}
+                      </div>
+                      <span className="text-xs text-center text-gray-600">{tool.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Nút cài đặt (đơn giản, không còn dropdown – mọi thứ đã chuyển lên avatar) */}
-          <button
-            className={`p-2 rounded-lg cursor-pointer w-10 h-10 ${active === 'settings' ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
-            onClick={() => setShowSettingsPanel(true)}
-            title="Cài đặt"
-          >
-            <Image src={SettingsIcon} alt="" width={32} height={32} className="w-6 h-6 cursor-pointer" />
-          </button>
+          <NavButton
+            icon={<HiCog />}
+            active={activeItem === 'setting'}
+            onClick={() => navigate('/setting', 'setting')}
+            tooltip="Cài đặt"
+          />
         </div>
       </div>
 
+      {/* Modals */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Xác nhận Đăng xuất</h3>
-            <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn thoát khỏi tài khoản không?</p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => {
-                  finalizeLogout(); // Thực hiện hành động
-                  setShowLogoutConfirm(false);
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Đăng xuất
-              </button>
-            </div>
+        <ConfirmModal
+          title="Xác nhận đăng xuất"
+          message="Bạn có chắc chắn muốn thoát tài khoản?"
+          onCancel={() => setShowLogoutConfirm(false)}
+          onConfirm={finalizeLogout}
+        />
+      )}
+
+      {showContactCard && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+          onClick={() => setShowContactCard(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <ZaloContactCard />
           </div>
         </div>
       )}
 
-      {/* Popup xem thông tin tài khoản (Profile) */}
       {userInfo && (
         <PopupProfile
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
+          isOpen={showAccountModal}
+          onClose={() => setShowAccountModal(false)}
           user={userInfo}
-          onAvatarUpdated={(newUrl) =>
-            setUserInfo((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    avatar: newUrl,
-                  }
-                : prev,
-            )
-          }
+          onAvatarUpdated={(newUrl) => setUserInfo((prev) => (prev ? { ...prev, avatar: newUrl } : null))}
         />
-      )}
-      {/* SettingsPanel popup kiểu Zalo */}
-      {showSettingsPanel && (
-        <div
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowSettingsPanel(false);
-            }
-          }}
-        >
-          <div className="max-h-[90vh] w-full max-w-4xl px-3 md:px-0">
-            <SettingsPanel onClose={() => setShowSettingsPanel(false)} />
-          </div>
-        </div>
       )}
     </>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import Sidebar from '../base/Sidebar';
 import ChatWindow from '../../app/(zalo)/home/ChatPopup';
@@ -57,6 +57,24 @@ export default function HomeMobile({
   fetchAllData,
   onNavigateToMessage,
 }: HomeMobileProps) {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('mobile-footer', {
+          detail: { hidden: !!selectedChat },
+        }),
+      );
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('mobile-footer', {
+            detail: { hidden: false },
+          }),
+        );
+      }
+    };
+  }, [selectedChat]);
   return (
     <div className="block md:hidden relative w-full h-full">
       {selectedChat ? (

@@ -28,7 +28,7 @@ const ZaloCloudPopup: React.FC<ZaloCloudPopupProps> = ({ onClose }) => {
 
       {/* Top Image Section */}
       <div className="bg-[#f0f7ff] p-4 flex flex-col items-center justify-center relative">
-        <Image src={Zicloud.src} alt="ZCloud" className="w-100 h-40 object-contain" />
+        <Image priority width={100} height={40} src={Zicloud.src} alt="ZCloud" className="w-100 h-40 object-contain" />
 
         {/* Accent Elements */}
         <span className="absolute top-2 left-1/4 w-2 h-2 bg-red-500 rounded-full rotate-45"></span>

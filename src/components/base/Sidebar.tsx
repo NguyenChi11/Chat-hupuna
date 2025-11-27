@@ -413,7 +413,7 @@ export default function Sidebar({
             {/* Nút tạo nhóm mới */}
             <button
               onClick={() => setShowCreateGroupModal(true)}
-              className="w-8 h-8 cursor-pointer hidden md:flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
+              className="w-8 h-8 cursor-pointer flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
               title="Tạo nhóm chat mới"
             >
               <ICGroupPeople className="w-5 h-5" stroke="#000000" />
@@ -425,7 +425,7 @@ export default function Sidebar({
       {/* 🔥 Filter Buttons - CHỈ hiện khi KHÔNG search */}
       {!isSearchActive && <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />}
       {/* Content Area - Chat List hoặc Search Results */}
-      <div className="flex-1 overflow-y-auto bg-white custom-scrollbar">
+      <div className="flex-1 overflow-y-auto mb-[3.875rem] sm:mb-0 bg-white custom-scrollbar">
         {/* Hiển thị khi ĐANG TÌM KIẾM */}
         {isSearchActive ? (
           <SearchResults
