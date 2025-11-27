@@ -59,7 +59,13 @@ export default function ChatHeader({
           >
             {avatar ? (
               // Dùng <img> + proxy để load avatar nhóm/user từ Mega hoặc nguồn ngoài
-              <img src={getProxyUrl(avatar)} alt={chatName} className="w-full h-full object-cover" />
+              <Image
+                width={40}
+                height={40}
+                src={getProxyUrl(avatar)}
+                alt={chatName}
+                className="w-full h-full object-cover"
+              />
             ) : (
               avatarChar
             )}

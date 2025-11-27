@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { User } from '@/types/User';
 import { getProxyUrl } from '@/utils/utils';
 
@@ -9,10 +10,12 @@ type ViewMode = 'view' | 'edit' | 'password';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
+  const [viewer, setViewer] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('view');
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const searchParams = useSearchParams();
 
   const [editForm, setEditForm] = useState({ name: '', department: '', status: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -21,16 +24,41 @@ export default function ProfilePage() {
     let mounted = true;
     const loadUser = async () => {
       try {
-        const res = await fetch('/api/users/me');
-        const json = await res.json();
-        if (mounted && json.success && json.user) {
-          setUser(json.user as User);
-          setEditForm({
-            name: (json.user as User).name || '',
-            department: (json.user as User).department || '',
-            status: (json.user as User).status || '',
+        const targetUserId = searchParams.get('userId');
+        const meRes = await fetch('/api/users/me');
+        const meJson = await meRes.json();
+        if (meJson && meJson.success && meJson.user) {
+          setViewer(meJson.user as User);
+        }
+        if (targetUserId) {
+          const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getById', _id: targetUserId }),
           });
-          return;
+          const json = await res.json();
+          if (mounted && json && json.row) {
+            const u = json.row as User;
+            setUser(u);
+            setEditForm({
+              name: u.name || '',
+              department: u.department || '',
+              status: u.status || '',
+            });
+            return;
+          }
+        } else {
+          const res = await fetch('/api/users/me');
+          const json = await res.json();
+          if (mounted && json.success && json.user) {
+            setUser(json.user as User);
+            setEditForm({
+              name: (json.user as User).name || '',
+              department: (json.user as User).department || '',
+              status: (json.user as User).status || '',
+            });
+            return;
+          }
         }
       } catch {}
       if (typeof window !== 'undefined') {
@@ -52,16 +80,23 @@ export default function ProfilePage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [searchParams]);
+
+  const canEdit = !!viewer && !!user && String(viewer._id) === String(user._id);
 
   const handleAvatarClick = () => {
     if (isUploading) return;
+    if (!canEdit) return;
     fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    if (!canEdit) {
+      e.target.value = '';
+      return;
+    }
     if (!file.type.startsWith('image/')) {
       e.target.value = '';
       return;
@@ -111,6 +146,7 @@ export default function ProfilePage() {
 
   const handleUpdateInfo = async () => {
     if (!user) return;
+    if (!canEdit) return;
     if (!editForm.name.trim()) return;
     try {
       setIsSubmitting(true);
@@ -163,6 +199,7 @@ export default function ProfilePage() {
   const handleChangePassword = async () => {
     const { currentPassword, newPassword, confirmPassword } = passwordForm;
     if (!user) return;
+    if (!canEdit) return;
     if (!currentPassword || !newPassword || !confirmPassword) return;
     if (newPassword.length < 6) return;
     if (newPassword !== confirmPassword) return;
@@ -186,6 +223,14 @@ export default function ProfilePage() {
   const displayName = user?.name || user?.username || '';
   const displayId = user?.username || user?._id || '';
   const avatarSrc = user?.avatar ? getProxyUrl(user.avatar) : null;
+  const copyLink = async () => {
+    try {
+      const userId = user?._id ? String(user._id) : '';
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const link = `${origin}/profile${userId ? `?userId=${userId}` : ''}`;
+      await navigator.clipboard.writeText(link);
+    } catch {}
+  };
 
   return (
     <main className="min-h-screen w-full bg-gradient-to-b from-[#f0f6ff] to-white">
@@ -207,8 +252,14 @@ export default function ProfilePage() {
             />
           </div>
 
-          <h1 className="mt-4 text-3xl font-bold text-[#1b1b1b] tracking-tight">Nguyễn Văn A</h1>
-          <p className="text-gray-500 mt-1 text-sm">ID: user00123</p>
+          <h1 className="mt-4 text-3xl font-bold text-[#1b1b1b] tracking-tight">{displayName}</h1>
+          <p className="text-gray-500 mt-1 text-sm">ID: {displayId}</p>
+          <button
+            onClick={copyLink}
+            className="mt-2 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Sao chép link hồ sơ
+          </button>
 
           <p className="mt-3 max-w-md text-center text-gray-700 text-[0.95rem] leading-relaxed">
             “Luôn mang đến giá trị qua công việc. Sẵn sàng học hỏi và thử những điều mới.”

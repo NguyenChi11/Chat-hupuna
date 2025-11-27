@@ -37,6 +37,7 @@ import { isVideoFile } from '@/utils/utils';
 import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
+import { useRouter } from 'next/navigation';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -112,6 +113,7 @@ export default function ChatWindow({
   onScrollComplete,
   onBackFromChat,
 }: ChatWindowProps) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [showPopup, setShowPopup] = useState(false);
   const [openMember, setOpenMember] = useState(false);
@@ -795,7 +797,14 @@ export default function ChatWindow({
             memberCount={memberCount}
             showPopup={showPopup}
             onTogglePopup={() => setShowPopup((prev) => !prev)}
-            onOpenMembers={() => setOpenMember(true)}
+            onOpenMembers={() => {
+              if (isGroup) {
+                setOpenMember(true);
+              } else {
+                const partnerId = getId(selectedChat);
+                if (partnerId) router.push(`/profile?userId=${partnerId}`);
+              }
+            }}
             showSearchSidebar={showSearchSidebar}
             onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
             avatar={chatAvatar}

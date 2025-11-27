@@ -153,7 +153,11 @@ export default function SidebarMenu() {
                   className="w-9 h-9 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center text-sm font-semibold hover:cursor-pointer"
                   onClick={() => {
                     setShowSettings(false);
-                    router.push('/profile');
+                    if (userInfo?._id) {
+                      router.push(`/profile?userId=${userInfo._id}`);
+                    } else {
+                      router.push('/profile');
+                    }
                   }}
                 >
                   {userInfo?.avatar ? (
@@ -172,7 +176,11 @@ export default function SidebarMenu() {
                   className="min-w-0 hover:cursor-pointer"
                   onClick={() => {
                     setShowSettings(false);
-                    router.push('/profile');
+                    if (userInfo?._id) {
+                      router.push(`/profile?userId=${userInfo._id}`);
+                    } else {
+                      router.push('/profile');
+                    }
                   }}
                 >
                   <p className="text-sm font-semibold text-gray-900 truncate">{userInfo?.name || 'Tài khoản Hupuna'}</p>

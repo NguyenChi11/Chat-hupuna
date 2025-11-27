@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 import SearchIcon from '@/public/icons/icon-search.svg'; // Đảm bảo đường dẫn đúng
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
@@ -55,6 +56,7 @@ export default function GroupMembersModal({
   const [localMembers, setLocalMembers] = useState<MemberInfo[]>([]);
   const [loadingAction, setLoadingAction] = useState<string | null>(null); // Để hiện loading khi kick/promote
   const toast = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     const valid = members.filter(isMemberInfo);
@@ -77,6 +79,10 @@ export default function GroupMembersModal({
   const canDemote = (targetRole: GroupRole) => myRole === 'OWNER' && targetRole === 'ADMIN';
 
   // --- HANDLERS ---
+  const handleOpenProfile = (targetUserId: string) => {
+    const id = String(targetUserId);
+    router.push(`/profile?userId=${id}`);
+  };
   const handleOptimisticAddMember = (newUsers: User[]) => {
     const newMembersFormatted: MemberInfo[] = newUsers.map((u) => ({
       _id: u._id,
@@ -270,7 +276,10 @@ export default function GroupMembersModal({
                     `}
                   >
                     {/* Avatar */}
-                    <div className="w-11 h-11 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0 border border-gray-100">
+                    <div
+                      className="w-11 h-11 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0 border border-gray-100 cursor-pointer"
+                      onClick={() => handleOpenProfile(memberId)}
+                    >
                       {member.avatar ? (
                         <img
                           src={getProxyUrl(member.avatar)}
@@ -288,7 +297,7 @@ export default function GroupMembersModal({
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0 mr-2">
+                    <div className="flex-1 min-w-0 mr-2 cursor-pointer" onClick={() => handleOpenProfile(memberId)}>
                       <div className="flex items-center flex-wrap gap-1">
                         <p className="text-sm font-bold text-gray-900 truncate">{member.name}</p>
                         {isMe && (
@@ -310,7 +319,7 @@ export default function GroupMembersModal({
                         {canPromote(memberRole) && (
                           <button
                             onClick={() => handleAction('promote', memberId)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors tooltip-top"
+                            className="p-2 cursor-pointer text-green-600 hover:bg-green-50 rounded-full transition-colors tooltip-top"
                             title="Bổ nhiệm làm Phó nhóm"
                           >
                             <ICTick className="w-5 h-5" stroke="#2eff00" />
