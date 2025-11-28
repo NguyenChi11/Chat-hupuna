@@ -7,6 +7,8 @@ import { getProxyUrl } from '../../utils/utils';
 import ICGroupPeople from '@/components/svg/ICGroupPeople';
 import MessageFilter, { FilterType } from '../(chatPopup)/MessageFilter';
 import Image from 'next/image';
+import { HiMagnifyingGlass, HiXMark } from 'react-icons/hi2';
+import { HiUserGroup } from 'react-icons/hi';
 
 interface SidebarProps {
   currentUser: User;
@@ -344,34 +346,42 @@ export default function Sidebar({
     <aside className="relative flex flex-col h-full bg-[#f4f6f9] border-r border-gray-200 w-full md:w-80">
       {/* --- Thanh trên cùng kiểu Zalo --- */}
       <div className="border-b border-blue-600/20">
-        {/* Top bar: avatar + action icons */}
-        <div className="px-3 py-2 bg-gradient-to-r bg-gray-800/50 flex items-center justify-between text-white">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-white/20 overflow-hidden flex items-center justify-center text-sm font-semibold">
+        {/* Top bar: avatar + tên người dùng */}
+        <div className="px-4 py-3 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 backdrop-blur-xl bg-opacity-90 flex items-center justify-between text-white shadow-lg">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Avatar */}
+            <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/30 shadow-md">
               {currentUser.avatar ? (
                 <Image
-                  width={32}
-                  height={32}
+                  width={40}
+                  height={40}
                   src={getProxyUrl(currentUser.avatar)}
                   alt={currentUser.name}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                currentUser.name?.charAt(0).toUpperCase()
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg font-bold">
+                  {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
               )}
+              {/* Online indicator */}
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
             </div>
+
+            {/* Tên + ID */}
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold truncate max-w-[8.75rem]">
+              <span className="text-sm font-semibold truncate max-w-[9rem]">
                 {currentUser.name || currentUser.username}
               </span>
-              <span className="text-[0.6875rem] opacity-80 truncate max-w-[10rem]">ID: {currentUser.username}</span>
+              <span className="text-xs opacity-90 truncate max-w-[11rem]">ID: {currentUser.username}</span>
             </div>
           </div>
         </div>
 
-        {/* Thanh tìm kiếm */}
-        <div className="px-3 py-3 bg-white shadow-sm">
-          <div className="flex items-center gap-2">
+        {/* Thanh tìm kiếm + nút tạo nhóm */}
+        <div className="px-4 py-4 bg-white shadow-md">
+          <div className="flex items-center gap-3">
+            {/* Ô tìm kiếm */}
             <div className="relative flex-1">
               <input
                 ref={searchInputRef}
@@ -379,33 +389,22 @@ export default function Sidebar({
                 placeholder="Tìm kiếm tin nhắn, file, liên hệ..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-full bg-[#f1f3f5] text-gray-900 placeholder:text-gray-400 outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 border border-transparent transition-all"
+                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-full bg-gray-100 text-gray-900 placeholder:text-gray-500 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 border border-transparent hover:bg-gray-50"
               />
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 1110.5 4a6.5 6.5 0 016.5 6.5z"
-                />
-              </svg>
+
+              {/* Icon tìm kiếm */}
+              <HiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+
+              {/* Nút xóa tìm kiếm */}
               {searchTerm && (
                 <button
                   onClick={() => {
                     setSearchTerm('');
                     setGlobalSearchResults({ contacts: [], messages: [] });
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-300 hover:bg-gray-400 transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-gray-300 hover:bg-gray-400 flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <HiXMark className="w-4 h-4 text-gray-700" />
                 </button>
               )}
             </div>
@@ -413,10 +412,10 @@ export default function Sidebar({
             {/* Nút tạo nhóm mới */}
             <button
               onClick={() => setShowCreateGroupModal(true)}
-              className="w-8 h-8 cursor-pointer flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
+              className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 flex items-center justify-center transition-all duration-200 shadow-md"
               title="Tạo nhóm chat mới"
             >
-              <ICGroupPeople className="w-5 h-5" stroke="#000000" />
+              <HiUserGroup className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>

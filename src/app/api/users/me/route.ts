@@ -7,6 +7,8 @@ import { USERS_COLLECTION_NAME } from '@/types/User';
 import { ObjectId } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export async function GET(req: NextRequest) {
   const { db } = await connectToDatabase();
   let userId: string | null = null;

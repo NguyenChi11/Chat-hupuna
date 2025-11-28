@@ -28,8 +28,17 @@ export default function ProfilePage() {
     const loadUser = async () => {
       try {
         const targetUserId = searchParams.get('userId');
-        const meRes = await fetch('/api/users/me');
-        const meJson = await meRes.json();
+        let meRes = await fetch('/api/users/me');
+        let meJson = await meRes.json();
+        if (!meRes.ok || !meJson?.success) {
+          try {
+            const r = await fetch('/api/auth/refresh', { method: 'GET' });
+            if (r.ok) {
+              meRes = await fetch('/api/users/me');
+              meJson = await meRes.json();
+            }
+          } catch {}
+        }
         if (meJson && meJson.success && meJson.user) {
           setViewer(meJson.user as User);
         }
@@ -51,8 +60,17 @@ export default function ProfilePage() {
             return;
           }
         } else {
-          const res = await fetch('/api/users/me');
-          const json = await res.json();
+          let res = await fetch('/api/users/me');
+          let json = await res.json();
+          if (!res.ok || !json?.success) {
+            try {
+              const r = await fetch('/api/auth/refresh', { method: 'GET' });
+              if (r.ok) {
+                res = await fetch('/api/users/me');
+                json = await res.json();
+              }
+            } catch {}
+          }
           if (mounted && json.success && json.user) {
             setUser(json.user as User);
             setEditForm({
@@ -295,7 +313,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <main className="min-h-screen w-full bg-gradient-to-b from-[#f0f6ff] to-white">
+    <main className="h-[100vh] overflow-auto pb-[5.875rem] w-full bg-gradient-to-b from-[#f0f6ff] to-white">
       {/* COVER BANNER */}
       <div className="w-full h-[14rem] bg-gradient-to-br from-[#0084ff] via-[#4da3ff] to-[#70c2ff] relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-20 mix-blend-soft-light" />

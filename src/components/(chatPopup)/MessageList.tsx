@@ -5,7 +5,10 @@ import Image from 'next/image';
 import type { Message } from '@/types/Message';
 import type { User } from '@/types/User';
 import { isVideoFile, getProxyUrl } from '@/utils/utils';
-import ReplyIcon from '@/public/icons/reply-icon.svg';
+
+// Icons
+import { RiReplyLine } from 'react-icons/ri';
+import { HiOutlineDocumentText, HiPlay } from 'react-icons/hi2';
 
 interface SenderInfo {
   _id: string;
@@ -28,10 +31,10 @@ interface MessageListProps {
   renderMessageContent: (content: string, mentionedUserIds?: string[], isMe?: boolean) => React.ReactNode;
   onOpenMedia: (url: string, type: 'image' | 'video') => void;
   editingMessageId: string | null;
-  setEditingMessageId: React.Dispatch<React.SetStateAction<string | null>>;
-  editContent: string;
-  setEditContent: React.Dispatch<React.SetStateAction<string>>;
-  onSaveEdit: (messageId: string, newContent: string) => Promise<void>;
+  setEditingMessageId?: (id: string | null) => void;
+  editContent?: string;
+  setEditContent?: (content: string) => void;
+  onSaveEdit?: (id: string, content: string) => void;
 }
 
 export default function MessageList({
@@ -54,15 +57,28 @@ export default function MessageList({
   setEditContent,
   onSaveEdit,
 }: MessageListProps) {
-  const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
-
+  const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
+  const formatTimestamp = (ts: number) => {
+    const d = new Date(ts);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    return sameDay
+      ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+  };
   return (
     <>
       {Array.from(messagesGrouped.entries()).map(([dateKey, msgs]) => (
         <React.Fragment key={dateKey}>
-          {/* Thanh hiển thị Ngày (Sticky ở trên) */}
-          <div className="flex justify-center my-3 sticky top-0 z-10">
-            <span className="text-[0.625rem] sm:text-xs text-gray-600 bg-gray-200/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+          {/* Date row */}
+          <div className="flex justify-center my-4 sticky top-1 z-10">
+            <span className="px-4 py-1 text-xs font-medium text-gray-600 bg-white/90 rounded-full shadow">
               {dateKey}
             </span>
           </div>
@@ -70,320 +86,250 @@ export default function MessageList({
           {msgs.map((msg, index) => {
             const senderInfo = getSenderInfo(msg.sender);
             const isMe = senderInfo._id === currentUser._id;
-
             const repliedToMsg = msg.replyToMessageId ? messages.find((m) => m._id === msg.replyToMessageId) : null;
 
             const uploadProgress = uploadingFiles[msg._id];
             const isUploading = uploadProgress !== undefined;
             const isEditing = msg._id === editingMessageId;
             const isEdited = msg.editedAt && !isEditing;
+            const isRecalled = msg.isRecalled;
+            const isVideo = msg.type === 'video' || (msg.fileUrl && isVideoFile(msg.fileUrl));
 
-            if (msg.type === 'notify') {
-              let contentDisplay = msg.content;
-
-              if (isMe && contentDisplay) {
-                const myName = currentUser.name || '';
-
-                if (contentDisplay.startsWith(myName)) {
-                  contentDisplay = 'Bạn' + contentDisplay.substring(myName.length);
-                }
+            // Group detection
+            const prevMsg = index > 0 ? msgs[index - 1] : null;
+            let isGrouped = false;
+            if (prevMsg && prevMsg.type !== 'notify') {
+              const prevSender = getSenderInfo(prevMsg.sender);
+              const now = new Date(msg.timestamp).getTime();
+              const prev = new Date(prevMsg.timestamp).getTime();
+              if (prevSender._id === senderInfo._id && (now - prev) / 60000 < 5) {
+                isGrouped = true;
               }
+            }
 
+            // Notify message
+            if (msg.type === 'notify') {
+              let display = msg.content;
+              if (isMe && display?.startsWith(currentUser.name || '')) {
+                display = 'Bạn' + display.substring((currentUser.name || '').length);
+              }
               return (
-                <div key={msg._id || index} className="flex justify-center my-3">
-                  <div className="bg-gray-100 px-3 py-1 rounded-full shadow-sm">
-                    <p className="text-xs text-gray-500 sm:font-medium text-[0.625rem]">{contentDisplay}</p>
+                <div key={msg._id} className="flex justify-center my-3">
+                  <div className="px-4 py-1.5 bg-gray-100 rounded-full shadow">
+                    <p className="text-xs text-gray-500">{display}</p>
                   </div>
                 </div>
               );
             }
 
-            // Dùng msgs (tin nhắn trong ngày hiện tại) để kiểm tra nhóm
-            const prevMsgInGroup = index > 0 ? msgs[index - 1] : null;
-            let isGrouped = false;
-
-            if (prevMsgInGroup && prevMsgInGroup.type !== 'notify') {
-              const prevSenderInfo = getSenderInfo(prevMsgInGroup.sender);
-              const currentTimestamp = new Date(msg.timestamp).getTime();
-              const prevTimestamp = new Date(prevMsgInGroup.timestamp).getTime();
-
-              if (prevSenderInfo._id === senderInfo._id && (currentTimestamp - prevTimestamp) / (1000 * 60) < 5) {
-                isGrouped = true;
-              }
-            }
-
-            const avatarChar = senderInfo.name ? senderInfo.name.charAt(0).toUpperCase() : '?';
+            const avatarChar = senderInfo.name?.charAt(0).toUpperCase() || '?';
             const senderName = allUsersMap.get(senderInfo._id) || senderInfo.name;
-
-            const isRecalled = msg.isRecalled === true;
-            const isVideo = msg.type === 'video' || (msg.fileUrl && isVideoFile(msg.fileUrl));
 
             return (
               <div
-                key={msg._id || index}
+                key={msg._id}
                 id={`msg-${msg._id}`}
                 onContextMenu={(e) => onContextMenu(e, msg)}
-                className={`max-w-[80%] sm:max-w-xs break-words flex gap-2 group 
-                  ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row'} 
+                className={`
+                  w-full px-3 sm:max-w-[22rem]
+                  flex gap-2 group relative
+                  ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row'}
                   ${isGrouped ? 'mt-1' : 'mt-4'}
-                  transition-all duration-1000 ease-out
-                  ${
-                    highlightedMsgId === msg._id ? 'bg-yellow-100 ring-8 ring-yellow-100 rounded-lg z-10 scale-105' : ''
-                  }
+                  ${highlightedMsgId === msg._id ? 'bg-yellow-50 rounded-xl' : ''}
                 `}
               >
-                {/* Nút Reply - Cần order-1 khi là isMe để nằm bên trái nội dung */}
-                {!isRecalled && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onReply(msg);
-                    }}
-                    // order-3 khi là người khác (ở cuối), order-1 khi là tôi (ở cuối, nhưng bị flex-row-reverse đảo)
-                    className={`invisible group-hover:visible self-center p-1 text-gray-400 flex items-center justify-center hover:text-blue-500 transition-colors 
-                      ${isMe ? 'order-1' : 'order-3'}
-                    `}
-                    title="Phản hồi"
-                  >
-                    <Image src={ReplyIcon} alt="" width={20} height={20} />
-                  </button>
-                )}
                 {/* Avatar */}
                 {!isMe && (
-                  <div className={`flex-shrink-0 ${isGrouped ? 'invisible' : 'visible'}`}>
+                  <div className={`${isGrouped ? 'opacity-0' : ''} flex-shrink-0`}>
                     {senderInfo.avatar ? (
                       <Image
                         src={getProxyUrl(senderInfo.avatar)}
+                        width={38}
+                        height={38}
                         alt={senderInfo.name}
-                        width={40}
-                        height={40}
-                        className="w-6 h-6 sm:w-10 sm:h-10 rounded-full object-cover"
+                        className="w-9 h-9 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-full bg-blue-200 text-blue-700 flex items-center justify-center font-bold text-sm">
+                      <div className="w-9 h-9 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
                         {avatarChar}
                       </div>
                     )}
                   </div>
                 )}
-                <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} min-w-0`}>
-                  {/* Tin nhắn được reply */}
+
+                {/* Content */}
+                <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
+                  {/* Reply preview */}
                   {repliedToMsg && (
                     <div
-                      className={`w-full max-w-[12rem] sm:max-w-xs text-xs text-gray-500 border-l-2 border-blue-500 pl-2 mb-1 pt-1 pb-0.5 cursor-pointer hover:opacity-90 rounded-sm bg-gray-50 ${isMe ? 'text-right' : 'text-left'}`}
                       onClick={() => onJumpToMessage(repliedToMsg._id)}
+                      className="max-w-[70vw] sm:max-w-[18rem] px-3 py-2 mb-1 text-xs bg-gray-100 border-l-4 border-blue-500 rounded-xl cursor-pointer"
                     >
-                      <p className="font-semibold">
-                        {msg.replyToMessageName || allUsersMap.get(String(repliedToMsg.sender)) || 'Người dùng'}
-                      </p>
-                      <p className="truncate">
-                        {repliedToMsg.isRecalled
-                          ? 'Tin nhắn đã bị thu hồi'
-                          : repliedToMsg.content || `[${repliedToMsg.type}]`}
+                      <p className="font-semibold text-blue-600">{msg.replyToMessageName || senderName}</p>
+                      <p className="truncate text-gray-600">
+                        {repliedToMsg.isRecalled ? 'Tin nhắn đã bị thu hồi' : repliedToMsg.content || '[Tệp]'}
                       </p>
                     </div>
                   )}
+
+                  {/* MAIN BUBBLE */}
                   <div
-                    // Đã loại bỏ ký tự '/' thừa và dọn dẹp các lớp căn lề dư thừa
-                    className={`p-2 rounded-lg shadow-sm w-fit max-w-[12rem] sm:max-w-xs 
-                        ${isMe ? 'bg-blue-100 text-black' : 'bg-white text-black'} 
-                        ${(msg.type === 'sticker' && !isRecalled) || isVideo ? '!bg-transparent !shadow-none !p-0' : ''}
-                        ${!isGrouped ? (isMe ? 'rounded-br-none' : 'rounded-bl-none') : ''}
-                        ${isRecalled ? '!bg-gray-200 !text-gray-500 italic border border-gray-300' : ''}
-                        ${msg.type === 'text' ? 'text-[0.625rem] sm:text-[1.125rem]' : ''}
-                      `}
+                    className={`
+                      px-4 py-3 rounded-3xl shadow-md max-w-[70vw] sm:max-w-[20rem] break-words
+                      ${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'}
+                      ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
+                      ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}
+                      ${isRecalled ? '!bg-gray-200 !text-gray-500 italic' : ''}
+                      ${isVideo || msg.type === 'sticker' ? '!p-0 !shadow-none bg-transparent' : ''}
+                      ${msg.type === 'image' ? '!p-0' : ''}
+                      ${msg.type === 'file' ? '!px-2 !py-2' : ''}
+                    relative
+                    `}
+                    onClick={() => setTimeVisibleId((prev) => (prev === msg._id ? null : msg._id))}
                   >
-                    {isGroup && !isMe && !isGrouped && !isRecalled && (
-                      <p className="text-gray-500 text-[0.625rem] pb-1 font-medium">{senderName}</p>
+                    {/* Reply icon (bên phải, cách 0.5rem) */}
+                    {!isRecalled && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onReply(msg);
+                        }}
+                        className={`
+                          absolute top-1/2 -translate-y-1/2 z-10
+                          opacity-0 group-hover:opacity-100
+                          p-1.5 bg-white/90 rounded-4xl shadow hover:bg-blue-50
+                          ${isMe ? 'right-full mr-2' : 'left-full ml-2'}
+                        `}
+                      >
+                        <RiReplyLine className="w-4 h-4 text-gray-600" />
+                      </button>
+                    )}
+                    {/* Group sender name */}
+                    {!isMe && isGroup && !isGrouped && !isRecalled && (
+                      <p className="text-blue-600 text-xs font-bold mb-1">{senderName}</p>
                     )}
 
-                    {/* Nội dung tin nhắn */}
-                    {isRecalled ? (
-                      <p className="text-[0.75rem] sm:text-sm text-gray-500">Tin nhắn đã bị thu hồi</p>
-                    ) : (
-                      <>
-                        {/* Chế độ chỉnh sửa */}
-                        {isEditing && msg.type === 'text' ? (
-                          <div className="space-y-2">
-                            <textarea
-                              autoFocus
-                              value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
-                              className="w-full p-2 border rounded text-sm resize-none text-gray-500 outline-none bg-white"
-                              rows={4}
-                              cols={50}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  void onSaveEdit(msg._id, editContent);
-                                }
-                                if (e.key === 'Escape') {
-                                  setEditingMessageId(null);
-                                }
-                              }}
-                            />
-                            <div className="flex gap-2 text-xs justify-end">
-                              <button
-                                onClick={() => setEditingMessageId(null)}
-                                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                              >
-                                Hủy
-                              </button>
-                              <button
-                                onClick={() => void onSaveEdit(msg._id, editContent)}
-                                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                              >
-                                Lưu
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            {msg.type === 'text' && (
-                              <div>{renderMessageContent(msg.content || '', msg.mentions, isMe)}</div>
-                            )}
-
-                            {msg.type === 'sticker' && msg.fileUrl && (
-                              <Image
-                                src={msg.fileUrl}
-                                alt="Sticker"
-                                width={128}
-                                height={128}
-                                className="w-20 h-20 object-contain hover:scale-105 transition-transform"
-                              />
-                            )}
-
-                            {msg.type === 'image' && msg.fileUrl && (
-                              <div
-                                className="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-200 relative overflow-hidden cursor-zoom-in"
-                                onClick={() => {
-                                  if (isUploading) return;
-                                  const url = getProxyUrl(msg.fileUrl as string);
-                                  onOpenMedia(url, 'image');
-                                }}
-                              >
-                                <Image
-                                  src={isUploading ? msg.fileUrl : getProxyUrl(msg.fileUrl)}
-                                  alt="Ảnh gửi"
-                                  width={400}
-                                  height={300}
-                                  className={`bg-blue-500 transition-all duration-200 rounded-lg max-w-full cursor-pointer ${isUploading ? 'opacity-50' : 'hover:opacity-90'}`}
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x300?text=Error';
-                                  }}
-                                />
-
-                                {isUploading && (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                      {Math.round(uploadProgress)}%
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {msg.type === 'file' && msg.fileUrl && !isVideo && (
-                              <a
-                                href={msg.fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center w-full sm:w-auto space-x-1 sm:space-x-3 bg-gray-50 p-2 rounded border border-gray-200 hover:bg-gray-100"
-                              >
-                                <div className="w-5 h-5 sm:w-10 sm:h-10 flex items-center justify-center bg-blue-100 rounded-full text-blue-500">
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                    className="w-4 h-4 sm:w-5 sm:h -5"
-                                  >
-                                    <path d="M8 2a2 2 0 00-2 2v3h2V4h4v12H8v-3H6v3a2 2 0 002 2h4a2 2 0 002-2V4a2 2 0 00-2-2H8z" />
-                                    <path d="M5 9l-3 3 3 3v-2h4v-2H5V9z" />
-                                  </svg>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs sm:font-medium text-[0.5rem] text-gray-800 truncate">
-                                    {msg.fileName || 'Tập tin đính kèm'}
-                                  </p>
-                                  <p className="text-[0.625rem] sm:text-[0.875rem] text-gray-500 truncate">
-                                    {msg.fileUrl}
-                                  </p>
-                                </div>
-                              </a>
-                            )}
-
-                            {isVideo && msg.fileUrl && (
-                              <div
-                                className="relative sm:w-[16rem] sm:h-[9rem] w-[9rem] h-[5.625rem] max-w-full cursor-zoom-in rounded-lg bg-black overflow-hidden"
-                                style={{ paddingTop: '56.25%' }} // 16:9 aspect ratio
-                              >
-                                <video
-                                  src={isUploading ? (msg.fileUrl as string) : getProxyUrl(msg.fileUrl as string)}
-                                  controls={!isUploading}
-                                  preload="none"
-                                  className={`absolute inset-0 w-full h-full object-contain ${isUploading ? 'opacity-60' : ''}`}
-                                />
-
-                                {isUploading && (
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white text-xs font-semibold">
-                                    <div className="mb-1">Đang tải video...</div>
-                                    <div>{Math.round(uploadProgress)}%</div>
-                                  </div>
-                                )}
-
-                                {!isUploading && (
-                                  <button
-                                    type="button"
-                                    className="absolute inset-0 bg-transparent"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const url = getProxyUrl(msg.fileUrl as string);
-                                      onOpenMedia(url, 'video');
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </>
+                    {/* TEXT */}
+                    {msg.type === 'text' && !isRecalled && !isEditing && (
+                      <div className="text-sm leading-relaxed">
+                        {renderMessageContent(msg.content || '', msg.mentions, isMe)}
+                      </div>
                     )}
 
-                    {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}
-                    {isEdited && msg.originalContent && (
-                      <div className="  border-t border-gray-300 ">
-                        {expandedOriginalId === msg._id && (
-                          <div className="text-xs text-gray-500 space-y-1 flex items-center justify-between">
-                            <p className="whitespace-pre-wrap bg-blue-100 pt-2 pb-1 rounded">{msg.originalContent}</p>
+                    {msg.type === 'text' && !isRecalled && isEditing && (
+                      <div className="text-sm leading-relaxed">
+                        <textarea
+                          value={typeof editContent === 'string' ? editContent : msg.content || ''}
+                          onChange={(e) => setEditContent?.(e.target.value)}
+                          className={`w-full p-2 rounded-xl border ${
+                            isMe ? 'bg-white text-gray-800' : 'bg-gray-50 text-gray-800'
+                          }`}
+                          rows={3}
+                        />
+                        <div className={`mt-2 flex gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <button
+                            onClick={() => {
+                              const content = typeof editContent === 'string' ? editContent : msg.content || '';
+                              onSaveEdit?.(msg._id, content);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                          >
+                            Lưu
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingMessageId?.(null);
+                              setEditContent?.('');
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* IMAGE – FIX SIZE MOBILE */}
+                    {msg.type === 'image' && msg.fileUrl && (
+                      <div
+                        className="relative rounded-2xl overflow-hidden cursor-pointer shadow-md max-w-[70vw] sm:max-w-[18rem]"
+                        onClick={() => !isUploading && onOpenMedia(getProxyUrl(msg.fileUrl), 'image')}
+                      >
+                        <Image
+                          src={getProxyUrl(msg.fileUrl)}
+                          alt="Ảnh"
+                          width={600}
+                          height={600}
+                          className="w-full h-auto object-cover"
+                        />
+
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black/70 text-white flex items-center justify-center text-sm font-semibold">
+                            {Math.round(uploadProgress)}%
                           </div>
                         )}
                       </div>
                     )}
-                    {/* Thời gian và trạng thái đã chỉnh sửa */}
-                    <div className={`flex items-center gap-2 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      {/* Hiển thị "Đã chỉnh sửa" với nút xem nội dung gốc */}
-                      {isEdited && (
-                        <span
-                          className="text-[10px] text-blue-500 hover:underline hover:cursor-pointer"
-                          onClick={() => setExpandedOriginalId((prev) => (prev === msg._id ? null : msg._id))}
-                        >
-                          {expandedOriginalId === msg._id ? <p>Ẩn chỉnh sửa</p> : <p>Đã chỉnh sửa</p>}
-                        </span>
-                      )}
 
-                      <p className="text-[10px] text-gray-500">
-                        {new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </div>{' '}
-                  {/* Đóng div message content */}
-                </div>{' '}
-                {/* Đóng div flex-col wrapper */}
-              </div> /* Đóng div message wrapper */
+                    {/* VIDEO – FIX SIZE MOBILE */}
+                    {isVideo && msg.fileUrl && (
+                      <div
+                        className="relative rounded-2xl overflow-hidden cursor-pointer shadow-lg max-w-[70vw] sm:max-w-[18rem] aspect-video bg-black"
+                        onClick={() => !isUploading && onOpenMedia(getProxyUrl(msg.fileUrl!), 'video')}
+                      >
+                        <video
+                          src={getProxyUrl(msg.fileUrl)}
+                          className="w-full h-full object-cover"
+                          playsInline
+                          preload="metadata"
+                        />
+
+                        {/* play overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-100">
+                          <div className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow">
+                            <HiPlay className="w-7 h-7 text-blue-600 ml-1" />
+                          </div>
+                        </div>
+
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                            {Math.round(uploadProgress)}%
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* FILE – FIX SIZE MOBILE */}
+                    {msg.type === 'file' && msg.fileUrl && !isVideo && (
+                      <a
+                        href={getProxyUrl(msg.fileUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-2xl max-w-[70vw] sm:max-w-[18rem] shadow-sm hover:bg-gray-50"
+                      >
+                        <div className="p-2 bg-blue-600 rounded-xl">
+                          <HiOutlineDocumentText className="w-6 h-6 text-white" />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {msg.fileName || 'Tệp đính kèm'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">Nhấn để tải xuống</p>
+                        </div>
+                      </a>
+                    )}
+
+                    {isRecalled && <p className="text-sm italic opacity-70">Tin nhắn đã bị thu hồi</p>}
+                  </div>
+
+                  {timeVisibleId === msg._id && (
+                    <span className={`text-xs mt-1 ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
+                      {formatTimestamp(msg.timestamp)}
+                    </span>
+                  )}
+                </div>
+              </div>
             );
           })}
         </React.Fragment>

@@ -166,7 +166,7 @@ const ContactsSection = ({
 
   return (
     <section>
-      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center gap-1 sticky top-12 bg-white py-1 -mx-3 px-3">
+      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center z-10 gap-1 sticky top-12 bg-white py-1 -mx-3 px-3">
         <div className="w-1 h-3 bg-blue-500 rounded-full" />
         Liên hệ ({contacts.length})
       </h4>
@@ -234,7 +234,7 @@ const MessagesSection = ({
 
   return (
     <section>
-      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center gap-1 sticky top-12 bg-white py-1 -mx-3 px-3">
+      <h4 className="font-semibold text-gray-700  mb-2 text-xs flex items-center gap-1 z-10 sticky top-12 bg-white py-1 -mx-3 px-3">
         <div className="w-1 h-3 bg-green-500 rounded-full" />
         Tin nhắn ({groupedMessages.length} cuộc trò chuyện)
       </h4>
@@ -338,7 +338,7 @@ const FilesSection = ({
 
   return (
     <section>
-      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center gap-1 sticky top-12 bg-white py-1 -mx-3 px-3">
+      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center gap-1 sticky z-10 top-12 bg-white py-1 -mx-3 px-3">
         <div className="w-1 h-3 bg-orange-500 rounded-full" />
         File ({fileMessages.length} file)
       </h4>

@@ -118,6 +118,7 @@ export default function ChatWindow({
   const [showPopup, setShowPopup] = useState(false);
   const [openMember, setOpenMember] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const markedReadRef = useRef<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -399,15 +400,22 @@ export default function ChatWindow({
     }
 
     const messageElement = document.getElementById(`msg-${messageId}`);
+    const container = messagesContainerRef.current;
 
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      setHighlightedMsgId(messageId);
+      if (container) {
+        const elRect = messageElement.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        const delta = elRect.top - cRect.top - container.clientHeight / 2 + elRect.height / 2;
+        container.scrollBy({ top: delta, behavior: 'smooth' });
+      }
 
+      setHighlightedMsgId(messageId);
       setTimeout(() => {
         setHighlightedMsgId(null);
-      }, 2000);
+      }, 2500);
     } else {
       alert('Tin nhắn này không còn hiển thị trong danh sách hiện tại.');
     }
@@ -819,7 +827,10 @@ export default function ChatWindow({
             getSenderName={getSenderName}
           />
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar"
+          >
             <MessageList
               messagesGrouped={messagesGrouped}
               messages={messages}
@@ -838,7 +849,7 @@ export default function ChatWindow({
               setEditingMessageId={setEditingMessageId}
               editContent={editContent}
               setEditContent={setEditContent}
-              onSaveEdit={handleSaveEdit} // Hàm lưu API
+              onSaveEdit={handleSaveEdit}
             />
             <div ref={messagesEndRef} />
           </div>

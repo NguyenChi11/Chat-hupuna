@@ -18,8 +18,17 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/users/me');
-        const json = await res.json();
+        let res = await fetch('/api/users/me');
+        let json = await res.json();
+        if (!res.ok || !json?.success) {
+          try {
+            const r = await fetch('/api/auth/refresh', { method: 'GET' });
+            if (r.ok) {
+              res = await fetch('/api/users/me');
+              json = await res.json();
+            }
+          } catch {}
+        }
         if (mounted) setIsAuthed(!!json?.success);
       } catch {
         if (mounted) setIsAuthed(false);
@@ -102,16 +111,6 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
         </div>
       )}
 
-      {/* Loading khi đang check auth */}
-      {!checked && (
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-700 font-medium">Đang kiểm tra phiên đăng nhập...</p>
-          </div>
-        </div>
-      )}
-
       {/* Nội dung chính */}
       <main className={`flex-1 overflow-hidden ${isAuthed && !hideMobileFooter ? 'pb-16 md:pb-0' : ''}`}>
         {children}
@@ -125,7 +124,7 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
 
           <div className="bg-white/95 backdrop-blur-2xl border-t border-gray-200 shadow-2xl">
             <div className="flex relative">
-              {mobileTabs.map((tab, index) => {
+              {mobileTabs.map((tab) => {
                 const active = isActive(tab.paths);
 
                 return (

@@ -6,6 +6,7 @@ import PinnedMessageListModal from '../base/PinnedMessageListModal';
 
 import type { Message } from '@/types/Message';
 import type { User } from '@/types/User';
+import { HiMapPin } from 'react-icons/hi2';
 
 interface PinnedMessagesSectionProps {
   allPinnedMessages: Message[];
@@ -31,13 +32,28 @@ export default function PinnedMessagesSection({
       {allPinnedMessages.length > 0 && (
         <button
           onClick={onOpenPinnedList}
-          className="flex items-center gap-1 rounded-lg shadow-lg p-2 m-2 bg-white hover:cursor-pointer text-[0.625rem] sm:text-[1.125rem]"
+          className={`
+    group flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-yellow-50 to-amber-50
+    border border-yellow-300 rounded-xl shadow-md hover:shadow-xl
+    hover:border-yellow-400 transition-all duration-300 active:scale-95
+    text-sm font-medium text-yellow-900 select-none cursor-pointer
+    m-2 sm:m-3
+  `}
           title={`Xem ${allPinnedMessages.length} tin nhắn đã ghim`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 rotate-45">
-            <path d="M11.25 4.755v7.5A1.75 1.75 0 019.5 14H5.75a.75.75 0 010-1.5h3.75a.25.25 0 00.25-.25v-7a.75.75 0 011.5 0zm-7.75 7.5a.75.75 0 01.75-.75H7.5a.75.75 0 010 1.5H4.25a.75.75 0 01-.75-.75z" />
-          </svg>
-          Danh sách tin nhắn ghim ({allPinnedMessages.length})
+          {/* Icon ghim – chuẩn Zalo, đẹp, sắc nét */}
+          <HiMapPin
+            className="w-5 h-5 text-yellow-600 rotate-45 drop-shadow-sm 
+               group-hover:scale-110 transition-transform duration-200"
+          />
+
+          <span className="flex items-center gap-1.5">
+            Tin nhắn đã ghim
+            {/* Badge số lượng */}
+            <span className="min-w-[1.5rem] px-2 py-0.5 bg-yellow-500 text-white text-xs font-bold rounded-full shadow-sm">
+              {allPinnedMessages.length}
+            </span>
+          </span>
         </button>
       )}
 

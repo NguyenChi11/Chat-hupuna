@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
+import { HiOutlineLogout } from 'react-icons/hi';
 import {
   HiUser,
   HiBell,
@@ -25,31 +27,60 @@ const menuItems = [
 ];
 
 export default function SettingsMobile() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      });
+    } catch {}
+    try {
+      localStorage.removeItem('info_user');
+      localStorage.removeItem('remember_login');
+    } catch {}
+    router.push('/');
+  };
+
   return (
-    <div className="sm:hidden min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm">
+    <div className="sm:hidden flex flex-col h-screen bg-gray-50">
+      {/* Header cố định */}
+      <div className="bg-white shadow-sm border-b border-gray-200 z-10">
         <div className="px-6 py-5">
           <h1 className="text-2xl font-bold text-gray-900">Cài đặt</h1>
         </div>
       </div>
 
-      <div className="divide-y divide-gray-200">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            className="w-full flex items-center justify-between px-6 py-5 bg-white hover:bg-gray-50 transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="text-blue-600">{item.icon}</div>
-              <span className="text-base font-medium text-gray-800">{item.label}</span>
-            </div>
-            <HiChevronRight className="w-5 h-5 text-gray-400" />
-          </button>
-        ))}
-      </div>
+      {/* Nội dung cuộn được */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Danh sách cài đặt */}
+        <div className="divide-y divide-gray-200 bg-white">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              className="w-full flex items-center justify-between px-6 py-5 hover:bg-gray-50 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-blue-600">{item.icon}</div>
+                <span className="text-base font-medium text-gray-800">{item.label}</span>
+              </div>
+              <HiChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+          ))}
+        </div>
 
-      <div className="p-6 text-center">
-        <p className="text-sm text-gray-500">Hupuna phiên bản 2.5.1</p>
+        {/* Nút Đăng xuất + thông tin phiên bản */}
+        <div className="mt-12 px-6 mb-20 pb-10 bg-white">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-3 py-4 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 active:scale-98 transition-all shadow-lg"
+          >
+            <HiOutlineLogout className="w-5 h-5" />
+            Đăng xuất
+          </button>
+        </div>
       </div>
     </div>
   );
