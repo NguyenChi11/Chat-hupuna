@@ -4,6 +4,7 @@ import React from 'react';
 import { HiX, HiSearch, HiUserGroup } from 'react-icons/hi';
 import Image from 'next/image';
 import { User } from '../../../types/User';
+import { formatTimeAgo } from '@/utils/dateUtils';
 import { GroupConversation } from '@/types/Group';
 import { useCreateGroupModal } from '@/hooks/useCreateGroupModal';
 import { getProxyUrl } from '@/utils/utils';
@@ -231,7 +232,13 @@ export default function CreateGroupModal({
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-900 px-1">{user.name}</p>
                           </div>
-
+                          <span className={`text-xs px-1 font-medium ${user.online ? 'text-green-600' : 'text-gray-500'}`}>
+                            {user.online
+                              ? 'Đang hoạt động'
+                              : user.lastSeen
+                                ? `Hoạt động ${formatTimeAgo(user.lastSeen)} trước`
+                                : 'Hoạt động gần đây'}
+                          </span>
                           {isAlreadyMember && mode === 'add' && (
                             <span className="text-xs text-gray-400 font-medium">Đã tham gia</span>
                           )}

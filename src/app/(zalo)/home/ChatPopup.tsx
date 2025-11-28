@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { formatTimeAgo } from '@/utils/dateUtils';
+const PRESENCE_THRESHOLD_MS = 5 * 60 * 1000;
 import io, { Socket } from 'socket.io-client';
 import ChatInfoPopup from './ChatInfoPopup';
 
@@ -148,6 +150,21 @@ export default function ChatWindow({
 
   const [showSearchSidebar, setShowSearchSidebar] = useState(false);
   const chatAvatar = (selectedChat as { avatar?: string }).avatar;
+
+  const presenceInfo = useMemo(() => {
+    if (isGroup) return { online: undefined as boolean | undefined, text: '' };
+    const partnerId = getId(selectedChat);
+    const partner = allUsers.find((u) => String(u._id) === String(partnerId));
+    const lastSeen = partner?.lastSeen ?? null;
+    const now = Date.now();
+    const online = lastSeen != null ? now - lastSeen <= PRESENCE_THRESHOLD_MS : !!partner?.online;
+    const text = online
+      ? 'Đang hoạt động'
+      : lastSeen
+        ? `Hoạt động ${formatTimeAgo(lastSeen)} trước`
+        : 'Hoạt động gần đây';
+    return { online, text };
+  }, [isGroup, selectedChat, allUsers]);
 
   const sendMessageProcess = useCallback(
     async (msgData: MessageCreate) => {
@@ -1039,6 +1056,8 @@ export default function ChatWindow({
             onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
             avatar={chatAvatar}
             onBackFromChat={onBackFromChat}
+            presenceText={!isGroup ? presenceInfo.text : undefined}
+            presenceOnline={!isGroup ? presenceInfo.online : undefined}
           />
           <PinnedMessagesSection
             allPinnedMessages={allPinnedMessages}

@@ -8,7 +8,10 @@ const io = new Server(process.env.PORT || 3001, {
   },
 });
 
+const presence = new Map();
+
 io.on('connection', (socket) => {
+  let connectedUserId = null;
 
   socket.on('join_room', (room) => {
     socket.join(room);
@@ -100,6 +103,37 @@ io.on('connection', (socket) => {
     }
   });
 
- 
+  socket.on('user_online', (payload) => {
+    const userId = String(payload?.userId || '');
+    if (!userId) return;
+    connectedUserId = userId;
+    const prev = presence.get(userId) || { online: false, lastSeen: null };
+    const next = { online: true, lastSeen: prev.lastSeen };
+    presence.set(userId, next);
+    io.emit('presence_update', { userId, online: true, lastSeen: next.lastSeen });
+  });
+
+  socket.on('heartbeat', (payload) => {
+    const userId = String(payload?.userId || connectedUserId || '');
+    if (!userId) return;
+    const next = { online: true, lastSeen: Date.now() };
+    presence.set(userId, next);
+    io.emit('presence_update', { userId, online: true, lastSeen: next.lastSeen });
+  });
+
+  socket.on('user_offline', (payload) => {
+    const userId = String(payload?.userId || connectedUserId || '');
+    if (!userId) return;
+    const next = { online: false, lastSeen: Date.now() };
+    presence.set(userId, next);
+    io.emit('presence_update', { userId, online: false, lastSeen: next.lastSeen });
+  });
+
+  socket.on('disconnect', () => {
+    if (!connectedUserId) return;
+    const next = { online: true, lastSeen: Date.now() };
+    presence.set(connectedUserId, next);
+  });
+
 });
 

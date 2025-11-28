@@ -14,6 +14,8 @@ export interface User {
   role?: string;
   department?: string;
   status?: string;
+  online?: boolean;
+  lastSeen?: number | null;
   // Các field trạng thái đã được tính sẵn từ server (tiện cho FE sử dụng)
   isPinned?: boolean;
   isHidden?: boolean;

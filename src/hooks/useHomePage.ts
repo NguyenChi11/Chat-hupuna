@@ -311,6 +311,26 @@ export function useHomePage() {
     if (!currentUser) return;
     socketRef.current = io(SOCKET_URL);
     socketRef.current.emit('join_room', currentUser._id);
+    socketRef.current.emit('user_online', { userId: currentUser._id });
+    const HEARTBEAT_MS = 60000; // 1 phút
+    const hb = setInterval(() => {
+      try {
+        socketRef.current?.emit('heartbeat', { userId: currentUser._id });
+      } catch {}
+    }, HEARTBEAT_MS);
+
+    socketRef.current.on('presence_update', (payload: { userId: string; online: boolean; lastSeen?: number | null }) => {
+      setAllUsers((prev) =>
+        prev.map((u) => (String(u._id) === String(payload.userId) ? { ...u, online: payload.online, lastSeen: payload.lastSeen ?? u.lastSeen } : u)),
+      );
+    });
+
+    const handleBeforeUnload = () => {
+      try {
+        socketRef.current?.emit('heartbeat', { userId: currentUser._id });
+      } catch {}
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     socketRef.current.on(
       'update_sidebar',
@@ -406,6 +426,10 @@ export function useHomePage() {
       },
     );
     return () => {
+      try {
+        clearInterval(hb);
+      } catch {}
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       socketRef.current?.disconnect();
     };
   }, [currentUser, fetchAllData, allUsers]);

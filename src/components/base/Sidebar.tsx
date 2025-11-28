@@ -4,7 +4,6 @@ import SearchResults from '@/components/(chatPopup)/SearchResults';
 import { User } from '../../types/User';
 import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Group';
 import { getProxyUrl } from '../../utils/utils';
-import ICGroupPeople from '@/components/svg/ICGroupPeople';
 import MessageFilter, { FilterType } from '../(chatPopup)/MessageFilter';
 import Image from 'next/image';
 import { HiMagnifyingGlass, HiXMark } from 'react-icons/hi2';
