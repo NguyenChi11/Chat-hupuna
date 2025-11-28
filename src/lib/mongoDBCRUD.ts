@@ -45,7 +45,16 @@ export const getRowByIdOrCode = async <T extends Record<string, unknown>>(
 ): Promise<{ rowIndex: number; row: T } | null> => {
   const { db } = await connectToDatabase();
   const filter: Record<string, unknown> = {};
-  if (_id) filter['_id'] = new ObjectId(_id);
+
+  if (_id) {
+    if (ObjectId.isValid(_id)) {
+      filter['_id'] = new ObjectId(_id);
+    } else if (!isNaN(Number(_id))) {
+      filter['_id'] = Number(_id);
+    }
+
+  }
+
   if (id) filter['id'] = id;
   if (code) filter['code'] = code;
 
@@ -228,20 +237,6 @@ export async function createMany<T extends Record<string, unknown>>(
   return collection.insertMany(docs);
 }
 
-// ========== UPDATE BY FIELD ==========
-// export const updateByField = async <T extends Record<string, unknown>>(
-//   collectionName: string,
-//   field: keyof T,
-//   value: string | number,
-//   updateData: Partial<T>,
-// ): Promise<boolean> => {
-//   const { db } = await connectToDatabase();
-//   // Xóa _id khỏi data update vì mongo không cho phép update _id
-//   if ('_id' in updateData) delete updateData._id;
-
-//   const result = await db.collection(collectionName).updateOne({ [field]: value }, { $set: updateData });
-//   return result.modifiedCount > 0;
-// };
 
 // UPDATE BY FIELD
 export const updateByField = async <T extends Record<string, unknown>>(
@@ -251,17 +246,20 @@ export const updateByField = async <T extends Record<string, unknown>>(
   updateData: Partial<T>,
 ): Promise<boolean> => {
   const { db } = await connectToDatabase();
-
-  // Xóa _id khỏi data update
   if ('_id' in updateData) delete updateData._id;
 
-  // 🔥 tạo biến queryValue
   let queryValue: string | number | ObjectId = value;
 
-  if (field === '_id' && typeof value === 'string' && ObjectId.isValid(value)) {
-    queryValue = new ObjectId(value);
+  if (field === '_id' && typeof value === 'string') {
+    if (ObjectId.isValid(value)) {
+      // Nếu là ObjectId hợp lệ
+      queryValue = new ObjectId(value);
+    } else if (!isNaN(Number(value))) {
+      // Nếu là số
+      queryValue = Number(value);
+    }
+    // Nếu là string không phải ObjectId và không phải số, queryValue vẫn là string
   }
-
   const result = await db.collection(collectionName).updateOne({ [field]: queryValue }, { $set: updateData });
 
   return result.modifiedCount > 0;

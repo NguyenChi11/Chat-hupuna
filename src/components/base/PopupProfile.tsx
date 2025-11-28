@@ -28,11 +28,11 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('profile');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form states
+  // Form states - Department và Status là number nên cần convert
   const [editForm, setEditForm] = useState({
-    name: user.name || '',
-    department: user.department || '',
-    status: user.status || '',
+    name: String(user.name || ''),
+    department: user.department !== undefined && user.department !== null ? String(user.department) : '',
+    status: user.status !== undefined && user.status !== null ? String(user.status) : '',
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -73,11 +73,10 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
 
     try {
       setIsUploading(true);
-
       const formData = new FormData();
       formData.append('file', file);
       formData.append('roomId', 'avatar');
-      formData.append('sender', user._id);
+      formData.append('sender', String(user._id)); // 🔥 FIX: Convert to string
       formData.append('receiver', '');
       formData.append('type', 'image');
       formData.append('folderName', 'Avatars');
@@ -94,22 +93,27 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
 
       const newAvatarUrl = uploadJson.link as string;
 
+      // 🔥 FIX: Sử dụng string cho _id thay vì gửi trực tiếp user._id
+      const userId = String(user._id);
+
       const updateRes = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
           field: '_id',
-          value: user._id,
+          value: userId,
           data: { avatar: newAvatarUrl },
         }),
       });
 
       const updateJson = await updateRes.json();
       if (!updateRes.ok || updateJson.error) {
+        console.error('Update avatar failed:', updateJson);
         throw new Error(updateJson.error || 'Cập nhật avatar thất bại');
       }
 
+      // Cập nhật localStorage
       if (typeof window !== 'undefined') {
         try {
           const raw = localStorage.getItem('info_user');
@@ -153,18 +157,30 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
     try {
       setIsSubmitting(true);
 
+      // 🔥 Convert department và status về số nếu có giá trị
+      const departmentValue = editForm.department.trim() ? Number(editForm.department.trim()) : undefined;
+      const statusValue = editForm.status.trim() ? Number(editForm.status.trim()) : undefined;
+
+      const updateData: Record<string, unknown> = {
+        name: editForm.name.trim(),
+      };
+
+      // Chỉ thêm department và status nếu có giá trị
+      if (departmentValue !== undefined && !isNaN(departmentValue)) {
+        updateData.department = departmentValue;
+      }
+      if (statusValue !== undefined && !isNaN(statusValue)) {
+        updateData.status = statusValue;
+      }
+
       const updateRes = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
           field: '_id',
-          value: user._id,
-          data: {
-            name: editForm.name.trim(),
-            department: editForm.department.trim(),
-            status: editForm.status.trim(),
-          },
+          value: String(user._id),
+          data: updateData,
         }),
       });
 
@@ -179,15 +195,19 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
           const raw = localStorage.getItem('info_user');
           if (raw) {
             const parsed = JSON.parse(raw) as User;
-            localStorage.setItem(
-              'info_user',
-              JSON.stringify({
-                ...parsed,
-                name: editForm.name.trim(),
-                department: editForm.department.trim(),
-                status: editForm.status.trim(),
-              }),
-            );
+            const updatedUser: Record<string, unknown> = {
+              ...parsed,
+              name: editForm.name.trim(),
+            };
+
+            if (departmentValue !== undefined && !isNaN(departmentValue)) {
+              updatedUser.department = departmentValue;
+            }
+            if (statusValue !== undefined && !isNaN(statusValue)) {
+              updatedUser.status = statusValue;
+            }
+
+            localStorage.setItem('info_user', JSON.stringify(updatedUser));
           }
         } catch (err) {
           console.error('Không cập nhật được info_user trong localStorage', err);
@@ -196,11 +216,18 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
 
       // Callback để cập nhật UI
       if (onUserUpdated) {
-        onUserUpdated({
+        const updatedFields: Record<string, unknown> = {
           name: editForm.name.trim(),
-          department: editForm.department.trim(),
-          status: editForm.status.trim(),
-        });
+        };
+
+        if (departmentValue !== undefined && !isNaN(departmentValue)) {
+          updatedFields.department = departmentValue;
+        }
+        if (statusValue !== undefined && !isNaN(statusValue)) {
+          updatedFields.status = statusValue;
+        }
+
+        onUserUpdated(updatedFields);
       }
 
       toast({ type: 'success', message: 'Cập nhật thông tin thành công', duration: 2500 });
@@ -243,7 +270,7 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
         body: JSON.stringify({
           action: 'changePassword',
           data: {
-            userId: user._id,
+            userId: String(user._id), // 🔥 FIX: Convert to string
             currentPassword,
             newPassword,
           },
@@ -296,6 +323,32 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phòng ban
+              </label>
+              <input
+                type="number"
+                value={editForm.department}
+                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Nhập mã phòng ban"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Trạng thái
+              </label>
+              <input
+                type="number"
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Nhập mã trạng thái"
+              />
+            </div>
+
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -309,9 +362,9 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
                 type="button"
                 onClick={() => {
                   setEditForm({
-                    name: user.name || '',
-                    department: user.department || '',
-                    status: user.status || '',
+                    name: String(user.name || ''),
+                    department: user.department !== undefined && user.department !== null ? String(user.department) : '',
+                    status: user.status !== undefined && user.status !== null ? String(user.status) : '',
                   });
                   setViewMode('profile');
                 }}
@@ -417,14 +470,14 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
                   </span>
                 </div>
               )}
-              {user.role && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Vai trò</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                    {String(user.role)}
-                  </span>
-                </div>
-              )}
+              {/*{user.role && (*/}
+              {/*  <div className="flex items-center justify-between text-sm">*/}
+              {/*    <span className="text-gray-500">Vai trò</span>*/}
+              {/*    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">*/}
+              {/*      {String(user.role)}*/}
+              {/*    </span>*/}
+              {/*  </div>*/}
+              {/*)}*/}
               {user.status && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Trạng thái</span>

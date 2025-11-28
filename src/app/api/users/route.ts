@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addRow, deleteByField, getAllRows, getCollection, getRowByIdOrCode, updateByField } from '@/lib/mongoDBCRUD';
-import { ObjectId } from 'mongodb';
+import { Filter, ObjectId } from 'mongodb';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { signJWT, signEphemeralJWT } from '@/lib/auth';
 import { createSession, fingerprintFromHeaders } from '@/lib/session';
-// import bcrypt from 'bcryptjs'; // ❌ COMMENT: Không sử dụng bcrypt nữa
 
 export const runtime = 'nodejs';
 
@@ -51,6 +50,31 @@ interface UsersRequestBody {
   isHidden?: boolean;
 }
 
+// 🔥 Helper function để tạo query filter cho _id
+function createIdFilter(id: string | number): ObjectId | number {
+  if (typeof id === 'number') {
+    return id;
+  }
+
+  const idStr = String(id);
+
+  // Kiểm tra nếu là ObjectId hợp lệ
+  if (ObjectId.isValid(idStr) && idStr.length === 24) {
+    return new ObjectId(idStr);
+  }
+
+  // Kiểm tra nếu là số
+  if (!isNaN(Number(idStr))) {
+    return Number(idStr);
+  }
+
+  // Mặc định trả về string (trường hợp đặc biệt)
+  return idStr as unknown as number;
+}
+
+// 🔥 Type-safe filter cho User với _id
+type UserIdFilter = Filter<User> & { _id: ObjectId | number };
+
 export async function POST(req: NextRequest) {
   let body: UsersRequestBody = {};
   try {
@@ -87,14 +111,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing data or password' }, { status: 400 });
         }
 
-        // ❌ COMMENT: Không băm mật khẩu nữa, lưu trực tiếp plaintext
-        // const salt = await bcrypt.genSalt(10);
-        // const hashedPassword = await bcrypt.hash(data.password as string, salt);
-
         const newData = {
           ...data,
-          // password: hashedPassword, // ❌ Lưu hash
-          password: data.password, // ✅ Lưu plaintext
+          password: data.password, // Lưu plaintext
         };
 
         const _id = await addRow<User>(collectionName, newData as User);
@@ -172,19 +191,37 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing field or value for update' }, { status: 400 });
         }
         try {
-          if (field === '_id' && typeof value === 'string' && !ObjectId.isValid(value)) {
-            return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+          // 🔥 FIX: Xử lý update với _id có thể là ObjectId hoặc number
+          if (field === '_id') {
+            const userCollection = await getCollection<User>(collectionName);
+            const queryId = createIdFilter(value as string | number);
+
+            // 🔥 Type-safe filter
+            const filter: UserIdFilter = { _id: queryId } as UserIdFilter;
+
+            const result = await userCollection.updateOne(
+              filter,
+              { $set: data || {} }
+            );
+
+            if (result.matchedCount === 0) {
+              return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            }
+
+            return NextResponse.json({ success: true, modified: result.modifiedCount });
+          } else {
+            // Các trường khác vẫn dùng updateByField
+            const result = await updateByField<User>(
+              collectionName,
+              field,
+              value as string | number,
+              (data || {}) as Partial<User>,
+            );
+            return NextResponse.json({ success: true });
           }
-          const result = await updateByField<User>(
-            collectionName,
-            field,
-            value as string | number,
-            (data || {}) as Partial<User>,
-          );
-          console.log(result);
-          return NextResponse.json({ success: true });
-        } catch {
-          return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+        } catch (error) {
+          console.error('Update error:', error);
+          return NextResponse.json({ error: 'Invalid ID format or update failed' }, { status: 400 });
         }
 
       case 'delete':
@@ -230,45 +267,19 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: false, message: 'Thiếu tên người dùng hoặc mật khẩu!' }, { status: 400 });
         }
 
-        // ✅ Tìm user bằng username VÀ password (plaintext)
         const queryResult = await getAllRows<User>(collectionName, {
           filters: {
             username,
-            password, // ✅ So sánh trực tiếp plaintext
+            password,
           },
           limit: 1,
         });
 
         const found = queryResult.data?.[0];
 
-        // Nếu không tìm thấy user
         if (!found) {
           return NextResponse.json({ success: false, message: 'Username hoặc Password không đúng!' }, { status: 401 });
         }
-
-        // ❌ COMMENT: Không cần xác minh bcrypt nữa
-        // if (!found.password) {
-        //   return NextResponse.json(
-        //     { success: false, message: 'Tài khoản cần được cập nhật. Vui lòng liên hệ admin!' },
-        //     { status: 401 }
-        //   );
-        // }
-
-        // ❌ COMMENT: Không cần bcrypt.compare nữa
-        // try {
-        //   const isPasswordValid = await bcrypt.compare(password, found.password as string);
-        //   if (!isPasswordValid) {
-        //     return NextResponse.json(
-        //       { success: false, message: 'Username hoặc Password không đúng!' },
-        //       { status: 401 }
-        //     );
-        //   }
-        // } catch (compareError) {
-        //   return NextResponse.json(
-        //     { success: false, message: 'Lỗi xác thực. Vui lòng liên hệ admin!' },
-        //     { status: 500 }
-        //   );
-        // }
 
         const fp = fingerprintFromHeaders({
           'user-agent': req.headers.get('user-agent') || '',
@@ -374,32 +385,29 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: false, message: 'Thiếu thông tin bắt buộc' }, { status: 400 });
         }
 
-        // 1. Tìm user
-        const userDoc = await getRowByIdOrCode<User>(collectionName, { _id: userId });
+        // 🔥 FIX: Xử lý cả ObjectId và number
+        const userCollection = await getCollection<User>(collectionName);
+        const queryId = createIdFilter(userId);
 
-        if (!userDoc || !userDoc.row.password) {
+        // 🔥 Type-safe filter
+        const filter: UserIdFilter = { _id: queryId } as UserIdFilter;
+
+        const userDoc = await userCollection.findOne(filter);
+
+        if (!userDoc || !userDoc.password) {
           return NextResponse.json({ success: false, message: 'Không tìm thấy tài khoản' }, { status: 404 });
         }
 
-        // ✅ So sánh plaintext trực tiếp
-        if (currentPassword !== userDoc.row.password) {
+        // So sánh plaintext trực tiếp
+        if (currentPassword !== userDoc.password) {
           return NextResponse.json({ success: false, message: 'Mật khẩu hiện tại không đúng' }, { status: 401 });
         }
 
-        // ❌ COMMENT: Không hash password mới nữa
-        // const salt = await bcrypt.genSalt(10);
-        // const hashedNewPassword = await bcrypt.hash(newPassword, salt);
-
-        // ✅ Cập nhật password mới (plaintext)
-        await updateByField<User>(
-          collectionName,
-          '_id',
-          userId,
-          { password: newPassword }, // ✅ Lưu plaintext
+        // Cập nhật password mới (plaintext)
+        await userCollection.updateOne(
+          filter,
+          { $set: { password: newPassword } }
         );
-
-        console.log('✅ Password changed successfully for userId:', userId);
-
         return NextResponse.json({
           success: true,
           message: 'Đổi mật khẩu thành công',
