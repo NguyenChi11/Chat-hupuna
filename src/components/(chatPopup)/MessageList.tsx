@@ -58,6 +58,7 @@ export default function MessageList({
   onSaveEdit,
 }: MessageListProps) {
   const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
+  const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
   const formatTimestamp = (ts: number) => {
     const d = new Date(ts);
     const now = new Date();
@@ -72,7 +73,9 @@ export default function MessageList({
           year: 'numeric',
         });
   };
+
   return (
+
     <>
       {Array.from(messagesGrouped.entries()).map(([dateKey, msgs]) => (
         <React.Fragment key={dateKey}>
@@ -159,6 +162,14 @@ export default function MessageList({
 
                 {/* Content */}
                 <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
+                  {isEdited && !isRecalled   && (
+                    <span
+                      className="text-[10px] px-1 text-blue-500 hover:underline hover:cursor-pointer"
+                      onClick={() => setExpandedOriginalId((prev) => (prev === msg._id ? null : msg._id))}
+                    >
+                          {expandedOriginalId === msg._id ? <p>Ẩn chỉnh sửa</p> : <p>Đã chỉnh sửa</p>}
+                    </span>
+                  )}
                   {/* Reply preview */}
                   {repliedToMsg && (
                     <div
@@ -175,7 +186,7 @@ export default function MessageList({
                   {/* MAIN BUBBLE */}
                   <div
                     className={`
-                      px-4 py-3 rounded-3xl shadow-md max-w-[70vw] sm:max-w-[20rem] break-words
+                      px-4 py-2 rounded-3xl shadow-md max-w-[70vw] sm:max-w-[20rem] break-words
                       ${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'}
                       ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
                       ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}
@@ -227,23 +238,24 @@ export default function MessageList({
                           rows={3}
                         />
                         <div className={`mt-2 flex gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <button
-                            onClick={() => {
-                              const content = typeof editContent === 'string' ? editContent : msg.content || '';
-                              onSaveEdit?.(msg._id, content);
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                          >
-                            Lưu
-                          </button>
+
                           <button
                             onClick={() => {
                               setEditingMessageId?.(null);
                               setEditContent?.('');
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300"
+                            className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 hover:cursor-pointer"
                           >
                             Hủy
+                          </button>
+                          <button
+                            onClick={() => {
+                              const content = typeof editContent === 'string' ? editContent : msg.content || '';
+                              onSaveEdit?.(msg._id, content);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 hover:cursor-pointer"
+                          >
+                            Lưu
                           </button>
                         </div>
                       </div>
@@ -321,10 +333,25 @@ export default function MessageList({
                     )}
 
                     {isRecalled && <p className="text-sm italic opacity-70">Tin nhắn đã bị thu hồi</p>}
+
+                    {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}
+                    {isEdited && !isRecalled && msg.originalContent && (
+                      <div className=" border-gray-300 ">
+                        {expandedOriginalId === msg._id && (
+                          <div className="text-xs border-t-[1px] border-t-gray-300  text-gray-500 space-y-1 flex items-center justify-between">
+                            <p className={`p-1 m-1 whitespace-pre-wrap pt-2 pb-1 rounded ${isMe ? "bg-white" : ""}`}>{msg.originalContent}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                   </div>
 
-                  {timeVisibleId === msg._id && (
-                    <span className={`text-xs mt-1 ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
+                  {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}
+
+
+                    {timeVisibleId === msg._id && (
+                    <span className={`text-xs mt-1  text-gray-500`}>
                       {formatTimestamp(msg.timestamp)}
                     </span>
                   )}

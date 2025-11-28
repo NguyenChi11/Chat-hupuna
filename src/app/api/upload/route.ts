@@ -8,7 +8,6 @@ import { setProgress, clearProgress } from '@/lib/uploadStore';
 export async function POST(req: NextRequest) {
   // 1. Lấy ID để tracking
   const uploadId = req.nextUrl.searchParams.get('uploadId') || 'unknown';
-  console.log(`📥 Bắt đầu (ID: ${uploadId})...`);
 
   try {
     const form = await req.formData();
@@ -31,14 +30,12 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     // 3. Upload với callback update Store
-    console.log(`🚀 Uploading to Mega...`);
 
     const result = await uploadToMega(buffer, file.name, buffer.length, finalFolderName, (percent) => {
       // 🔥 Cập nhật tiến trình vào Store khi Mega báo về
       setProgress(uploadId, percent);
     });
 
-    console.log('✅ Upload xong:', result.link);
 
     // Kết thúc: 100%
     setProgress(uploadId, 100);

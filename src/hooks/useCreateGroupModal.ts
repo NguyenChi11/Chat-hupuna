@@ -36,8 +36,8 @@ export function useCreateGroupModal({
   const [searchTerm, setSearchTerm] = useState('');
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>(() => {
-    const currentUserId = currentUser._id;
-    const initialSet = new Set([...existingMemberIds, currentUserId]);
+    const currentUserId = String(currentUser._id);
+    const initialSet = new Set<string>([...existingMemberIds.map(String), currentUserId]);
     return Array.from(initialSet);
   });
 

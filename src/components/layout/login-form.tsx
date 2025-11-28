@@ -32,7 +32,6 @@ export default function LoginForm() {
       });
 
       const result = await res.json();
-      console.log('result: ', result);
       if (result.success) {
         toast({ type: 'success', message: 'Đăng nhập thành công!', duration: 3000 });
 

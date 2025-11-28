@@ -83,15 +83,25 @@ export async function POST(req: NextRequest) {
         // ... (phần còn lại của case 'read' để lấy thông tin sender và trả về)
         // ... (phần lấy danh sách senderIds, query users, enrichedMessages)
 
-        // Lấy danh sách senderId
-        const senderIds = [...new Set(messages.map((m) => String(m.sender)))]
-          .filter(ObjectId.isValid)
-          .map((id) => new ObjectId(id));
+        // Lấy danh sách senderId (hỗ trợ cả ObjectId, number, string)
+        const rawSenderIds = [...new Set(messages.map((m) => {
+          const s = (m as Message).sender as unknown;
+          if (s && typeof s === 'object' && s !== null && '_id' in (s as Record<string, unknown>)) {
+            return String((s as Record<string, unknown>)._id);
+          }
+          return String((m as Message).sender);
+        }))];
+
+        const senderIdValues = rawSenderIds.map((idStr) => {
+          if (ObjectId.isValid(idStr)) return new ObjectId(idStr);
+          const num = Number(idStr);
+          return Number.isNaN(num) ? idStr : num;
+        });
 
         // ... (các bước lấy userMap và enrichedMessages)
 
         const usersResult = await getAllRows<User>(USERS_COLLECTION_NAME, {
-          filters: { _id: { $in: senderIds } },
+          filters: { _id: { $in: senderIdValues } },
           limit: 999999,
         });
         const userMap = new Map<string, User>();
@@ -104,14 +114,14 @@ export async function POST(req: NextRequest) {
             ...msg,
             sender: user
               ? { _id: String(user._id), name: user.name, avatar: user.avatar }
-              : { _id: msg.sender, name: 'Unknown', avatar: null },
+              : { _id: String(msg.sender), name: 'Unknown', avatar: null },
           };
         });
 
-        // 7. Trả về
+        const uniqueMessages = Array.from(new Map(enrichedMessages.map((m) => [String(m._id), m])).values());
         return NextResponse.json({
           total: result.total,
-          data: enrichedMessages,
+          data: uniqueMessages,
         });
       }
 
@@ -197,7 +207,6 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing userId or searchTerm' }, { status: 400 });
         }
 
-        console.log('🔍 [API] Starting global search:', { searchTerm, searchUserId });
 
         // ========== BƯỚC 1: LẤY DANH SÁCH GROUP MÀ USER LÀ THÀNH VIÊN ==========
         const groupRoomIds: string[] = [];
@@ -209,7 +218,6 @@ export async function POST(req: NextRequest) {
             limit: 9999,
           });
 
-          console.log('📊 [API] Total groups in DB:', allGroupsResult.data?.length || 0);
 
           // 🔥 SỬA LẠI: Filter groups mà user là thành viên
           const getMemberId = (m: MemberInput): string | null => {
@@ -233,7 +241,6 @@ export async function POST(req: NextRequest) {
             return false;
           });
 
-          console.log('✅ [API] User groups found:', userGroups.length);
 
           userGroups.forEach((g) => {
             const gId = String(g._id);
@@ -252,15 +259,7 @@ export async function POST(req: NextRequest) {
               members: membersList,
             });
           });
-
-          console.log('📋 [API] Final groupMap:', {
-            size: groupMap.size,
-            groups: Array.from(groupMap.values()).map((g) => ({
-              id: g._id,
-              name: g.name,
-              membersCount: g.members.length,
-            })),
-          });
+        
         } catch (e) {
           console.error('❌ [API] Error fetching groups:', e);
         }
@@ -291,20 +290,11 @@ export async function POST(req: NextRequest) {
             oneToOneRoomIds.push(roomId);
           });
 
-          console.log('📌 [API] Generated 1-1 roomIds count:', oneToOneRoomIds.length);
         } catch (e) {
           console.error('❌ [API] Error generating 1-1 rooms:', e);
         }
 
         const allAccessibleRoomIds = [...groupRoomIds, ...oneToOneRoomIds];
-
-        console.log('🎯 [API] All accessible roomIds:', {
-          total: allAccessibleRoomIds.length,
-          groups: groupRoomIds.length,
-          oneToOne: oneToOneRoomIds.length,
-          sampleGroupIds: groupRoomIds.slice(0, 3),
-          sampleOneToOneIds: oneToOneRoomIds.slice(0, 3),
-        });
 
         // ========== BƯỚC 4: TÌM KIẾM TIN NHẮN ==========
         const searchFilters = {
@@ -328,15 +318,8 @@ export async function POST(req: NextRequest) {
 
         const foundMessages: Message[] = searchResults.data || [];
 
-        console.log('🔍 [API] Search results:', {
-          searchTerm,
-          userId: searchUserId,
-          foundMessages: foundMessages.length,
-          sampleRoomIds: foundMessages.slice(0, 5).map((m) => m.roomId),
-        });
-
+       
         if (!foundMessages.length) {
-          console.log('⚠️ [API] No messages found');
           return NextResponse.json({ success: true, data: [], total: 0 });
         }
 
@@ -375,7 +358,6 @@ export async function POST(req: NextRequest) {
             chatInfo.roomAvatar = group?.avatar || null;
             chatInfo.partnerId = null;
 
-            console.log(`✅ [ENRICH] Message in GROUP: "${group?.name}" (${msg.roomId})`);
           } else {
             // Chat 1-1
             chatInfo.isGroupChat = false;
@@ -401,7 +383,6 @@ export async function POST(req: NextRequest) {
               const ids = [searchUserId, partnerId].sort();
               chatInfo.roomId = `${ids[0]}_${ids[1]}`;
 
-              console.log(`💬 [ENRICH] Message in 1-1: "${chatInfo.partnerName}" (${chatInfo.roomId})`);
             }
           }
 
@@ -461,17 +442,7 @@ export async function POST(req: NextRequest) {
           all: enrichedMessages,
         };
 
-        console.log('📊 [API] Final results:', {
-          total: enrichedMessages.length,
-          groups: messagesBySource.group.length,
-          oneToOne: messagesBySource.oneToOne.length,
-          byType: {
-            text: messagesByType.text.length,
-            file: messagesByType.file.length,
-            image: messagesByType.image.length,
-            sticker: messagesByType.sticker.length,
-          },
-        });
+       
 
         return NextResponse.json({
           success: true,

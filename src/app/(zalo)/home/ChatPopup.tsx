@@ -45,6 +45,7 @@ const STICKERS = [
 ];
 
 const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
+const SCROLL_BUMP_PX = 80;
 
 interface ChatWindowProps {
   selectedChat: ChatItem;
@@ -121,6 +122,7 @@ export default function ChatWindow({
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const markedReadRef = useRef<string | null>(null);
+  const initialScrolledRef = useRef(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pickerTab, setPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -133,6 +135,10 @@ export default function ChatWindow({
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState(''); // Lưu nội dung đang chỉnh sửa
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [oldestTs, setOldestTs] = useState<number | null>(null);
+  const [initialLoading, setInitialLoading] = useState(false);
   const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
     return [user1Id, user2Id].sort().join('_');
   };
@@ -320,6 +326,15 @@ export default function ChatWindow({
 
     return () => clearTimeout(timer);
   }, [scrollToMessageId, messages.length, onScrollComplete]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    if (!initialScrolledRef.current && messages.length > 0) {
+      container.scrollTop = container.scrollHeight;
+      initialScrolledRef.current = true;
+    }
+  }, [messages.length, roomId]);
   // 🔥 USEMEMO: Phân loại tin nhắn
   const messagesGrouped = useMemo(() => groupMessagesByDate(messages), [messages]);
 
@@ -386,15 +401,62 @@ export default function ChatWindow({
     } else {
       setPinnedMessage(null);
     }
-
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
+
+  const loadMoreMessages = useCallback(async () => {
+    if (!roomId || loadingMore || !hasMore || oldestTs == null) return;
+    const container = messagesContainerRef.current;
+    setLoadingMore(true);
+    const prevHeight = container ? container.scrollHeight : 0;
+    let added = false;
+    try {
+      const data = await readMessagesApi(roomId, { limit: 20, before: oldestTs, sortOrder: 'desc' });
+      const raw = Array.isArray(data.data) ? (data.data as Message[]) : [];
+      const existing = new Set(messages.map((m) => String(m._id)));
+      const toAddDesc = raw.filter((m) => !existing.has(String(m._id)));
+      const toAddAsc = toAddDesc.slice().reverse();
+      if (toAddAsc.length > 0) {
+        setMessages((prev) => [...toAddAsc, ...prev]);
+        const newOldest = toAddAsc[0]?.timestamp ?? oldestTs;
+        setOldestTs(newOldest ?? oldestTs);
+        added = true;
+      }
+      // Với truy vấn "before=oldestTs", tổng trả về chỉ là số lượng bản ghi cũ hơn oldestTs,
+      // không phải tổng toàn bộ room. Để tránh dừng sớm, dùng ngưỡng theo limit.
+      setHasMore(toAddDesc.length === 20);
+      if (container) {
+        setTimeout(() => {
+          const newHeight = container.scrollHeight;
+          const delta = newHeight - prevHeight;
+          container.scrollTop = delta + SCROLL_BUMP_PX;
+        }, 0);
+      }
+    } catch (e) {
+      console.error('Load more messages error:', e);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+    return added;
+  }, [roomId, loadingMore, hasMore, oldestTs, messages]);
+
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const handler = () => {
+      if (el.scrollTop <= 50) {
+        void loadMoreMessages();
+      }
+    };
+    el.addEventListener('scroll', handler);
+    return () => el.removeEventListener('scroll', handler);
+  }, [loadMoreMessages]);
 
   const handleReplyTo = useCallback((message: Message) => {
     setReplyingTo(message);
   }, []);
 
-  const handleJumpToMessage = (messageId: string) => {
+  const handleJumpToMessage = async (messageId: string) => {
     if (window.innerWidth < 640) {
       setShowPopup(false);
     }
@@ -417,6 +479,76 @@ export default function ChatWindow({
         setHighlightedMsgId(null);
       }, 2500);
     } else {
+      const ensureLoadedById = async (id: string): Promise<boolean> => {
+        try {
+          const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getById', _id: id }),
+          });
+          const json = await res.json();
+          const target = (json && (json.row?.row || json.row)) as Message | undefined;
+          if (!target) return false;
+          if (String(target.roomId) !== roomId) return false;
+          const targetTs = Number(target.timestamp);
+
+          const data = await readMessagesApi(roomId, { limit: 50, before: targetTs + 1, sortOrder: 'desc' });
+          const raw = Array.isArray(data.data) ? (data.data as Message[]) : [];
+          const existing = new Set(messages.map((m) => String(m._id)));
+          const toAddDesc = raw.filter((m) => !existing.has(String(m._id)));
+          const toAddAsc = toAddDesc.slice().reverse();
+          if (toAddAsc.length > 0) {
+            setMessages((prev) => [...toAddAsc, ...prev]);
+            const newOldest = toAddAsc[0]?.timestamp ?? oldestTs;
+            setOldestTs(newOldest ?? oldestTs);
+          }
+
+          // Đợi DOM cập nhật rồi tìm lại
+          await new Promise((r) => setTimeout(r, 60));
+          const el = document.getElementById(`msg-${id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (container) {
+              const elRect = el.getBoundingClientRect();
+              const cRect = container.getBoundingClientRect();
+              const delta = elRect.top - cRect.top - container.clientHeight / 2 + elRect.height / 2;
+              container.scrollBy({ top: delta, behavior: 'smooth' });
+            }
+            setHighlightedMsgId(id);
+            setTimeout(() => setHighlightedMsgId(null), 2500);
+            return true;
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      };
+
+      // 1) Thử tải theo ID mục tiêu
+      const loadedTarget = await ensureLoadedById(messageId);
+      if (loadedTarget) return;
+
+      // 2) Fallback: tải dần tới khi cạn dữ liệu hoặc tìm thấy
+      let attempts = 0;
+      while (hasMore && attempts < 60) {
+        const added = await loadMoreMessages();
+        attempts++;
+        await new Promise((r) => setTimeout(r, 50));
+        const el = document.getElementById(`msg-${messageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (container) {
+            const elRect = el.getBoundingClientRect();
+            const cRect = container.getBoundingClientRect();
+            const delta = elRect.top - cRect.top - container.clientHeight / 2 + elRect.height / 2;
+            container.scrollBy({ top: delta, behavior: 'smooth' });
+          }
+          setHighlightedMsgId(messageId);
+          setTimeout(() => setHighlightedMsgId(null), 2500);
+          return;
+        }
+        if (!added) break;
+      }
       alert('Tin nhắn này không còn hiển thị trong danh sách hiện tại.');
     }
   };
@@ -464,15 +596,30 @@ export default function ChatWindow({
 
   const fetchMessages = useCallback(async () => {
     try {
-      const data = await readMessagesApi(roomId);
-      const rawMessages = Array.isArray(data.data) ? (data.data as Message[]) : [];
-      const sortedMsgs = rawMessages.sort(
-        (a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      setInitialLoading(true);
+      const data = await readMessagesApi(roomId, { limit: 20, sortOrder: 'desc' });
+      const raw = Array.isArray(data.data) ? (data.data as Message[]) : [];
+      const map = new Map<string, Message>();
+      raw.forEach((m) => {
+        const id = String(m._id);
+        if (!map.has(id)) map.set(id, m);
+      });
+      const desc = Array.from(map.values()).sort(
+        (a: Message, b: Message) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       );
-      setMessages(sortedMsgs);
+      const asc = desc.slice().reverse();
+      setMessages(asc);
+      const first = asc[0]?.timestamp ?? null;
+      setOldestTs(first ?? null);
+      const total = typeof (data as { total?: number }).total === 'number' ? (data as { total?: number }).total : undefined;
+      setHasMore(total ? asc.length < total : raw.length === 20);
+      setInitialLoading(false);
     } catch (error) {
       console.error('Fetch messages error:', error);
       setMessages([]);
+      setHasMore(false);
+      setOldestTs(null);
+      setInitialLoading(false);
     }
   }, [roomId]);
 
@@ -482,18 +629,20 @@ export default function ChatWindow({
     setMessages([]);
     void fetchMessages();
     void fetchPinnedMessages();
+    initialScrolledRef.current = false;
+
   }, [roomId, fetchMessages, fetchPinnedMessages]);
 
   const allUsersMap = useMemo(() => {
     const map = new Map<string, string>();
     if (currentUser) {
       const name = currentUser.name || 'Bạn';
-      if (currentUser._id) map.set(currentUser._id, name);
+      if (currentUser._id) map.set(String(currentUser._id), name);
     }
     if (Array.isArray(allUsers)) {
       allUsers.forEach((user) => {
         if (user.name) {
-          if (user._id) map.set(user._id, user.name);
+          if (user._id) map.set(String(user._id), user.name);
         }
       });
     }
@@ -513,12 +662,25 @@ export default function ChatWindow({
     socketRef.current.emit('join_room', roomId);
 
     socketRef.current.on('receive_message', (data: Message) => {
-      console.log('📨 [CLIENT] Received message:', data);
-      setMessages((prev) => [...prev, data]);
+      if (data.roomId !== roomId) return;
+      setMessages((prev) => {
+        const id = String(data._id);
+        const exists = prev.some((m) => String(m._id) === id);
+        if (exists) {
+          return prev.map((m) => (String(m._id) === id ? { ...m, ...data } : m));
+        }
+        const map = new Map<string, Message>();
+        [...prev, data].forEach((m) => map.set(String(m._id), m));
+        const unique = Array.from(map.values()).sort(
+          (a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+        return unique;
+      });
 
       if (data.sender !== currentUser._id) {
         playMessageSound();
         showMessageNotification(data);
+        void markAsReadApi(roomId, String(currentUser._id));
       }
     });
 
@@ -553,7 +715,6 @@ export default function ChatWindow({
     });
 
     return () => {
-      console.log('🔌 [CLIENT] Disconnecting socket');
       socketRef.current?.disconnect();
     };
   }, [roomId, currentUser._id, playMessageSound, showMessageNotification]);
@@ -622,14 +783,18 @@ export default function ChatWindow({
   }, [showMentionMenu, mentionMenuRef, setShowMentionMenu]);
 
   const getSenderName = (sender: User | string): string => {
-    if (typeof sender === 'object' && sender.name) {
-      return sender.name;
+    if (typeof sender === 'object' && sender && 'name' in sender && (sender as User).name) {
+      return (sender as User).name as string;
     }
-
-    if (typeof sender === 'string') {
-      return allUsersMap.get(sender) || 'Người dùng';
+    const id = normalizeId(sender);
+    const direct = allUsersMap.get(id);
+    if (direct) return direct;
+    const asNumber = Number(id);
+    if (!Number.isNaN(asNumber)) {
+      const numericKey = String(asNumber);
+      const val = allUsersMap.get(numericKey);
+      if (val) return val;
     }
-
     return 'Người dùng';
   };
 
@@ -677,22 +842,86 @@ export default function ChatWindow({
 
     await sendMessageProcess(newMsg);
   };
+  // 🔥 Helper function để normalize ID
+function normalizeId(value: unknown): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object' && value !== null) {
+    if ('_id' in value) return normalizeId(value._id);
+    if ('id' in value) return normalizeId(value.id);
+  }
+  return String(value);
+}
 
+// 🔥 Helper function để so sánh ID
+function compareIds(id1: unknown, id2: unknown): boolean {
+  const normalized1 = normalizeId(id1);
+  const normalized2 = normalizeId(id2);
+  
+  if (normalized1 === normalized2) return true;
+  
+  // So sánh cả dạng number
+  const num1 = Number(normalized1);
+  const num2 = Number(normalized2);
+  if (!isNaN(num1) && !isNaN(num2) && num1 === num2) return true;
+  
+  return false;
+}
   const getSenderInfo = (sender: User | string) => {
-    if (typeof sender === 'object' && sender !== null) {
+  const senderId = normalizeId(sender);
+
+
+  // 1. Check currentUser trước
+  if (compareIds(currentUser._id, senderId)) {
+    return {
+      _id: senderId,
+      name: currentUser.name || 'Bạn',
+      avatar: currentUser.avatar ?? null,
+    };
+  }
+
+  // 2. Tìm trong allUsers array
+  const foundUser = allUsers.find(u => compareIds(u._id || u.id, senderId));
+  if (foundUser) {
+    return {
+      _id: senderId,
+      name: foundUser.name || 'Người dùng',
+      avatar: foundUser.avatar ?? null,
+    };
+  }
+
+  // 3. Tìm trong activeMembers (cho group chat)
+  if (isGroup && Array.isArray(activeMembers)) {
+    const foundMember = activeMembers.find(m => compareIds(m._id || m.id, senderId));
+    if (foundMember) {
       return {
-        _id: sender._id,
-        name: sender.name || 'Unknown',
-        avatar: sender.avatar ?? null,
+        _id: senderId,
+        name: foundMember.name || 'Thành viên',
+        avatar: foundMember.avatar ?? null,
       };
     }
-    return {
-      _id: sender,
-      name: '...',
-      avatar: null,
-    };
-  };
+  }
 
+  // 4. Nếu sender là object có đầy đủ data, dùng luôn
+  if (typeof sender === 'object' && sender !== null && 'name' in sender && sender.name) {
+    return {
+      _id: senderId,
+      name: sender.name,
+      avatar: sender.avatar ?? null,
+    };
+  }
+
+  // 5. Fallback cuối cùng - dùng allUsersMap
+  const mapName = allUsersMap.get(senderId) || 
+                  allUsersMap.get(String(Number(senderId)));
+  
+  return {
+    _id: senderId,
+    name: mapName || 'Người dùng',
+    avatar: null,
+  };
+};
   // Render tin nhắn với highlight mentions
   const renderMessageContent = (content: string, mentionedUserIds?: string[], isMe?: boolean) => {
     if (!content) return null;
@@ -745,7 +974,6 @@ export default function ChatWindow({
     const editedAtTimestamp = Date.now();
     const originalContentText = originalMessage.originalContent || originalMessage.content || '';
 
-    console.log('🟢 [CLIENT] Starting edit:', { messageId, newContent, roomId });
 
     // 1. Optimistic Update
     setMessages((prev) =>
@@ -768,7 +996,6 @@ export default function ChatWindow({
         }),
       });
 
-      console.log('📡 [CLIENT] API response:', response.status);
 
       // 3. EMIT SOCKET EVENT
       const socketData = {
@@ -784,7 +1011,6 @@ export default function ChatWindow({
         members: isGroup ? (selectedChat as GroupConversation).members : [],
       };
 
-      console.log('🚀 [CLIENT] Emitting edit_message:', socketData);
       socketRef.current?.emit('edit_message', socketData);
     } catch (e) {
       console.error('❌ [CLIENT] Chỉnh sửa thất bại:', e);
@@ -831,6 +1057,12 @@ export default function ChatWindow({
             ref={messagesContainerRef}
             className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar"
           >
+            {(initialLoading || loadingMore) && (
+              <div className="sticky top-0 z-20 flex items-center justify-center py-2">
+                <div className="h-4 w-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2" />
+                <span className="text-xs text-gray-500">{initialLoading ? 'Đang tải tin nhắn...' : 'Đang tải thêm...'}</span>
+              </div>
+            )}
             <MessageList
               messagesGrouped={messagesGrouped}
               messages={messages}

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { HiX, HiSearch, HiShieldCheck, HiUserGroup, HiCheck, HiChevronDown } from 'react-icons/hi';
 
+import SearchIcon from '@/public/icons/icon-search.svg';
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
 import { User } from '../../types/User';
 import { MemberInfo, GroupRole } from '../../types/Group';
@@ -12,6 +13,7 @@ import { getProxyUrl } from '../../utils/utils';
 import { useToast } from './toast';
 import { confirmAlert } from './alert';
 import { HiUserMinus, HiUserPlus } from 'react-icons/hi2';
+import ICPeopleGroup from '@/components/svg/ICPeopleGroup';
 
 interface Props {
   isOpen: boolean;
@@ -27,8 +29,31 @@ interface Props {
   onRoleChange?: (memberId: string, memberName: string, newRole: 'ADMIN' | 'MEMBER') => void;
 }
 
-function isMemberInfo(member: unknown): member is MemberInfo {
-  return typeof member === 'object' && member !== null && ('_id' in member || 'id' in member) && 'name' in member;
+// 🔥 Helper function để normalize ID
+function normalizeId(value: unknown): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object' && value !== null) {
+    if ('_id' in value) return normalizeId(value._id);
+    if ('id' in value) return normalizeId(value.id);
+  }
+  return String(value);
+}
+
+// 🔥 Helper function để so sánh ID
+function compareIds(id1: unknown, id2: unknown): boolean {
+  const normalized1 = normalizeId(id1);
+  const normalized2 = normalizeId(id2);
+
+  if (normalized1 === normalized2) return true;
+
+  // So sánh cả dạng number
+  const num1 = Number(normalized1);
+  const num2 = Number(normalized2);
+  if (!isNaN(num1) && !isNaN(num2) && num1 === num2) return true;
+
+  return false;
 }
 
 export default function GroupMembersModal({
@@ -51,40 +76,106 @@ export default function GroupMembersModal({
   const toast = useToast();
   const router = useRouter();
 
+  // 🔥 Tạo user map với nhiều key formats
+  const userMap = React.useMemo(() => {
+    const map = new Map<string, User>();
+
+    // Add current user
+    if (currentUser) {
+      const currentId = normalizeId(currentUser._id || currentUser.id);
+      if (currentId) {
+        map.set(currentId, currentUser);
+
+        // Thêm key dạng number nếu có thể
+        if (!isNaN(Number(currentId))) {
+          map.set(String(Number(currentId)), currentUser);
+        }
+      }
+    }
+
+    // Add all users
+    allUsers.forEach((user) => {
+      const userId = normalizeId(user._id || user.id);
+      if (userId) {
+        map.set(userId, user);
+
+        // Thêm key dạng number nếu có thể
+        if (!isNaN(Number(userId))) {
+          map.set(String(Number(userId)), user);
+        }
+      }
+    });
+
+    return map;
+  }, [currentUser, allUsers]);
+
   useEffect(() => {
-    const valid = members.filter(isMemberInfo);
-    setLocalMembers(valid);
-  }, [members]);
+    const enriched: MemberInfo[] = (members || [])
+      .map((m: unknown) => {
+        const raw = m as Partial<MemberInfo> & { id?: string | number; _id?: string | number };
+        const memberId = normalizeId(raw._id ?? raw.id);
+
+        if (!memberId) {
+          console.warn('⚠️ Member without ID:', raw);
+          return null;
+        }
+
+        const baseRole = (raw.role as GroupRole) ?? 'MEMBER';
+        const baseJoinedAt = typeof raw.joinedAt === 'number' ? raw.joinedAt : Date.now();
+
+        // 🔥 Tìm user info trong userMap
+        let foundUser = userMap.get(memberId);
+
+        // Thử tìm với number format nếu chưa có
+        if (!foundUser && !isNaN(Number(memberId))) {
+          foundUser = userMap.get(String(Number(memberId)));
+        }
+
+        const name = raw.name || foundUser?.name || 'Thành viên';
+        const avatar = raw.avatar || foundUser?.avatar;
+
+        return {
+          _id: memberId,
+          name,
+          avatar,
+          role: baseRole,
+          joinedAt: baseJoinedAt,
+        } as MemberInfo;
+      })
+      .filter(Boolean) as MemberInfo[];
+
+    setLocalMembers(enriched);
+  }, [members, allUsers, userMap, currentUser]);
 
   if (!isOpen) return null;
 
-  const myId = String(currentUser._id || currentUser.id);
-  const myMemberInfo = localMembers.find((m) => String(m._id || m.id) === myId);
+  const myId = normalizeId(currentUser._id || currentUser.id);
+  const myMemberInfo = localMembers.find((m) => compareIds(m._id || m.id, myId));
   const myRole: GroupRole = myMemberInfo?.role || 'MEMBER';
 
-  // Permission
   const canKick = (targetRole: GroupRole) => {
     if (myRole === 'OWNER') return true;
     if (myRole === 'ADMIN' && targetRole === 'MEMBER') return true;
     return false;
   };
+
   const canPromote = (targetRole: GroupRole) => myRole === 'OWNER' && targetRole === 'MEMBER';
   const canDemote = (targetRole: GroupRole) => myRole === 'OWNER' && targetRole === 'ADMIN';
 
-  // Handlers
   const handleOpenProfile = (targetUserId: string) => {
-    router.push(`/profile?userId=${String(targetUserId)}`);
+    const id = normalizeId(targetUserId);
+    router.push(`/profile?userId=${id}`);
   };
 
   const handleOptimisticAddMember = (newUsers: User[]) => {
-    const newMembers: MemberInfo[] = newUsers.map((u) => ({
-      _id: u._id,
+    const newMembersFormatted: MemberInfo[] = newUsers.map((u) => ({
+      _id: normalizeId(u._id ?? u.id),
       name: u.name,
       avatar: u.avatar,
       role: 'MEMBER',
       joinedAt: Date.now(),
     }));
-    setLocalMembers((prev) => [...prev, ...newMembers]);
+    setLocalMembers((prev) => [...prev, ...newMembersFormatted]);
     setShowCreateGroupModal(false);
     onMembersAdded(newUsers);
   };
@@ -93,8 +184,39 @@ export default function GroupMembersModal({
     if (!conversationId) return;
     setLoadingAction(targetUserId);
 
-    const targetMember = localMembers.find((m) => String(m._id || m.id) === targetUserId);
-    const targetName = targetMember?.name || 'Thành viên';
+    const targetMember = localMembers.find((m) => compareIds(m._id || m.id, targetUserId));
+    const targetName = targetMember ? targetMember.name : 'Thành viên';
+
+    type GroupActionPayload =
+      | {
+          conversationId: string;
+          targetUserId: string;
+          action: 'kickMember';
+          _id?: string;
+        }
+      | {
+          conversationId: string;
+          targetUserId: string;
+          action: 'changeRole';
+          data: { role: 'ADMIN' | 'MEMBER' };
+          _id: string;
+        };
+
+    const payload: GroupActionPayload =
+      action === 'kick'
+        ? {
+            conversationId,
+            targetUserId,
+            action: 'kickMember',
+            _id: myId,
+          }
+        : {
+            conversationId,
+            targetUserId,
+            action: 'changeRole',
+            data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
+            _id: myId,
+          };
 
     try {
       const res = await fetch('/api/groups', {
@@ -115,12 +237,12 @@ export default function GroupMembersModal({
 
       if (res.ok) {
         if (action === 'kick') {
-          setLocalMembers((prev) => prev.filter((m) => String(m._id || m.id) !== targetUserId));
-          onMemberRemoved?.(targetUserId, targetName);
-        } else {
-          const newRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
+          setLocalMembers((prev) => prev.filter((m) => !compareIds(m._id || m.id, targetUserId)));
+          if (onMemberRemoved) onMemberRemoved(targetUserId, targetName);
+        } else if (action === 'promote' || action === 'demote') {
+          const newRole: GroupRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
           setLocalMembers((prev) =>
-            prev.map((m) => (String(m._id || m.id) === targetUserId ? { ...m, role: newRole } : m)),
+            prev.map((m) => (compareIds(m._id || m.id, targetUserId) ? { ...m, role: newRole } : m)),
           );
           onRoleChange?.(targetUserId, targetName, newRole);
         }
@@ -136,9 +258,8 @@ export default function GroupMembersModal({
   };
 
   const searchUser = localMembers.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const existingMemberIds = localMembers.map((m) => String(m._id || m.id));
+  const existingMemberIds = localMembers.map((m) => normalizeId(m._id || m.id));
 
-  // Role Badge đẹp như Zalo Pro
   const RoleBadge = ({ role }: { role: GroupRole }) => {
     if (role === 'OWNER')
       return (
@@ -158,13 +279,13 @@ export default function GroupMembersModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white w-full max-w-2xl h-[80vh] rounded-3xl sm:h-auto sm:max-h-[90vh]  sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Header gradient siêu đẹp */}
-        <div className="flex items-center justify-between p-2 sm:px-6 sm:py-2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md shadow-lg">
-              <HiUserGroup className="sm:w-8 sm:h-8 w-4 h-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-2 sm:px-4 py-4 sm:py-6">
+      <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl rounded-none sm:rounded-2xl shadow-none sm:shadow-xl border border-gray-200 flex flex-col overflow-hidden">
+        {/* HEADER */}
+        <div className="flex-none px-4 py-3 border-b bg-[#f3f6fb] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
+              <ICPeopleGroup className="w-5 h-5" stroke="#ffffff" />
             </div>
             <div>
               <h2 className="sm:text-xl text-lg font-bold">Thành viên nhóm</h2>
@@ -179,10 +300,10 @@ export default function GroupMembersModal({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 flex flex-col min-h-0 bg-gray-50">
-          {/* Search & Add */}
-          <div className="sm:p-4 p-2 space-y-5 bg-white border-b border-gray-100">
+        {/* BODY */}
+        <div className="flex-1 flex flex-col min-h-0 bg-gray-50/60">
+          {/* Search & Add Section */}
+          <div className="flex-none p-4 space-y-3 bg-white shadow-sm z-10">
             {(myRole === 'OWNER' || myRole === 'ADMIN') && (
               <button
                 onClick={() => setShowCreateGroupModal(true)}
@@ -216,8 +337,9 @@ export default function GroupMembersModal({
 
             <div className="space-y-4">
               {searchUser.map((member) => {
-                const memberId = String(member._id || member.id);
-                const isMe = memberId === myId;
+                const memberId = normalizeId(member._id || member.id);
+                const memberRole: GroupRole = member.role;
+                const isMe = compareIds(memberId, myId);
                 const isLoading = loadingAction === memberId;
 
                 return (
@@ -259,10 +381,10 @@ export default function GroupMembersModal({
                       </div>
                     </div>
 
-                    {/* Actions - Hiện khi hover */}
-                    {!isMe && (
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {canPromote(member.role) && (
+                    {/* Actions */}
+                    {!isMe && !isLoading && (
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
+                        {canPromote(memberRole) && (
                           <button
                             onClick={() => handleAction('promote', memberId)}
                             className="p-3 bg-green-100 hover:bg-green-200 rounded-2xl transition-all active:scale-95"
@@ -271,7 +393,8 @@ export default function GroupMembersModal({
                             <HiCheck className="w-4 h-4 text-green-700" />
                           </button>
                         )}
-                        {canDemote(member.role) && (
+
+                        {canDemote(memberRole) && (
                           <button
                             onClick={() => handleAction('demote', memberId)}
                             className="p-3 bg-yellow-100 hover:bg-yellow-200 rounded-2xl transition-all active:scale-95"
@@ -280,7 +403,8 @@ export default function GroupMembersModal({
                             <HiUserMinus className="w-4 h-4 text-yellow-700" />
                           </button>
                         )}
-                        {canKick(member.role) && (
+
+                        {canKick(memberRole) && (
                           <button
                             onClick={() =>
                               confirmAlert({
@@ -319,8 +443,8 @@ export default function GroupMembersModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-white border-t border-gray-100">
+        {/* FOOTER */}
+        <div className="flex-none px-4 py-3 bg-white border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={onClose}
             className="w-full py-1 sm:py-3 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold text-sm sm:text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-98"
@@ -330,7 +454,6 @@ export default function GroupMembersModal({
         </div>
       </div>
 
-      {/* Modal con */}
       {showCreateGroupModal && (
         <CreateGroupModal
           mode="add"

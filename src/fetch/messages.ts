@@ -21,13 +21,23 @@ export async function createMessageApi(payload: MessageCreate & { roomId: string
   return res.json();
 }
 
-export async function readMessagesApi(roomId: string): Promise<MessagesApiResponse<Message[]>> {
+export async function readMessagesApi(
+  roomId: string,
+  options?: { skip?: number; limit?: number; before?: number; sortOrder?: 'asc' | 'desc'; extraFilters?: Record<string, unknown> },
+): Promise<MessagesApiResponse<Message[]>> {
+  const filters: Record<string, unknown> = { roomId, ...(options?.extraFilters || {}) };
+  if (typeof options?.before === 'number') {
+    filters.timestamp = { $lt: options.before };
+  }
   const res = await fetch('/api/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'read',
-      filters: { roomId },
+      filters,
+      skip: options?.skip ?? 0,
+      limit: options?.limit ?? 20,
+      sort: { field: 'timestamp', order: options?.sortOrder ?? 'desc' },
     }),
   });
   return res.json();
@@ -40,7 +50,7 @@ export async function readPinnedMessagesApi(roomId: string): Promise<MessagesApi
     body: JSON.stringify({
       action: 'read',
       filters: { roomId, isPinned: true },
-      sort: { timestamp: -1 },
+      sort: { field: 'timestamp', order: 'desc' },
     }),
   });
   return res.json();

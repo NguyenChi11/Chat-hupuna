@@ -30,6 +30,5 @@ export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db
   cachedClient = client;
   cachedDb = db;
 
-  console.log('✅ MongoDB Connected Successfully!');
   return { client, db };
 }

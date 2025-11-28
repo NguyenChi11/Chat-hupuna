@@ -38,6 +38,7 @@ export function useHomePage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<GroupConversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<ChatItem | null>(null);
+  const selectedChatRef = useRef<ChatItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -49,7 +50,7 @@ export function useHomePage() {
     messages: GlobalSearchMessage[];
   }>({
     contacts: [],
-    messages: [],
+    messages: [], 
   });
 
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
@@ -109,6 +110,7 @@ export function useHomePage() {
   // Hàm xử lý chọn Chat (Optimistic Update - Xóa badge)
   const handleSelectChat = useCallback((item: ChatItem) => {
     setSelectedChat(item);
+    selectedChatRef.current = item;
 
     if ((item as GroupConversation).isGroup || (item as GroupConversation).members) {
       setGroups((prev) => prev.map((g) => (g._id === item._id ? { ...g, unreadCount: 0 } : g)));
@@ -229,7 +231,6 @@ export function useHomePage() {
 
   const handleNavigateToMessage = useCallback(
     (message: GlobalSearchMessage) => {
-      console.log('💬 ========== Navigate to message START ==========');
       let targetChat: ChatItem | null = null;
       const myId = String(currentUser?._id);
 
@@ -261,12 +262,10 @@ export function useHomePage() {
         setScrollToMessageId(String(message._id));
         handleSelectChat(targetChat); // Tái sử dụng hàm select/reset unread
 
-        console.log('🎯 SUCCESS! Opening chat and setting scroll ID.');
       } else {
         // Fallback nếu không tìm thấy: Refetch và thử lại
         console.warn('❌ Chat not found locally. Refetching data...');
         fetchAllData().then(() => {
-          console.log('🔄 Refetch complete. User must click again or perform complex retry logic.');
           // Thường sau khi refetch, người dùng phải click lại hoặc cần một logic retry phức tạp
           alert('Không tìm thấy cuộc trò chuyện. Đã tải lại dữ liệu, vui lòng thử lại.');
         });
@@ -304,6 +303,11 @@ export function useHomePage() {
 
   // 4. Kết nối Socket & Xử lý Realtime Sidebar
   useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  // 4. Kết nối Socket & Xử lý Realtime Sidebar
+  useEffect(() => {
     if (!currentUser) return;
     socketRef.current = io(SOCKET_URL);
     socketRef.current.emit('join_room', currentUser._id);
@@ -323,6 +327,7 @@ export function useHomePage() {
         isGroup: boolean;
       }) => {
         const isMyMsg = data.sender === currentUser._id;
+        const activeChatId = selectedChatRef.current?._id || null;
 
         // 1. Xác định tên người gửi
         let senderName = 'Người lạ';
@@ -358,12 +363,16 @@ export function useHomePage() {
               fetchAllData();
               return prev;
             }
+            const isActiveChat = activeChatId === data.roomId;
             const updatedGroup = {
               ...prev[index],
               lastMessage: contentDisplay,
               lastMessageAt: data.timestamp || Date.now(),
               isRecall: data.isRecalled || false,
-              unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
+              unreadCount:
+                isMyMsg || isActiveChat
+                  ? 0
+                  : (prev[index].unreadCount || 0) + 1,
             };
             const newGroups = [...prev];
             newGroups.splice(index, 1);
@@ -378,12 +387,16 @@ export function useHomePage() {
               fetchAllData();
               return prev;
             }
+            const isActiveChat = activeChatId === partnerId;
             const updatedUser = {
               ...prev[index],
               lastMessage: contentDisplay,
               lastMessageAt: data.timestamp || Date.now(),
               isRecall: data.isRecalled || false,
-              unreadCount: !isMyMsg ? (prev[index].unreadCount || 0) + 1 : prev[index].unreadCount,
+              unreadCount:
+                isMyMsg || isActiveChat
+                  ? 0
+                  : (prev[index].unreadCount || 0) + 1,
             };
             const newUsers = [...prev];
             newUsers.splice(index, 1);
@@ -392,7 +405,6 @@ export function useHomePage() {
         }
       },
     );
-
     return () => {
       socketRef.current?.disconnect();
     };

@@ -9,18 +9,16 @@ const io = new Server(process.env.PORT || 3001, {
 });
 
 io.on('connection', (socket) => {
-  console.log(`User Connected: ${socket.id}`);
 
   socket.on('join_room', (room) => {
     socket.join(room);
-    console.log(`User ${socket.id} joined room: ${room}`);
   });
 
   socket.on('send_message', (data) => {
     socket.to(data.roomId).emit('receive_message', data);
 
-    // Logic Update Sidebar cho send_message
-    const lastMessage = `${data.senderName}: ${data.type != 'text' ? `[${data.type ?? 'Unknown'}]` : data.content}`;
+    const isTextLike = data.type === 'text' || data.type === 'notify';
+    const lastMessage = `${data.senderName}: ${isTextLike ? (data.content ?? '') : `[${data.type ?? 'Unknown'}]`}`;
     const sidebarData = { ...data, lastMessage };
 
     if (data.isGroup && data.members) {
@@ -102,9 +100,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('User Disconnected', socket.id);
-  });
+ 
 });
 
-console.log(`Socket.io server running on port ${process.env.PORT || 3001}`);
