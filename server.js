@@ -107,4 +107,3 @@ io.on('connection', (socket) => {
   });
 });
 
-console.log(`Socket.io server running on port ${process.env.PORT || 3001}`);

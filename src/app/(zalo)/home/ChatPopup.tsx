@@ -522,6 +522,8 @@ export default function ChatWindow({
       if (data.sender !== currentUser._id) {
         playMessageSound();
         showMessageNotification(data);
+        // Đánh dấu đã đọc ngay khi đang mở phòng (chuẩn Zalo)
+        void markAsReadApi(roomId, String(currentUser._id));
       }
     });
 
