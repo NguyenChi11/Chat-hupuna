@@ -1,8 +1,8 @@
 import React from 'react';
-import Image from 'next/image';
-import ArrowRightICon from '@/public/icons/arrow-right-icon.svg';
+import { HiChevronRight, HiPlay, HiDotsVertical } from 'react-icons/hi';
 import { getProxyUrl } from '@/utils/utils';
 import ItemDropdownMenu from './ItemDropdownMenu';
+import Image from 'next/image';
 
 interface MediaSectionProps {
   isOpen: boolean;
@@ -31,110 +31,104 @@ export default function MediaSection({
   closeMenu,
 }: MediaSectionProps) {
   return (
-    <div className="space-y-3 font-medium text-sm bg-white py-2 px-4 mb-2">
-      <div className="space-y-1">
-        <div className="flex items-center justify-between cursor-pointer" onClick={onToggle}>
-          <span>Ảnh/Video</span>
-          <Image
-            src={ArrowRightICon}
-            alt=""
-            width={30}
-            height={30}
-            className={`transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
-          />
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header: Ảnh/Video + mũi tên */}
+      <button
+        onClick={onToggle}
+        className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-md">
+            <HiPlay className="w-5 h-5" />
+          </div>
+          <span className="font-semibold text-gray-900">Ảnh & Video</span>
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+            {mediaList.length}
+          </span>
         </div>
 
-        {isOpen && (
-          <div className="mt-2 px-2">
-            {mediaList && mediaList.length > 0 ? (
-              <div className="grid grid-cols-3 gap-1">
-                {mediaList.map((item) => (
-                  <div
-                    key={item.id}
-                    // 🔥 Relative để định vị nút menu. KHÔNG overflow-hidden ở đây.
-                    className="relative aspect-square cursor-pointer group"
-                    onClick={() => {
-                      const mediaType = item.type === 'video' ? 'video' : 'image';
-                      setPreviewMedia({
-                        url: getProxyUrl(item.url),
-                        type: mediaType,
-                      });
+        <HiChevronRight
+          className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${
+            isOpen ? 'rotate-90' : ''
+          } group-hover:text-gray-700`}
+        />
+      </button>
+
+      {/* Nội dung khi mở */}
+      {isOpen && (
+        <div className="px-5 pb-5 border-t border-gray-100">
+          {mediaList.length > 0 ? (
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {mediaList.map((item) => (
+                <div
+                  key={item.id}
+                  className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100"
+                  onClick={() => {
+                    const mediaType = item.type === 'video' ? 'video' : 'image';
+                    setPreviewMedia({
+                      url: getProxyUrl(item.url),
+                      type: mediaType,
+                    });
+                  }}
+                >
+                  {/* Ảnh/Video */}
+                  {item.type === 'video' ? (
+                    <video
+                      src={getProxyUrl(item.url)}
+                      className="w-full h-full object-cover pointer-events-none"
+                      preload="metadata"
+                    />
+                  ) : (
+                    <Image
+                      width={200}
+                      height={200}
+                      src={getProxyUrl(item.url)}
+                      alt="Media"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+
+                  {/* Overlay khi hover + icon play cho video */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    {item.type === 'video' && <HiPlay className="w-10 h-10 text-white drop-shadow-lg" />}
+                  </div>
+
+                  {/* Nút "..." hiện đại */}
+                  <button
+                    className={`absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg transition-all duration-200 z-10
+                      ${activeMenuId === item.id ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'}
+                      hover:bg-white hover:scale-110`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuId(activeMenuId === item.id ? null : item.id);
                     }}
                   >
-                    {/* Wrapper chứa ảnh/video mới có overflow-hidden */}
-                    <div className="w-full h-full rounded-md overflow-hidden bg-gray-100">
-                      {item.type === 'video' ? (
-                        <>
-                          <video
-                            src={getProxyUrl(item.url)}
-                            className="h-full w-full object-cover pointer-events-none"
-                            muted
-                            preload="none"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="w-6 h-6 text-white"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </div>
-                        </>
-                      ) : (
-                        <Image
-                          src={getProxyUrl(item.url)}
-                          alt="Media"
-                          width={200}
-                          height={200}
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                    </div>
+                    <HiDotsVertical className="w-4 h-4 text-gray-700" />
+                  </button>
 
-                    {/* 🔥 Nút "..." cho Ảnh/Video */}
-                    <button
-                      className={`absolute top-1 right-1 bg-white/80 hover:bg-white p-1 rounded-full shadow-sm transition-opacity z-10
-                              ${activeMenuId === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
-                            `}
-                      onClick={(e) => {
-                        e.stopPropagation(); // Chặn mở ảnh
-                        setActiveMenuId(activeMenuId === item.id ? null : item.id);
-                      }}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-4 h-4 text-gray-700"
-                      >
-                        <path d="M3 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM8.5 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM15.5 8.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" />
-                      </svg>
-                    </button>
-
-                    {/* Render Menu */}
-                    <ItemDropdownMenu
-                      itemUrl={item.url}
-                      itemId={item.id}
-                      fileName={item.fileName}
-                      activeMenuId={activeMenuId}
-                      onClose={closeMenu}
-                      onJumpToMessage={onJumpToMessage}
-                    />
-                  </div>
-                ))}
+                  {/* Dropdown Menu */}
+                  <ItemDropdownMenu
+                    itemUrl={item.url}
+                    itemId={item.id}
+                    fileName={item.fileName}
+                    activeMenuId={activeMenuId}
+                    onClose={closeMenu}
+                    onJumpToMessage={onJumpToMessage}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-gray-400">
+              <div className="bg-gray-100 rounded-2xl w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                <HiPlay className="w-8 h-8 text-gray-400" />
               </div>
-            ) : (
-              <p className="text-xs text-gray-400 ml-2">Chưa có Ảnh/Video được chia sẻ</p>
-            )}
-          </div>
-        )}
-      </div>
+              <p className="text-sm font-medium">Chưa có ảnh hoặc video nào</p>
+              <p className="text-xs mt-1">Các tệp media sẽ xuất hiện tại đây</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

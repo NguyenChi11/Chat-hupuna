@@ -797,7 +797,7 @@ export default function ChatWindow({
     <ChatProvider value={chatContextValue}>
       <main className="flex h-full bg-gray-700 sm:overflow-y-hidden overflow-y-auto no-scrollbar">
         <div
-          className={`flex flex-col h-full  bg-gray-200 transition-all duration-300 ${showPopup ? 'sm:w-[calc(100%-21.875rem)]' : 'w-full'} border-r border-gray-200`}
+          className={`flex flex-col h-full relative z-10 bg-gray-200 transition-all duration-300 ${showPopup ? 'sm:w-[calc(100%-21.875rem)]' : 'w-full'} border-r border-gray-200`}
         >
           <ChatHeader
             chatName={chatName}
@@ -855,7 +855,7 @@ export default function ChatWindow({
           </div>
 
           {/* Phần Footer (Input Chat) */}
-          <div className="bg-white p-2 sm:p-3 border-t border-gray-200 relative space-y-2">
+          <div className="bg-white p-2 sm:p-3 border-t rounded-t-xl border-gray-200 relative space-y-2">
             {/* ... Popup Picker & Inputs ... */}
             <EmojiStickerPicker
               showEmojiPicker={showEmojiPicker}
@@ -915,7 +915,7 @@ export default function ChatWindow({
         </div>
 
         {showPopup && (
-          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full z-20 ">
             <ChatInfoPopup
               onClose={() => setShowPopup(false)}
               onShowCreateGroup={onShowCreateGroup}
@@ -931,7 +931,7 @@ export default function ChatWindow({
           </div>
         )}
         {showSearchSidebar && (
-          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full  ">
             <SearchSidebar
               isOpen={showSearchSidebar}
               onClose={() => setShowSearchSidebar(false)}

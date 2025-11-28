@@ -1,12 +1,11 @@
 'use client';
 
 import React, { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
-
-import ICFile from '@/components/svg/ICFile';
-import ICPicture from '@/components/svg/ICPicture';
-import ICVoice from '@/components/svg/ICVoice';
-import ICSend from '@/components/svg/ICSend';
-import ICSmile from '@/components/svg/ICSmile';
+import { HiOutlineEmojiHappy } from 'react-icons/hi';
+import { HiOutlinePaperClip } from 'react-icons/hi';
+import { HiOutlinePhotograph } from 'react-icons/hi';
+import { HiOutlineMicrophone } from 'react-icons/hi';
+import { HiPaperAirplane } from 'react-icons/hi';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -32,76 +31,77 @@ export default function ChatInput({
   onInputEditable,
   onKeyDownEditable,
   onPasteEditable,
+  onFocusEditable,
   onSendMessage,
   onSelectImage,
   onSelectFile,
-  onFocusEditable,
 }: ChatInputProps) {
   return (
-    <div className="flex flex-wrap items-center w-full gap-2">
-      {/* Hàng icon công cụ: Emoji, ảnh/video, file, voice (sẽ nằm trên input ở màn nhỏ) */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+    <div className="flex flex-wrap sm:flex-row flex-col items-end w-full gap-3 p-3 bg-white ">
+      {/* Toolbar trái */}
+      <div className="flex items-center gap-1">
+        {/* Emoji */}
         <button
-          className="p-2 cursor-pointer rounded-full hover:bg-gray-100 text-gray-600 relative w-10 h-10"
           onClick={onToggleEmojiPicker}
-          aria-pressed={showEmojiPicker}
+          className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+          aria-label="Chọn emoji"
         >
-          <ICSmile className="w-6 h-6" stroke="#000000" />
+          <HiOutlineEmojiHappy className="w-6 h-6" />
         </button>
 
+        {/* Ảnh/Video */}
         <input
           type="file"
           accept="image/*,video/*"
           id="imageInput"
           className="hidden"
           onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              onSelectImage(e.target.files[0]);
-            }
+            if (e.target.files?.[0]) onSelectImage(e.target.files[0]);
             e.target.value = '';
           }}
         />
         <button
-          className="p-2 cursor-pointer rounded-full hover:bg-gray-100 text-gray-600"
           onClick={() => document.getElementById('imageInput')?.click()}
+          className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+          aria-label="Gửi ảnh hoặc video"
         >
-          <ICPicture className="w-6 h-6" stroke="#000000" />
+          <HiOutlinePhotograph className="w-6 h-6" />
         </button>
 
+        {/* File */}
         <input
           type="file"
           id="fileInput"
           className="hidden"
           onChange={(e) => {
-            if (e.target.files && e.target.files[0]) {
-              onSelectFile(e.target.files[0]);
-            }
+            if (e.target.files?.[0]) onSelectFile(e.target.files[0]);
             e.target.value = '';
           }}
         />
         <button
-          className="p-2 cursor-pointer rounded-full hover:bg-gray-100 text-gray-600"
           onClick={() => document.getElementById('fileInput')?.click()}
+          className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 rotate-12"
+          aria-label="Gửi file"
         >
-          {/* <Image src={FileICon} alt="Chọn file" width={25} height={25} /> */}
-          <ICFile className="w-6 h-6" stroke="#000000" />
+          <HiOutlinePaperClip className="w-6 h-6" />
         </button>
 
+        {/* Voice */}
         <button
-          className={`p-2 rounded-full transition-all cursor-pointer ${
-            isListening
-              ? 'bg-red-100 text-red-600 animate-pulse ring-2 ring-red-400'
-              : 'hover:bg-gray-100 text-gray-600'
-          }`}
           onClick={onVoiceInput}
-          title="Nhập bằng giọng nói"
+          className={`p-2.5 rounded-xl transition-all duration-300 ${
+            isListening
+              ? 'bg-red-500 text-white shadow-lg animate-pulse ring-4 ring-red-200'
+              : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
+          }`}
+          aria-label="Nhập bằng giọng nói"
         >
-          <ICVoice className="w-6 h-6" stroke="#000000" />
+          <HiOutlineMicrophone className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Hàng input + nút gửi: sẽ tự xuống dòng dưới icon ở mobile nhờ flex-wrap */}
-      <div className="flex items-center gap-2 flex-1 min-w-[60%]">
+      {/* Input + Send */}
+      <div className="flex-1 flex items-end gap-2 w-full">
         <div
           ref={editableRef}
           contentEditable
@@ -109,24 +109,49 @@ export default function ChatInput({
           onKeyDown={onKeyDownEditable}
           onFocus={onFocusEditable}
           onPaste={onPasteEditable}
-          className="flex-1 p-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm text-black text-[0.625rem] sm:text-sm sm:min-h-[2.5rem] sm:max-h-[7.5rem] min-h-[2rem] max-h-[1rem] overflow-hidden sm:overflow-y-auto"
-          data-placeholder="Nhập tin nhắn... (gõ @ để mention)"
+          className="flex-1 min-h-12 max-h-32 px-4 py-3 bg-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 text-sm md:text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400"
+          data-placeholder="Aa"
           style={{
             wordBreak: 'break-word',
             whiteSpace: 'pre-wrap',
           }}
         />
 
-        <button className="p-2 rounded-full hover:bg-blue-100 text-blue-500 cursor-pointer" onClick={onSendMessage}>
-          <ICSend className="w-6 h-6" stroke="#2579fe" />
+        <button
+          onClick={onSendMessage}
+          className="mb-1 p-2.5 rounded-xl bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
+          aria-label="Gửi tin nhắn"
+        >
+          <HiPaperAirplane className="w-5 h-5 -rotate-12" />
         </button>
       </div>
 
+      {/* Placeholder đẹp hơn */}
       <style jsx>{`
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
           color: #9ca3af;
+          opacity: 0.8;
           pointer-events: none;
+          position: absolute;
+          left: 15rem;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        [contenteditable]:focus:before {
+          opacity: 0.6;
+        }
+        /* Ẩn placeholder khi có nội dung hoặc focus */
+        [contenteditable]:not(:empty):before,
+        [contenteditable]:focus:before {
+          display: none;
+        }
+
+        @media (max-width: 640px) {
+          [contenteditable]:empty:before {
+            left: 2rem;
+            top: 6.25rem;
+          }
         }
       `}</style>
     </div>

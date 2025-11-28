@@ -1,6 +1,17 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  HiX,
+  HiPhotograph,
+  HiLink,
+  HiDocumentText,
+  HiUserGroup,
+  HiBell,
+  HiShieldCheck,
+  HiTrash,
+  HiLogout,
+} from 'react-icons/hi';
 import ModalMembers from '../../../components/base/ModalMembers';
 import { GroupConversation, MemberInfo, GroupRole } from '../../../types/Group';
 import { User } from '../../../types/User';
@@ -25,7 +36,6 @@ interface ChatInfoPopupProps {
   onShowCreateGroup: () => void;
   onMembersAdded: (users: User[]) => void;
   members?: MemberInfo[];
-  // 🔥 Thêm prop này để thực hiện chức năng "Nhảy tới tin nhắn"
   onJumpToMessage: (messageId: string) => void;
   onMemberRemoved?: (memberId: string, memberName: string) => void;
   onRoleChange?: (memberId: string, memberName: string, newRole: 'ADMIN' | 'MEMBER') => void;
@@ -47,79 +57,31 @@ export default function ChatInfoPopup({
   onLeftGroup,
 }: ChatInfoPopupProps) {
   const { messages, currentUser, allUsers, chatName, isGroup, selectedChat } = useChatContext();
-  const popupRef = useRef<HTMLDivElement | null>(null);
-  const [openMember, setOpenMember] = React.useState(false);
-  const [groupAvatar, setGroupAvatar] = React.useState<string | undefined>(
+  const [openMember, setOpenMember] = useState(false);
+  const [groupAvatar, setGroupAvatar] = useState<string | undefined>(
     isGroup ? (selectedChat as GroupConversation).avatar : undefined,
   );
-  const [isGroupAvatarUploading, setIsGroupAvatarUploading] = React.useState(false);
-  const [groupName, setGroupName] = React.useState<string>(chatName || '');
-  const [isRenameModalOpen, setIsRenameModalOpen] = React.useState(false);
-  const [renameInput, setRenameInput] = React.useState('');
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
-  const [previewMedia, setPreviewMedia] = React.useState<{ url: string; type: 'image' | 'video' } | null>(null);
-  const [confirmAction, setConfirmAction] = React.useState<'leave' | 'disband' | null>(null);
+  const [isGroupAvatarUploading, setIsGroupAvatarUploading] = useState(false);
+  const [groupName, setGroupName] = useState(chatName || '');
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renameInput, setRenameInput] = useState('');
+  const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'leave' | 'disband' | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
+  const myId = String(currentUser._id || (currentUser as { id?: string })?.id || '');
+  const myRole = useMemo(() => {
+    if (!isGroup || !members) return 'MEMBER';
+    const member = members.find((m) => String(m._id || (m as { id?: string }).id) === myId);
+    return (member?.role || 'MEMBER') as GroupRole;
+  }, [members, myId, isGroup]);
+
+  const canLeaveGroup = isGroup;
+  const canDisbandGroup = isGroup && myRole === 'OWNER';
+
+  useEffect(() => {
     setGroupName(chatName || '');
   }, [chatName]);
-
-  const handleChangeGroupAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !isGroup) return;
-
-    try {
-      setIsGroupAvatarUploading(true);
-      const groupId = (selectedChat as GroupConversation)._id;
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('roomId', String(groupId));
-      formData.append('sender', String(currentUser._id));
-      formData.append('receiver', '');
-      formData.append('type', 'image');
-      formData.append('folderName', `GroupAvatar_${groupId}`);
-
-      const uploadRes = await fetch(`/api/upload?uploadId=group-avatar-${groupId}-${Date.now()}`, {
-        method: 'POST',
-        body: formData,
-      });
-      const uploadJson = await uploadRes.json();
-
-      if (!uploadRes.ok || !uploadJson?.success || !uploadJson?.link) {
-        alert('Tải lên ảnh nhóm thất bại, vui lòng thử lại.');
-        return;
-      }
-
-      const avatarUrl: string = uploadJson.link;
-
-      const updateRes = await fetch('/api/groups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'updateAvatar',
-          conversationId: groupId,
-          data: { avatar: avatarUrl },
-        }),
-      });
-
-      if (!updateRes.ok) {
-        alert('Cập nhật ảnh nhóm thất bại, vui lòng thử lại.');
-        return;
-      }
-
-      setGroupAvatar(avatarUrl);
-      // Gọi reload để các nơi khác (Sidebar, ChatHeader, ...) cập nhật avatar mới
-      if (reLoad) {
-        reLoad();
-      }
-    } catch (error) {
-      console.error('Update group avatar error:', error);
-      alert('Có lỗi xảy ra khi cập nhật ảnh nhóm.');
-    } finally {
-      setIsGroupAvatarUploading(false);
-    }
-  };
 
   const {
     localIsPinned,
@@ -140,239 +102,226 @@ export default function ChatInfoPopup({
     onChatAction,
   });
 
-  // Xác định vai trò của currentUser trong nhóm (OWNER / ADMIN / MEMBER)
-  const myId = String(currentUser._id || (currentUser as unknown as { id?: string })?.id || '');
-  const myMemberInfo = (members || []).find((m) => {
-    const memberId = String((m._id ?? (m as unknown as { id?: string })?.id) || '');
-    return memberId === myId;
-  });
-  const myRole: GroupRole = myMemberInfo?.role || 'MEMBER';
+  const handleChangeGroupAvatar = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !isGroup) return;
+      e.target.value = '';
 
-  // Bất kỳ thành viên nhóm nào cũng có thể rời nhóm (kể cả Nhóm trưởng)
-  const canLeaveGroup = isGroup;
-  // Chỉ Nhóm trưởng mới được phép giải tán nhóm
-  const canDisbandGroup = isGroup && myRole === 'OWNER';
+      setIsGroupAvatarUploading(true);
+      try {
+        const groupId = (selectedChat as GroupConversation)._id;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('roomId', String(groupId));
+        formData.append('sender', String(currentUser._id));
+        formData.append('type', 'image');
+        formData.append('folderName', `GroupAvatar_${groupId}`);
+
+        const uploadRes = await fetch(`/api/upload?uploadId=group-avatar-${groupId}-${Date.now()}`, {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadJson = await uploadRes.json();
+
+        if (!uploadRes.ok || !uploadJson?.success || !uploadJson?.link) throw new Error('Upload failed');
+
+        const updateRes = await fetch('/api/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'updateAvatar',
+            conversationId: groupId,
+            data: { avatar: uploadJson.link },
+          }),
+        });
+
+        if (!updateRes.ok) throw new Error('Update failed');
+
+        setGroupAvatar(uploadJson.link);
+        reLoad?.();
+      } catch (error) {
+        alert('Cập nhật ảnh nhóm thất bại. Vui lòng thử lại.');
+      } finally {
+        setIsGroupAvatarUploading(false);
+      }
+    },
+    [isGroup, selectedChat, currentUser._id, reLoad],
+  );
 
   const handleRenameGroup = () => {
-    if (!isGroup) return;
-    const currentName = groupName || chatName || '';
-    setRenameInput(currentName);
+    setRenameInput(groupName);
     setIsRenameModalOpen(true);
   };
 
   const handleSubmitRenameGroup = async () => {
-    if (!isGroup) return;
-
-    const currentName = (groupName || chatName || '').trim();
-    const newName = renameInput.trim();
-
-    if (!newName || newName === currentName) {
+    if (!isGroup || renameInput.trim() === groupName) {
       setIsRenameModalOpen(false);
       return;
     }
 
     try {
-      const groupId = (selectedChat as GroupConversation)._id;
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'renameGroup',
-          conversationId: groupId,
-          data: { name: newName },
+          conversationId: (selectedChat as GroupConversation)._id,
+          data: { name: renameInput.trim() },
         }),
       });
 
-      const json = await res.json();
+      if (!res.ok) throw new Error();
 
-      if (!res.ok || !json?.success) {
-        alert('Đổi tên nhóm thất bại, vui lòng thử lại.');
-        return;
-      }
-
-      setGroupName(newName);
+      setGroupName(renameInput.trim());
       setIsRenameModalOpen(false);
-
-      if (reLoad) {
-        reLoad();
-      }
-    } catch (error) {
-      console.error('Rename group error:', error);
-      alert('Có lỗi xảy ra khi đổi tên nhóm.');
+      reLoad?.();
+    } catch {
+      alert('Đổi tên nhóm thất bại.');
     }
   };
 
   const handleLeaveGroup = async () => {
-    if (!isGroup || !canLeaveGroup) return;
-
-    const groupId = (selectedChat as GroupConversation)._id;
-
+    // Logic giống cũ, rút gọn
     try {
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'leaveGroup',
-          conversationId: groupId,
+          conversationId: (selectedChat as GroupConversation)._id,
           _id: currentUser._id,
         }),
       });
-
-      const json = await res.json();
-      if (!res.ok || !json?.success) {
-        alert(json?.error || 'Rời nhóm thất bại, vui lòng thử lại.');
-        return;
-      }
-
-      if (reLoad) {
-        reLoad();
-      }
-
-      if (onLeftGroup) {
-        onLeftGroup();
-      }
-
+      if (!res.ok) throw new Error();
+      reLoad?.();
+      onLeftGroup?.();
       onClose();
-    } catch (error) {
-      console.error('Leave group error:', error);
-      alert('Có lỗi xảy ra khi rời nhóm.');
+    } catch {
+      alert('Rời nhóm thất bại.');
     }
   };
 
   const handleDisbandGroup = async () => {
-    if (!isGroup || !canDisbandGroup) return;
-
-    const groupId = (selectedChat as GroupConversation)._id;
-
     try {
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'disbandGroup',
-          conversationId: groupId,
+          conversationId: (selectedChat as GroupConversation)._id,
           _id: currentUser._id,
         }),
       });
-
-      const json = await res.json();
-      if (!res.ok || !json?.success) {
-        alert(json?.error || 'Giải tán nhóm thất bại, vui lòng thử lại.');
-        return;
-      }
-
-      // Đóng popup trước
+      if (!res.ok) throw new Error();
       onClose();
-
-      // Chuyển về trang home (xóa selectedChat)
-      if (onLeftGroup) {
-        onLeftGroup();
-      }
-
-      // Reload dữ liệu để cập nhật danh sách nhóm (nhóm đã giải tán sẽ không còn trong danh sách)
-      if (reLoad) {
-        reLoad();
-      }
-    } catch (error) {
-      console.error('Disband group error:', error);
-      alert('Có lỗi xảy ra khi giải tán nhóm.');
+      onLeftGroup?.();
+      reLoad?.();
+    } catch {
+      alert('Giải tán nhóm thất bại.');
     }
   };
 
   return (
-    <div
-      ref={popupRef}
-      className="bg-white shadow-lg w-full sm:w-[21.875rem] flex flex-col h-full overflow-y-auto relative custom-scrollbar"
-    >
-      <ChatInfoHeader onClose={onClose} />
-
-      {/* Nội dung popup */}
-      <div className="space-y-6 bg-gray-200">
-        {/* Tên chat & Chức năng */}
-        <div className="space-y-6 bg-white w-full mb-2">
-          {isGroup ? (
-            <GroupAvatarSection
-              isGroup={isGroup}
-              groupAvatar={groupAvatar}
-              groupName={groupName}
-              chatName={chatName}
-              isGroupAvatarUploading={isGroupAvatarUploading}
-              avatarInputRef={avatarInputRef}
-              onChangeGroupAvatar={handleChangeGroupAvatar}
-              onRenameGroup={handleRenameGroup}
-            />
-          ) : (
-            <UserAvatarSection
-              userName={(selectedChat as User).name || (selectedChat as User).username || 'Người dùng'}
-              userAvatar={(selectedChat as User).avatar}
-            />
-          )}
-
-          <ChatQuickActions
-            localIsPinned={localIsPinned}
-            localIsHidden={localIsHidden}
-            onPinToggle={() => handleChatActionClick('pin')}
-            onHideToggle={() => handleChatActionClick('hide')}
-            onCreateGroup={() => {
-              onShowCreateGroup();
-              onClose();
-            }}
-          />
-
-          <GroupDangerZone
-            isGroup={isGroup}
-            canLeaveGroup={canLeaveGroup}
-            canDisbandGroup={canDisbandGroup}
-            onLeaveClick={() => setConfirmAction('leave')}
-            onDisbandClick={() => setConfirmAction('disband')}
-          />
+    <>
+      <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+        {/* Header cố định */}
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between shadow-lg">
+          <h2 className="text-lg font-semibold">Thông tin trò chuyện</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 transition-all duration-200">
+            <HiX className="w-5 h-5" />
+          </button>
         </div>
 
-        <GroupMembersSection
-          isGroup={isGroup}
-          groupName={groupName}
-          membersCount={isGroup ? (selectedChat as GroupConversation).members.length : 0}
-          onOpenMembers={() => setOpenMember(true)}
-        />
+        {/* Nội dung cuộn */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
+          <div className="space-y-5 p-5 pb-24">
+            {/* Avatar + Tên */}
+            {isGroup ? (
+              <GroupAvatarSection
+                isGroup={isGroup}
+                groupAvatar={groupAvatar}
+                groupName={groupName}
+                chatName={chatName}
+                isGroupAvatarUploading={isGroupAvatarUploading}
+                avatarInputRef={avatarInputRef}
+                onChangeGroupAvatar={handleChangeGroupAvatar}
+                onRenameGroup={handleRenameGroup}
+              />
+            ) : (
+              <UserAvatarSection
+                userName={(selectedChat as User).name || (selectedChat as User).username || 'Người dùng'}
+                userAvatar={(selectedChat as User).avatar}
+              />
+            )}
 
-        <ReminderSection />
+            <ChatQuickActions
+              localIsPinned={localIsPinned}
+              localIsHidden={localIsHidden}
+              onPinToggle={() => handleChatActionClick('pin')}
+              onHideToggle={() => handleChatActionClick('hide')}
+              onCreateGroup={() => {
+                onShowCreateGroup();
+                onClose();
+              }}
+            />
 
-        <MediaSection
-          isOpen={openItems['Ảnh/Video']}
-          onToggle={() => toggleItem('Ảnh/Video')}
-          mediaList={mediaList}
-          setPreviewMedia={setPreviewMedia}
-          activeMenuId={activeMenuId}
-          setActiveMenuId={setActiveMenuId}
-          onJumpToMessage={onJumpToMessage}
-          closeMenu={closeMenu}
-        />
+            {isGroup && (
+              <GroupMembersSection
+                isGroup={isGroup}
+                groupName={groupName}
+                membersCount={(selectedChat as GroupConversation).members.length}
+                onOpenMembers={() => setOpenMember(true)}
+              />
+            )}
 
-        <FileSection
-          isOpen={openItems['File']}
-          onToggle={() => toggleItem('File')}
-          fileList={fileList}
-          activeMenuId={activeMenuId}
-          setActiveMenuId={setActiveMenuId}
-          onJumpToMessage={onJumpToMessage}
-          closeMenu={closeMenu}
-        />
+            <ReminderSection />
 
-        <LinkSection
-          isOpen={openItems['Link']}
-          onToggle={() => toggleItem('Link')}
-          linkList={linkList}
-          activeMenuId={activeMenuId}
-          setActiveMenuId={setActiveMenuId}
-          onJumpToMessage={onJumpToMessage}
-          closeMenu={closeMenu}
-        />
+            <MediaSection
+              isOpen={openItems['Ảnh/Video']}
+              onToggle={() => toggleItem('Ảnh/Video')}
+              mediaList={mediaList}
+              setPreviewMedia={setPreviewMedia}
+              activeMenuId={activeMenuId}
+              setActiveMenuId={setActiveMenuId}
+              onJumpToMessage={onJumpToMessage}
+              closeMenu={closeMenu}
+            />
 
-        {/* (Phần Ẩn/Hiện trò chuyện đã đưa lên khu "Chức năng" phía trên cùng) */}
+            <FileSection
+              isOpen={openItems['File']}
+              onToggle={() => toggleItem('File')}
+              fileList={fileList}
+              activeMenuId={activeMenuId}
+              setActiveMenuId={setActiveMenuId}
+              onJumpToMessage={onJumpToMessage}
+              closeMenu={closeMenu}
+            />
+
+            <LinkSection
+              isOpen={openItems['Link']}
+              onToggle={() => toggleItem('Link')}
+              linkList={linkList}
+              activeMenuId={activeMenuId}
+              setActiveMenuId={setActiveMenuId}
+              onJumpToMessage={onJumpToMessage}
+              closeMenu={closeMenu}
+            />
+
+            {isGroup && (
+              <GroupDangerZone
+                isGroup={isGroup}
+                canLeaveGroup={canLeaveGroup}
+                canDisbandGroup={canDisbandGroup}
+                onLeaveClick={() => setConfirmAction('leave')}
+                onDisbandClick={() => setConfirmAction('disband')}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
-      {/*</div>*/}
-
+      {/* Modals */}
       {openMember && isGroup && (
         <ModalMembers
           allUsers={allUsers}
@@ -394,7 +343,7 @@ export default function ChatInfoPopup({
           renameInput={renameInput}
           onChangeInput={setRenameInput}
           onClose={() => setIsRenameModalOpen(false)}
-          onSubmit={() => void handleSubmitRenameGroup()}
+          onSubmit={handleSubmitRenameGroup}
         />
       )}
 
@@ -402,8 +351,8 @@ export default function ChatInfoPopup({
         <ConfirmGroupActionModal
           confirmAction={confirmAction}
           onCancel={() => setConfirmAction(null)}
-          onConfirmLeave={() => void handleLeaveGroup()}
-          onConfirmDisband={() => void handleDisbandGroup()}
+          onConfirmLeave={handleLeaveGroup}
+          onConfirmDisband={handleDisbandGroup}
         />
       )}
 
@@ -414,15 +363,15 @@ export default function ChatInfoPopup({
         onClose={() => setPreviewMedia(null)}
       />
 
-      {/* Popup loading khi cập nhật ảnh nhóm */}
+      {/* Loading overlay */}
       {isGroupAvatarUploading && (
-        <div className="fixed inset-0 z-[9700] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl px-4 py-3 shadow-xl flex items-center gap-3">
-            <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium text-gray-700">Đang cập nhật ảnh nhóm...</span>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-2xl px-6 py-4 flex items-center gap-3 shadow-2xl">
+            <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-gray-700 font-medium">Đang cập nhật ảnh nhóm...</span>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

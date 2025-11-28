@@ -2,7 +2,7 @@ import React from 'react';
 
 const ICPeopleGroup = ({ className, stroke }: { className?: string; stroke?: string }) => {
   return (
-    <div>
+    <>
       <svg
         className={className}
         width="800px"
@@ -36,7 +36,7 @@ const ICPeopleGroup = ({ className, stroke }: { className?: string; stroke?: str
           strokeLinejoin="round"
         />
       </svg>
-    </div>
+    </>
   );
 };
 

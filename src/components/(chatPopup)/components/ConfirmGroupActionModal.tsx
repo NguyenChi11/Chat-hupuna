@@ -1,4 +1,6 @@
 import React from 'react';
+import { HiX, HiTrash } from 'react-icons/hi';
+import { HiOutlineUserMinus } from 'react-icons/hi2';
 
 type ConfirmAction = 'leave' | 'disband' | null;
 
@@ -20,37 +22,67 @@ export default function ConfirmGroupActionModal({
   const isLeave = confirmAction === 'leave';
 
   return (
-    <div className="fixed inset-0 z-[9600] flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg shadow-xl w-[90%] max-w-sm p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-          {isLeave ? 'Rời nhóm chat' : 'Giải tán nhóm chat'}
-        </h3>
-        <p className="text-xs text-gray-500 mb-4">
-          {isLeave
-            ? 'Bạn sẽ rời khỏi nhóm này và không nhận được tin nhắn mới. Bạn có chắc chắn muốn tiếp tục?'
-            : 'Tất cả thành viên sẽ bị xóa khỏi nhóm và lịch sử chat có thể bị xóa. Hành động này không thể hoàn tác.'}
-        </p>
-        <div className="flex justify-end gap-2">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Header với icon + nút đóng */}
+        <div className="relative px-6 pt-6 pb-4 bg-gradient-to-br from-red-500 to-red-600 text-white">
+          <button
+            onClick={onCancel}
+            className="absolute top-3 right-3 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200"
+          >
+            <HiX className="w-5 h-5" />
+          </button>
+
+          <div className="flex flex-col items-center text-center">
+            <div className="p-4 rounded-full bg-white/20 backdrop-blur-sm mb-3">
+              {isLeave ? <HiOutlineUserMinus className="w-10 h-10" /> : <HiTrash className="w-10 h-10" />}
+            </div>
+            <h3 className="text-xl font-bold">{isLeave ? 'Rời khỏi nhóm?' : 'Giải tán nhóm?'}</h3>
+          </div>
+        </div>
+
+        {/* Nội dung */}
+        <div className="px-6 py-5">
+          <p className="text-sm text-gray-600 leading-relaxed text-center">
+            {isLeave
+              ? 'Bạn sẽ không còn nhận được tin nhắn từ nhóm này nữa. Bạn vẫn có thể tham gia lại nếu được mời.'
+              : 'Toàn bộ thành viên sẽ bị xóa khỏi nhóm và lịch sử trò chuyện sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.'}
+          </p>
+        </div>
+
+        {/* Nút hành động */}
+        <div className="flex items-center justify-end gap-3 px-6 pb-6">
           <button
             type="button"
-            className="px-3 cursor-pointer py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
             onClick={onCancel}
+            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 active:scale-95"
           >
             Hủy
           </button>
           <button
             type="button"
-            className={`px-3 cursor-pointer py-1.5 text-sm rounded-md text-white hover:opacity-90 ${
-              isLeave ? 'bg-red-500' : 'bg-red-600'
-            }`}
             onClick={isLeave ? onConfirmLeave : onConfirmDisband}
+            className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all duration-200 active:scale-95 flex items-center gap-2
+              ${
+                isLeave
+                  ? 'bg-red-500 hover:bg-red-600 ring-4 ring-red-200'
+                  : 'bg-red-600 hover:bg-red-700 ring-4 ring-red-300 animate-pulse hover:animate-none'
+              }`}
           >
-            {isLeave ? 'Rời nhóm' : 'Giải tán nhóm'}
+            {isLeave ? (
+              <>
+                <HiOutlineUserMinus className="w-4 h-4" />
+                Rời nhóm
+              </>
+            ) : (
+              <>
+                <HiTrash className="w-4 h-4" />
+                Giải tán nhóm
+              </>
+            )}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-

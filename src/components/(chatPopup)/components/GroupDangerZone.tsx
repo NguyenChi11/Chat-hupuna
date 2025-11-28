@@ -1,6 +1,6 @@
 import React from 'react';
-import ICOutGroup from '@/components/svg/ICOutGroup';
-import ICLayoutGroup from '@/components/svg/ICLayoutGroup';
+import { HiTrash } from 'react-icons/hi';
+import { HiOutlineUserMinus } from 'react-icons/hi2';
 
 interface GroupDangerZoneProps {
   isGroup: boolean;
@@ -20,32 +20,44 @@ export default function GroupDangerZone({
   if (!isGroup) return null;
 
   return (
-    <div className="mt-4 flex justify-center gap-8 items-start text-center border-t border-gray-100 py-4 px-4">
-      {canLeaveGroup && (
-        <button
-          type="button"
-          onClick={onLeaveClick}
-          className="flex cursor-pointer flex-col items-center text-xs text-gray-700 hover:text-red-600 transition-colors"
-        >
-          <div className="rounded-full w-8 h-8 flex justify-center items-center bg-gray-200 hover:bg-red-100 text-red-500 mb-1 transition-colors">
-            <ICOutGroup className="w-5 h-5" />
-          </div>
-          <span>Rời nhóm</span>
-        </button>
-      )}
+    <div className="bg-red-50/70 border-t-2 border-red-200 rounded-2xl overflow-hidden">
+      <div className="px-5 py-4">
+        <h3 className="text-sm font-bold text-red-700 uppercase tracking-wider mb-4 text-center">Khu vực nguy hiểm</h3>
 
-      {canDisbandGroup && (
-        <button
-          type="button"
-          onClick={onDisbandClick}
-          className="flex cursor-pointer flex-col items-center text-xs text-gray-700 hover:text-red-700 transition-colors"
-        >
-          <div className="rounded-full w-8 h-8 flex justify-center items-center bg-gray-200 hover:bg-red-100 text-red-600 mb-1 transition-colors">
-            <ICLayoutGroup className="w-5 h-5" />
-          </div>
-          <span>Giải tán nhóm</span>
-        </button>
-      )}
+        <div className="flex justify-center gap-10">
+          {/* Rời nhóm */}
+          {canLeaveGroup && (
+            <button
+              type="button"
+              onClick={onLeaveClick}
+              className="group flex flex-col items-center gap-3 p-5 rounded-2xl hover:bg-red-100/70 transition-all duration-300 active:scale-95"
+              title="Rời khỏi nhóm này"
+            >
+              <div className="p-4 rounded-2xl bg-red-100 text-red-600 ring-4 ring-red-100 group-hover:ring-red-200 group-hover:bg-red-200 transition-all duration-300 shadow-lg group-hover:shadow-xl">
+                <HiOutlineUserMinus className="w-7 h-7" />
+              </div>
+              <span className="text-sm font-semibold text-red-700 group-hover:text-red-800">Rời nhóm</span>
+            </button>
+          )}
+
+          {/* Giải tán nhóm (chỉ chủ nhóm) */}
+          {canDisbandGroup && (
+            <button
+              type="button"
+              onClick={onDisbandClick}
+              className="group flex flex-col items-center gap-3 p-5 rounded-2xl hover:bg-red-100/70 transition-all duration-300 active:scale-95"
+              title="Xóa hoàn toàn nhóm này"
+            >
+              <div className="p-4 rounded-2xl bg-red-600 text-white ring-4 ring-red-200 group-hover:ring-red-300 group-hover:bg-red-700 transition-all duration-300 shadow-lg group-hover:shadow-xl animate-pulse group-hover:animate-none">
+                <HiTrash className="w-7 h-7" />
+              </div>
+              <span className="text-sm font-bold text-red-700 group-hover:text-red-800">Giải tán nhóm</span>
+            </button>
+          )}
+        </div>
+
+        <p className="text-center text-xs text-red-600 mt-4 font-medium">Các hành động này không thể hoàn tác</p>
+      </div>
     </div>
   );
 }

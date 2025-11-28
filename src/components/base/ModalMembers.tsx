@@ -1,24 +1,17 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { HiX, HiSearch, HiShieldCheck, HiUserGroup, HiCheck, HiChevronDown } from 'react-icons/hi';
 
-import SearchIcon from '@/public/icons/icon-search.svg'; // Đảm bảo đường dẫn đúng
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
 import { User } from '../../types/User';
 import { MemberInfo, GroupRole } from '../../types/Group';
 import { getProxyUrl } from '../../utils/utils';
-import ICPeopleGroup from '@/components/svg/ICPeopleGroup';
-import ICClose from '@/components/svg/ICClose';
-import ICPersonPlus from '@/components/svg/ICPersonPlus';
-import ICUpload from '@/components/svg/ICUpload';
-import ICTrashCan from '@/components/svg/ICTrashCan';
-import ICTick from '@/components/svg/ICTick';
 import { useToast } from './toast';
 import { confirmAlert } from './alert';
+import { HiUserMinus, HiUserPlus } from 'react-icons/hi2';
 
 interface Props {
   isOpen: boolean;
@@ -54,7 +47,7 @@ export default function GroupMembersModal({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [localMembers, setLocalMembers] = useState<MemberInfo[]>([]);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null); // Để hiện loading khi kick/promote
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const toast = useToast();
   const router = useRouter();
 
@@ -69,7 +62,7 @@ export default function GroupMembersModal({
   const myMemberInfo = localMembers.find((m) => String(m._id || m.id) === myId);
   const myRole: GroupRole = myMemberInfo?.role || 'MEMBER';
 
-  // --- LOGIC PERMISSION ---
+  // Permission
   const canKick = (targetRole: GroupRole) => {
     if (myRole === 'OWNER') return true;
     if (myRole === 'ADMIN' && targetRole === 'MEMBER') return true;
@@ -78,315 +71,266 @@ export default function GroupMembersModal({
   const canPromote = (targetRole: GroupRole) => myRole === 'OWNER' && targetRole === 'MEMBER';
   const canDemote = (targetRole: GroupRole) => myRole === 'OWNER' && targetRole === 'ADMIN';
 
-  // --- HANDLERS ---
+  // Handlers
   const handleOpenProfile = (targetUserId: string) => {
-    const id = String(targetUserId);
-    router.push(`/profile?userId=${id}`);
+    router.push(`/profile?userId=${String(targetUserId)}`);
   };
+
   const handleOptimisticAddMember = (newUsers: User[]) => {
-    const newMembersFormatted: MemberInfo[] = newUsers.map((u) => ({
+    const newMembers: MemberInfo[] = newUsers.map((u) => ({
       _id: u._id,
       name: u.name,
       avatar: u.avatar,
       role: 'MEMBER',
       joinedAt: Date.now(),
     }));
-    setLocalMembers((prev) => [...prev, ...newMembersFormatted]);
+    setLocalMembers((prev) => [...prev, ...newMembers]);
     setShowCreateGroupModal(false);
-    if (onMembersAdded) onMembersAdded(newUsers);
+    onMembersAdded(newUsers);
   };
 
   const handleAction = async (action: 'kick' | 'promote' | 'demote', targetUserId: string) => {
     if (!conversationId) return;
-    setLoadingAction(targetUserId); // Bắt đầu loading cho user này
+    setLoadingAction(targetUserId);
 
     const targetMember = localMembers.find((m) => String(m._id || m.id) === targetUserId);
-    const targetName = targetMember ? targetMember.name : 'Thành viên';
-
-    type GroupActionPayload =
-      | {
-          conversationId: string;
-          targetUserId: string;
-          action: 'kickMember';
-          _id?: string;
-        }
-      | {
-          conversationId: string;
-          targetUserId: string;
-          action: 'changeRole';
-          data: { role: 'ADMIN' | 'MEMBER' };
-          _id: string;
-        };
-
-    const payload: GroupActionPayload =
-      action === 'kick'
-        ? {
-            conversationId,
-            targetUserId,
-            action: 'kickMember',
-            _id: myId,
-          }
-        : {
-            conversationId,
-            targetUserId,
-            action: 'changeRole',
-            data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
-            _id: myId,
-          };
+    const targetName = targetMember?.name || 'Thành viên';
 
     try {
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(
+          action === 'kick'
+            ? { conversationId, targetUserId, action: 'kickMember', _id: myId }
+            : {
+                conversationId,
+                targetUserId,
+                action: 'changeRole',
+                data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
+                _id: myId,
+              },
+        ),
       });
 
       if (res.ok) {
         if (action === 'kick') {
           setLocalMembers((prev) => prev.filter((m) => String(m._id || m.id) !== targetUserId));
-          if (onMemberRemoved) onMemberRemoved(targetUserId, targetName);
-        } else if (action === 'promote' || action === 'demote') {
-          const newRole: GroupRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
+          onMemberRemoved?.(targetUserId, targetName);
+        } else {
+          const newRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
           setLocalMembers((prev) =>
             prev.map((m) => (String(m._id || m.id) === targetUserId ? { ...m, role: newRole } : m)),
           );
-          if (onRoleChange) onRoleChange(targetUserId, targetName, newRole);
+          onRoleChange?.(targetUserId, targetName, newRole);
         }
-        if (reLoad) reLoad();
+        reLoad?.();
       } else {
-        toast({
-          type: 'error',
-          message: 'Thao tác thất bại, vui lòng thử lại.',
-          duration: 3000,
-        });
+        toast({ type: 'error', message: 'Thao tác thất bại', duration: 3000 });
       }
-    } catch (e) {
-      console.error(e);
-      toast({
-        type: 'error',
-        message: 'Lỗi kết nối, vui lòng kiểm tra mạng và thử lại.',
-        duration: 3000,
-      });
+    } catch {
+      toast({ type: 'error', message: 'Lỗi mạng, vui lòng thử lại', duration: 3000 });
     } finally {
       setLoadingAction(null);
     }
   };
 
-  // Filter
   const searchUser = localMembers.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const existingMemberIds = localMembers.map((m) => String(m._id || m.id));
 
-  // --- SUB COMPONENTS ---
+  // Role Badge đẹp như Zalo Pro
   const RoleBadge = ({ role }: { role: GroupRole }) => {
     if (role === 'OWNER')
       return (
-        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[0.625rem] font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">
-          👑 Trưởng nhóm
+        <span className="ml-2 px-3 py-1.5 rounded-full text-[0.5rem] font-bold bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-md flex items-center gap-1.5">
+          <HiChevronDown className="w-3 h-3" />
+          Trưởng nhóm
         </span>
       );
     if (role === 'ADMIN')
       return (
-        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[0.625rem] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-          🛡️ Phó nhóm
+        <span className="ml-2 px-3 py-1.5 rounded-full text-[0.5rem] font-bold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md flex items-center gap-1.5">
+          <HiShieldCheck className="w-3 h-3" />
+          Phó nhóm
         </span>
       );
     return null;
   };
 
   return (
-    // 1. Outer Wrapper kiểu Zalo: overlay mờ, modal bo góc trên desktop, full-screen trên mobile
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-2 sm:px-4 py-4 sm:py-6">
-      <div className="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-2xl rounded-none sm:rounded-2xl shadow-none sm:shadow-xl border border-gray-200 flex flex-col overflow-hidden">
-        {/* --- HEADER --- */}
-        <div className="flex-none px-4 py-3 border-b bg-[#f3f6fb] flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
-              <ICPeopleGroup className="w-5 h-5" stroke="#ffffff" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white w-full max-w-2xl h-[80vh] rounded-3xl sm:h-auto sm:max-h-[90vh]  sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        {/* Header gradient siêu đẹp */}
+        <div className="flex items-center justify-between p-2 sm:px-6 sm:py-2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md shadow-lg">
+              <HiUserGroup className="sm:w-8 sm:h-8 w-4 h-4" />
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800 truncate">Thành viên nhóm</p>
-              {groupName && (
-                <p className="text-xs text-gray-500 font-medium truncate max-w-[13.75rem] sm:max-w-[16.25rem]">
-                  {groupName}
-                </p>
-              )}
+            <div>
+              <h2 className="sm:text-xl text-lg font-bold">Thành viên nhóm</h2>
+              {groupName && <p className="sm:text-sm text-xs opacity-90 mt-1">{groupName}</p>}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 cursor-pointer h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
-            aria-label="Đóng"
+            className="p-3 rounded-full hover:bg-white/20 transition-all duration-200 active:scale-95"
           >
-            <ICClose className="w-4 h-4" stroke="#000000" />
+            <HiX className="sm:w-7 sm:h-7 h-5 w-5" />
           </button>
         </div>
 
-        {/* --- BODY --- */}
-        <div className="flex-1 flex flex-col min-h-0 bg-gray-50/60">
-          {/* Search & Add Section */}
-          <div className="flex-none p-4 space-y-3 bg-white shadow-sm z-10">
-            {/* Chỉ Admin/Owner mới thấy nút Add */}
+        {/* Body */}
+        <div className="flex-1 flex flex-col min-h-0 bg-gray-50">
+          {/* Search & Add */}
+          <div className="sm:p-4 p-2 space-y-5 bg-white border-b border-gray-100">
             {(myRole === 'OWNER' || myRole === 'ADMIN') && (
               <button
                 onClick={() => setShowCreateGroupModal(true)}
-                className="w-full cursor-pointer py-3 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-semibold text-sm transition-all active:scale-95 group"
+                className="w-full py-1.5 sm:py-2.5 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold sm:text-lg text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-98"
               >
-                <div className="p-1.5 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                  <ICPersonPlus className="w-4 h-4" stroke="#000000" />
-                </div>
+                <HiUserPlus className="sm:w-6 sm:h-6 w-4 h-4" />
                 Thêm thành viên mới
               </button>
             )}
 
             <div className="relative">
+              <HiSearch className="absolute left-5 top-1/2 -translate-y-1/2 sm:w-6 sm:h-6 w-4 h-4  text-gray-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm thành viên..."
-                className="w-full h-10 pl-10 pr-4 bg-gray-100 rounded-full outline-none text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 border border-transparent focus:border-blue-500 transition-all"
+                className="w-full pl-14 pr-6 py-1.5 sm:py-2.5 bg-gray-100 text-sm rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:bg-white sm:text-lg transition-all duration-200"
               />
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Image src={SearchIcon} alt="search" width={18} height={18} className="opacity-40" />
-              </div>
             </div>
           </div>
 
           {/* Member List */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar bg-gray-50/60">
-            <h4 className="font-semibold text-[0.6875rem] text-gray-500 mb-3 uppercase tracking-wider flex justify-between items-center">
-              <span>Danh sách</span>
-              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-[0.6875rem]">
-                {searchUser.length} thành viên
-              </span>
-            </h4>
+          <div className="flex-1 overflow-y-auto sm:px-6 sm:py-4 p-2">
+            <div className="flex justify-between items-center sm:mb-5 mb-3">
+              <h3 className="sm:text-sm text-xs font-bold text-gray-600 uppercase tracking-wider">
+                Danh sách thành viên
+              </h3>
+              <span className="sm:text-xl text-xs font-bold text-indigo-600">{searchUser.length}</span>
+            </div>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
               {searchUser.map((member) => {
                 const memberId = String(member._id || member.id);
-                const memberRole: GroupRole = member.role;
                 const isMe = memberId === myId;
                 const isLoading = loadingAction === memberId;
 
                 return (
                   <div
                     key={memberId}
-                    className={`flex items-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm transition-all hover:shadow-md group relative
-                        ${isLoading ? 'opacity-50 pointer-events-none' : ''}
-                    `}
+                    className={`relative flex items-center gap-3 p-1 sm:p-3 bg-white sm:rounded-3xl rounded-2xl shadow-md border-2 border-transparent transition-all duration-300 group
+                      ${isLoading ? 'opacity-60' : 'hover:border-indigo-200 hover:shadow-xl'}`}
                   >
                     {/* Avatar */}
                     <div
-                      className="w-11 h-11 rounded-full bg-gray-200 mr-3 overflow-hidden flex-shrink-0 border border-gray-100 cursor-pointer"
+                      className="sm:w-12 sm:h-12 h-8 w-8 rounded-3xl overflow-hidden ring-4 ring-white shadow-2xl cursor-pointer transition-transform hover:scale-105"
                       onClick={() => handleOpenProfile(memberId)}
                     >
                       {member.avatar ? (
-                        <img
+                        <Image
                           src={getProxyUrl(member.avatar)}
                           alt={member.name}
+                          width={64}
+                          height={64}
                           className="w-full h-full object-cover"
-                          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-lg">
+                        <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold sm:text-2xl text-sm flex items-center justify-center">
                           {member.name?.charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0 mr-2 cursor-pointer" onClick={() => handleOpenProfile(memberId)}>
-                      <div className="flex items-center flex-wrap gap-1">
-                        <p className="text-sm font-bold text-gray-900 truncate">{member.name}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 sm:flex-wrap">
+                        <p className="sm:text-lg text-[0.675rem] font-bold text-gray-900">{member.name}</p>
                         {isMe && (
-                          <span className="text-[0.625rem] font-medium text-gray-400 bg-gray-100 px-1.5 rounded">
-                            (Bạn)
+                          <span className="sm:px-3 sm:py-1.5 p-1.5 bg-indigo-100 text-indigo-700 rounded-full text-[0.675rem] font-bold">
+                            Bạn
                           </span>
                         )}
-                      </div>
-                      <div className="flex mt-0.5">
-                        <RoleBadge role={memberRole} />
-                        {memberRole === 'MEMBER' && <span className="text-xs text-gray-400 ml-1">Thành viên</span>}
+                        <RoleBadge role={member.role} />
                       </div>
                     </div>
 
-                    {/* Actions - Chỉ hiện khi Hover và không phải là chính mình */}
-                    {!isMe && !isLoading && (
-                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
-                        {/* Nút Promote (Lên chức) */}
-                        {canPromote(memberRole) && (
+                    {/* Actions - Hiện khi hover */}
+                    {!isMe && (
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {canPromote(member.role) && (
                           <button
                             onClick={() => handleAction('promote', memberId)}
-                            className="p-2 cursor-pointer text-green-600 hover:bg-green-50 rounded-full transition-colors tooltip-top"
+                            className="p-3 bg-green-100 hover:bg-green-200 rounded-2xl transition-all active:scale-95"
                             title="Bổ nhiệm làm Phó nhóm"
                           >
-                            <ICTick className="w-5 h-5" stroke="#2eff00" />
+                            <HiCheck className="w-4 h-4 text-green-700" />
                           </button>
                         )}
-
-                        {/* Nút Demote (Xuống chức) */}
-                        {canDemote(memberRole) && (
+                        {canDemote(member.role) && (
                           <button
                             onClick={() => handleAction('demote', memberId)}
-                            className="p-2 cursor-pointer text-yellow-600 hover:bg-yellow-50 rounded-full transition-colors"
-                            title="Bãi nhiệm xuống Thành viên"
+                            className="p-3 bg-yellow-100 hover:bg-yellow-200 rounded-2xl transition-all active:scale-95"
+                            title="Bãi nhiệm"
                           >
-                            <ICUpload className="w-5 h-5" stroke="#000000" />
+                            <HiUserMinus className="w-4 h-4 text-yellow-700" />
                           </button>
                         )}
-
-                        {/* Nút Kick (Xóa) */}
-                        {canKick(memberRole) && (
+                        {canKick(member.role) && (
                           <button
-                            onClick={() => {
+                            onClick={() =>
                               confirmAlert({
-                                title: 'Xác nhận',
+                                title: 'Xóa thành viên',
                                 message: `Xóa ${member.name} khỏi nhóm?`,
                                 okText: 'Xóa',
-                                cancelText: 'Hủy',
                                 onOk: () => handleAction('kick', memberId),
-                              });
-                            }}
-                            className="p-2 cursor-pointer text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                            title="Mời ra khỏi nhóm"
+                              })
+                            }
+                            className="p-3 bg-red-100 hover:bg-red-200 rounded-2xl transition-all active:scale-95"
+                            title="Xóa khỏi nhóm"
                           >
-                            <ICTrashCan className="w-5 h-5" stroke="#ff0000" />
+                            <HiUserMinus className="w-4 h-4 text-red-600" />
                           </button>
                         )}
                       </div>
                     )}
+
+                    {/* Loading overlay */}
                     {isLoading && (
-                      <div className="absolute right-4">
-                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <div className="absolute inset-0 bg-white/80 rounded-3xl flex items-center justify-center">
+                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                       </div>
                     )}
                   </div>
                 );
               })}
+
               {searchUser.length === 0 && (
-                <div className="text-center py-10 opacity-60 flex flex-col items-center">
-                  <Image src={SearchIcon} alt="" width={40} height={40} className="mb-3 grayscale opacity-30" />
-                  <p className="text-gray-500 text-sm font-medium">Không tìm thấy thành viên nào</p>
+                <div className="text-center py-20 text-gray-400">
+                  <HiSearch className="w-24 h-24 mx-auto mb-6 opacity-20" />
+                  <p className="text-xl font-medium">Không tìm thấy thành viên</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* --- FOOTER --- */}
-        <div className="flex-none px-4 py-3 bg-white border-t border-gray-200 flex justify-end gap-3">
+        {/* Footer */}
+        <div className="p-4 bg-white border-t border-gray-100">
           <button
             onClick={onClose}
-            className="w-full cursor-pointer sm:w-auto px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-colors"
+            className="w-full py-1 sm:py-3 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold text-sm sm:text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-98"
           >
             Đóng
           </button>
         </div>
       </div>
 
-      {/* Modal con CreateGroupModal (Giữ nguyên logic) */}
+      {/* Modal con */}
       {showCreateGroupModal && (
         <CreateGroupModal
           mode="add"
