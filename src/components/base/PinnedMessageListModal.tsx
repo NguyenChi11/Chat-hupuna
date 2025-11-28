@@ -26,7 +26,7 @@ export default function PinnedMessageListModal({
         {/* Header Modal */}
         <div className="p-4 border-b-[1px] border-b-gray-300 flex justify-between items-center bg-gray-50 sticky top-0">
           <h3 className="font-bold text-lg flex items-center gap-2 text-yellow-700">
-            <Image src={PinIcon.src} alt="pin" className="w-5 h-5 rotate-45" />
+            <Image src={PinIcon.src} alt="pin" width={20} height={20} className="w-5 h-5 rotate-45" />
             Danh sách tin nhắn ghim ({messages.length})
           </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-red-500 p-1 rounded-full transition-colors">
