@@ -482,6 +482,9 @@ export default function ChatWindow({
     setMessages([]);
     void fetchMessages();
     void fetchPinnedMessages();
+    console.log('💬 Messages:', messages);
+    console.log('👥 AllUsers:', allUsers);
+    console.log('👤 CurrentUser:', currentUser);
   }, [roomId, fetchMessages, fetchPinnedMessages]);
 
   const allUsersMap = useMemo(() => {
@@ -679,20 +682,64 @@ export default function ChatWindow({
   };
 
   const getSenderInfo = (sender: User | string) => {
-    if (typeof sender === 'object' && sender !== null) {
-      return {
-        _id: sender._id,
-        name: sender.name || 'Unknown',
+
+    // Lấy senderId từ sender (hỗ trợ cả object và string)
+    const senderId = typeof sender === 'object' && sender !== null
+      ? String(sender._id || sender.id || '')
+      : String(sender);
+
+
+    // 1. Check currentUser trước
+    if (String(currentUser._id) === senderId) {
+      const result = {
+        _id: senderId,
+        name: currentUser.name || 'Bạn',
+        avatar: currentUser.avatar ?? null,
+      };
+      return result;
+    }
+
+    // 2. Tìm trong allUsers array
+    const foundUser = allUsers.find(u => String(u._id || u.id) === senderId);
+    if (foundUser) {
+      const result = {
+        _id: senderId,
+        name: foundUser.name || 'Người dùng',
+        avatar: foundUser.avatar ?? null,
+      };
+      return result;
+    }
+
+    // 3. Tìm trong activeMembers (cho group chat)
+    if (isGroup && Array.isArray(activeMembers)) {
+      const foundMember = activeMembers.find(m => String(m._id || m.id) === senderId);
+      if (foundMember) {
+        const result = {
+          _id: senderId,
+          name: foundMember.name || 'Thành viên',
+          avatar: foundMember.avatar ?? null,
+        };
+        return result;
+      }
+    }
+
+    // 4. Nếu sender là object có đầy đủ data, dùng luôn
+    if (typeof sender === 'object' && sender !== null && sender.name) {
+      const result = {
+        _id: senderId,
+        name: sender.name,
         avatar: sender.avatar ?? null,
       };
+      return result;
     }
+
+    // 5. Fallback cuối cùng - dùng allUsersMap
     return {
-      _id: sender,
-      name: '...',
+      _id: senderId,
+      name: allUsersMap.get(senderId) || 'Người dùng',
       avatar: null,
     };
   };
-
   // Render tin nhắn với highlight mentions
   const renderMessageContent = (content: string, mentionedUserIds?: string[], isMe?: boolean) => {
     if (!content) return null;
