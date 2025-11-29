@@ -45,7 +45,7 @@ export default function SettingsMobile() {
   };
 
   return (
-    <div className="sm:hidden flex flex-col h-screen bg-gray-50">
+    <div className="md:hidden flex flex-col h-screen bg-gray-50">
       {/* Header cố định */}
       <div className="bg-white shadow-sm border-b border-gray-200 z-10">
         <div className="px-6 py-5">
