@@ -22,34 +22,43 @@ export function useChatMentions({ allUsers, activeMembers, currentUserId }: UseC
   const getPlainTextFromEditable = useCallback((): string => {
     if (!editableRef.current) return '';
 
-    const pieces: string[] = [];
+    const BLOCK_TAGS = new Set(['DIV', 'P', 'LI', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 
-    const walk = (node: Node) => {
+    const traverse = (node: Node): string => {
       if (node.nodeType === Node.TEXT_NODE) {
-        if (node.textContent) pieces.push(node.textContent);
-        return;
+        return node.textContent || '';
       }
+
       if (node.nodeType === Node.ELEMENT_NODE) {
         const el = node as HTMLElement;
+
         if (el.dataset && el.dataset.mention) {
-          const userId = el.dataset.userId || '';
-          const userName = el.dataset.userName || '';
-          pieces.push(`@[${userName}](${userId})`);
-          return;
+          const userId = el.dataset.userId as string;
+          const userName = el.dataset.userName as string;
+          return `@[${userName}](${userId})`;
         }
+
         if (el.tagName === 'BR') {
-          pieces.push('\n');
-          return;
+          return '\n';
         }
-        el.childNodes.forEach(walk);
-        if (el.tagName === 'DIV' || el.tagName === 'P') {
-          pieces.push('\n');
+
+        let out = '';
+        el.childNodes.forEach((child) => {
+          out += traverse(child);
+        });
+
+        if (BLOCK_TAGS.has(el.tagName)) {
+          if (out && !out.endsWith('\n')) out += '\n';
         }
+
+        return out;
       }
+
+      return '';
     };
 
-    editableRef.current.childNodes.forEach(walk);
-    return pieces.join('');
+    const text = traverse(editableRef.current);
+    return text;
   }, []);
 
   const getCursorPosition = (): number => {

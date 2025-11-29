@@ -222,7 +222,7 @@ export default function MessageList({
 
                     {/* TEXT */}
                     {msg.type === 'text' && !isRecalled && !isEditing && (
-                      <div className="text-sm leading-relaxed">
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
                         {renderMessageContent(msg.content || '', msg.mentions, isMe)}
                       </div>
                     )}

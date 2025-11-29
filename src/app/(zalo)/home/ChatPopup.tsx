@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { formatTimeAgo } from '@/utils/dateUtils';
+const PRESENCE_THRESHOLD_MS = 5 * 60 * 1000;
 import io, { Socket } from 'socket.io-client';
 import ChatInfoPopup from './ChatInfoPopup';
 
@@ -123,6 +125,7 @@ export default function ChatWindow({
   const socketRef = useRef<Socket | null>(null);
   const markedReadRef = useRef<string | null>(null);
   const initialScrolledRef = useRef(false);
+  const jumpLoadingRef = useRef(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pickerTab, setPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -148,6 +151,21 @@ export default function ChatWindow({
 
   const [showSearchSidebar, setShowSearchSidebar] = useState(false);
   const chatAvatar = (selectedChat as { avatar?: string }).avatar;
+
+  const presenceInfo = useMemo(() => {
+    if (isGroup) return { online: undefined as boolean | undefined, text: '' };
+    const partnerId = getId(selectedChat);
+    const partner = allUsers.find((u) => String(u._id) === String(partnerId));
+    const lastSeen = partner?.lastSeen ?? null;
+    const now = Date.now();
+    const online = lastSeen != null ? now - lastSeen <= PRESENCE_THRESHOLD_MS : !!partner?.online;
+    const text = online
+      ? 'Đang hoạt động'
+      : lastSeen
+        ? `Hoạt động ${formatTimeAgo(lastSeen)} trước`
+        : 'Hoạt động gần đây';
+    return { online, text };
+  }, [isGroup, selectedChat, allUsers]);
 
   const sendMessageProcess = useCallback(
     async (msgData: MessageCreate) => {
@@ -300,32 +318,8 @@ export default function ChatWindow({
   }, [contextMenu, closeContextMenu]);
 
   useEffect(() => {
-    if (!scrollToMessageId || messages.length === 0) return;
-
-    // Đợi DOM render
-    const timer = setTimeout(() => {
-      const el = document.getElementById(`msg-${scrollToMessageId}`);
-
-      if (el) {
-        // Scroll đến tin nhắn
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        // Highlight
-        setHighlightedMsgId(scrollToMessageId);
-
-        // Tắt highlight sau 2.5s
-        setTimeout(() => setHighlightedMsgId(null), 2500);
-
-        // Callback
-        onScrollComplete?.();
-      } else {
-        console.warn('Message element not found:', scrollToMessageId);
-        onScrollComplete?.();
-      }
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [scrollToMessageId, messages.length, onScrollComplete]);
+    if (!scrollToMessageId) return;
+  }, [scrollToMessageId]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -410,7 +404,8 @@ export default function ChatWindow({
     const prevHeight = container ? container.scrollHeight : 0;
     let added = false;
     try {
-      const data = await readMessagesApi(roomId, { limit: 20, before: oldestTs, sortOrder: 'desc' });
+      const LIMIT = 20;
+      const data = await readMessagesApi(roomId, { limit: LIMIT, before: oldestTs, sortOrder: 'desc' });
       const raw = Array.isArray(data.data) ? (data.data as Message[]) : [];
       const existing = new Set(messages.map((m) => String(m._id)));
       const toAddDesc = raw.filter((m) => !existing.has(String(m._id)));
@@ -423,8 +418,8 @@ export default function ChatWindow({
       }
       // Với truy vấn "before=oldestTs", tổng trả về chỉ là số lượng bản ghi cũ hơn oldestTs,
       // không phải tổng toàn bộ room. Để tránh dừng sớm, dùng ngưỡng theo limit.
-      setHasMore(toAddDesc.length === 20);
-      if (container) {
+      setHasMore(raw.length === LIMIT);
+      if (container && !jumpLoadingRef.current) {
         setTimeout(() => {
           const newHeight = container.scrollHeight;
           const delta = newHeight - prevHeight;
@@ -444,7 +439,7 @@ export default function ChatWindow({
     const el = messagesContainerRef.current;
     if (!el) return;
     const handler = () => {
-      if (el.scrollTop <= 50) {
+      if (el.scrollTop <= 50 && !jumpLoadingRef.current) {
         void loadMoreMessages();
       }
     };
@@ -456,7 +451,7 @@ export default function ChatWindow({
     setReplyingTo(message);
   }, []);
 
-  const handleJumpToMessage = async (messageId: string) => {
+  const handleJumpToMessage = useCallback(async (messageId: string) => {
     if (window.innerWidth < 640) {
       setShowPopup(false);
     }
@@ -479,61 +474,50 @@ export default function ChatWindow({
         setHighlightedMsgId(null);
       }, 2500);
     } else {
-      const ensureLoadedById = async (id: string): Promise<boolean> => {
+      jumpLoadingRef.current = true;
+      try {
+        let targetTs: number | null = null;
         try {
-          const res = await fetch('/api/messages', {
+          const r = await fetch('/api/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'getById', _id: id }),
+            body: JSON.stringify({ action: 'getById', _id: messageId }),
           });
-          const json = await res.json();
-          const target = (json && (json.row?.row || json.row)) as Message | undefined;
-          if (!target) return false;
-          if (String(target.roomId) !== roomId) return false;
-          const targetTs = Number(target.timestamp);
-
-          const data = await readMessagesApi(roomId, { limit: 50, before: targetTs + 1, sortOrder: 'desc' });
-          const raw = Array.isArray(data.data) ? (data.data as Message[]) : [];
-          const existing = new Set(messages.map((m) => String(m._id)));
-          const toAddDesc = raw.filter((m) => !existing.has(String(m._id)));
-          const toAddAsc = toAddDesc.slice().reverse();
-          if (toAddAsc.length > 0) {
-            setMessages((prev) => [...toAddAsc, ...prev]);
-            const newOldest = toAddAsc[0]?.timestamp ?? oldestTs;
-            setOldestTs(newOldest ?? oldestTs);
+          const j = await r.json();
+          const t = (j && (j.row?.row || j.row)) as Message | undefined;
+          if (t && String(t.roomId) === roomId) {
+            targetTs = Number(t.timestamp) || null;
           }
+        } catch {}
 
-          // Đợi DOM cập nhật rồi tìm lại
-          await new Promise((r) => setTimeout(r, 60));
-          const el = document.getElementById(`msg-${id}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            if (container) {
-              const elRect = el.getBoundingClientRect();
-              const cRect = container.getBoundingClientRect();
-              const delta = elRect.top - cRect.top - container.clientHeight / 2 + elRect.height / 2;
-              container.scrollBy({ top: delta, behavior: 'smooth' });
-            }
-            setHighlightedMsgId(id);
-            setTimeout(() => setHighlightedMsgId(null), 2500);
-            return true;
-          }
-          return false;
-        } catch {
-          return false;
+        if (targetTs == null) {
+          alert('Tin nhắn này không còn hiển thị trong danh sách hiện tại.');
+          return;
         }
-      };
 
-      // 1) Thử tải theo ID mục tiêu
-      const loadedTarget = await ensureLoadedById(messageId);
-      if (loadedTarget) return;
+        const olderLimit = 200;
+        const newerLimit = 60;
 
-      // 2) Fallback: tải dần tới khi cạn dữ liệu hoặc tìm thấy
-      let attempts = 0;
-      while (hasMore && attempts < 60) {
-        const added = await loadMoreMessages();
-        attempts++;
-        await new Promise((r) => setTimeout(r, 50));
+        const [olderRes, newerRes] = await Promise.all([
+          readMessagesApi(roomId, { limit: olderLimit, sortOrder: 'desc', extraFilters: { timestamp: { $lte: targetTs } } }),
+          readMessagesApi(roomId, { limit: newerLimit, sortOrder: 'asc', extraFilters: { timestamp: { $gt: targetTs } } }),
+        ]);
+
+        const olderRawDesc = Array.isArray(olderRes.data) ? (olderRes.data as Message[]) : [];
+        const olderAsc = olderRawDesc.slice().reverse();
+        const newerAsc = Array.isArray(newerRes.data) ? (newerRes.data as Message[]) : [];
+
+        const existing = new Set(messages.map((m) => String(m._id)));
+        const mergedAsc = [...olderAsc, ...newerAsc].filter((m) => !existing.has(String(m._id)));
+
+        if (mergedAsc.length > 0) {
+          setMessages((prev) => [...mergedAsc, ...prev]);
+          const newOldest = mergedAsc[0]?.timestamp ?? oldestTs;
+          setOldestTs(newOldest ?? oldestTs);
+          setHasMore(olderRawDesc.length === olderLimit);
+        }
+
+        await new Promise((r) => setTimeout(r, 60));
         const el = document.getElementById(`msg-${messageId}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -547,11 +531,24 @@ export default function ChatWindow({
           setTimeout(() => setHighlightedMsgId(null), 2500);
           return;
         }
-        if (!added) break;
+
+        alert('Tin nhắn này không còn hiển thị trong danh sách hiện tại.');
+      } finally {
+        jumpLoadingRef.current = false;
       }
-      alert('Tin nhắn này không còn hiển thị trong danh sách hiện tại.');
     }
-  };
+  }, [hasMore, loadMoreMessages, roomId, messages, oldestTs]);
+
+  useEffect(() => {
+    if (!scrollToMessageId) return;
+    if (initialLoading) return;
+    if (oldestTs == null && messages.length === 0) return;
+    const timer = setTimeout(() => {
+      void handleJumpToMessage(scrollToMessageId);
+      onScrollComplete?.();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [scrollToMessageId, initialLoading, oldestTs, messages.length, handleJumpToMessage, onScrollComplete]);
 
   const { isListening, handleVoiceInput } = useChatVoiceInput({
     editableRef,
@@ -1053,6 +1050,8 @@ export default function ChatWindow({
             onToggleSearchSidebar={() => setShowSearchSidebar((prev) => !prev)}
             avatar={chatAvatar}
             onBackFromChat={onBackFromChat}
+            presenceText={!isGroup ? presenceInfo.text : undefined}
+            presenceOnline={!isGroup ? presenceInfo.online : undefined}
           />
           <PinnedMessagesSection
             allPinnedMessages={allPinnedMessages}

@@ -18,6 +18,8 @@ interface ChatHeaderProps {
   onToggleSearchSidebar: () => void;
   avatar?: string;
   onBackFromChat?: () => void;
+  presenceText?: string;
+  presenceOnline?: boolean;
 }
 
 export default function ChatHeader({
@@ -31,6 +33,8 @@ export default function ChatHeader({
   onToggleSearchSidebar,
   avatar,
   onBackFromChat,
+  presenceText,
+  presenceOnline,
 }: ChatHeaderProps) {
   const avatarChar = chatName?.trim()?.charAt(0)?.toUpperCase() || (isGroup ? 'N' : 'U');
 
@@ -70,9 +74,12 @@ export default function ChatHeader({
             )}
           </div>
 
-          {/* Online indicator (chỉ cho cá nhân) */}
           {!isGroup && (
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm" />
+            <div
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
+                presenceOnline ? 'bg-green-500' : 'bg-gray-400'
+              }`}
+            />
           )}
         </div>
 
@@ -89,7 +96,7 @@ export default function ChatHeader({
                 {memberCount} thành viên
               </>
             ) : (
-              <>Đang hoạt động</>
+              <>{presenceText || 'Đang hoạt động'}</>
             )}
           </p>
         </button>
