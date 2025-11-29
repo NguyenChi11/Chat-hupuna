@@ -1,7 +1,21 @@
+'use client';
+
 import React from 'react';
 import Image from 'next/image';
 import { getProxyUrl } from '@/utils/utils';
 import type { ChatItem as ChatItemType } from '@/types/Group';
+
+// React Icons – Bộ hiện đại nhất 2025
+import {
+  HiUser,
+  HiUsers,
+  HiChatBubbleLeftRight,
+  HiDocumentText,
+  HiMagnifyingGlass,
+  HiChevronRight,
+  HiClock,
+  HiFolder,
+} from 'react-icons/hi2';
 
 interface Message {
   _id: string;
@@ -14,8 +28,6 @@ interface Message {
   roomId: string;
   roomName: string;
   isGroupChat: boolean;
-  partnerId?: string;
-  partnerName?: string;
   fileUrl?: string;
 }
 
@@ -25,7 +37,6 @@ interface MessageGroup {
   isGroupChat: boolean;
   messages: Message[];
 }
-
 interface FileGroup {
   roomId: string;
   roomName: string;
@@ -47,7 +58,7 @@ interface SearchResultsProps {
   onNavigateToMessage: (message: Message) => void;
 }
 
-// Component Tabs
+// === TABS SIÊU ĐẸP ===
 const SearchTabs = ({
   activeTab,
   setActiveTab,
@@ -62,84 +73,94 @@ const SearchTabs = ({
   filesCount: number;
 }) => {
   const tabs = [
-    { key: 'all' as const, label: 'Tất cả', count: contactsCount + messagesCount },
-    { key: 'contacts' as const, label: 'Liên hệ', count: contactsCount },
-    { key: 'messages' as const, label: 'Tin nhắn', count: messagesCount },
-    { key: 'files' as const, label: 'File', count: filesCount },
+    {
+      key: 'all' as const,
+      label: 'Tất cả',
+      icon: HiMagnifyingGlass,
+      count: contactsCount + messagesCount + filesCount,
+    },
+    { key: 'contacts' as const, label: 'Liên hệ', icon: HiUser, count: contactsCount },
+    { key: 'messages' as const, label: 'Tin nhắn', icon: HiChatBubbleLeftRight, count: messagesCount },
+    { key: 'files' as const, label: 'File', icon: HiFolder, count: filesCount },
   ];
 
   return (
-    <div className="flex border-b mb-3 -mx-3 px-3 bg-gray-50 sticky top-0 z-10">
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          onClick={() => setActiveTab(tab.key)}
-          className={`flex-1 px-2 py-2 text-xs font-medium relative transition-colors ${
-            activeTab === tab.key ? 'text-blue-600 bg-white' : 'text-gray-600 hover:bg-gray-100'
-          }`}
-        >
-          {tab.label}
-          {/*{tab.count > 0 && (*/}
-          {/*  <span*/}
-          {/*    className={`ml-1 px-1.5 py-0.5 text-[10px] rounded-full ${*/}
-          {/*      activeTab === tab.key ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-600'*/}
-          {/*    }`}*/}
-          {/*  >*/}
-          {/*    {tab.count > 99 ? '99+' : tab.count}*/}
-          {/*  </span>*/}
-          {/*)}*/}
-          {activeTab === tab.key && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
-        </button>
-      ))}
+    <div className="flex flex-nowrap overflow-x-auto border-b border-gray-200 custom-scrollbar bg-white/80 backdrop-blur-sm sticky top-0 z-50 -mx-4 px-4 ">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeTab === tab.key;
+        return (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-shrink-0 flex cursor-pointer items-center justify-center gap-2 py-4 px-3 text-sm font-semibold transition-all relative ${
+              isActive ? 'text-indigo-600' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span>{tab.label}</span>
+            {tab.count > 0 && (
+              <span
+                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  isActive ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                {tab.count}
+              </span>
+            )}
+            {isActive && (
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-indigo-600 rounded-full" />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 };
 
-// Component Highlight Text
+// === HIGHLIGHT TEXT ĐẸP NHƯ ZALO 2025 ===
 const HighlightText = ({ text, keyword }: { text: string; keyword: string }) => {
-  if (!keyword.trim() || !text) return <>{text}</>;
+  if (!keyword.trim() || !text) return <span className="text-gray-800">{text}</span>;
+
   const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
   const parts = text.split(regex);
+
   return (
-    <>
+    <span>
       {parts.map((part, i) =>
         regex.test(part) ? (
-          // 🔥 ĐÃ SỬA: Thay đổi class để loại bỏ nền vàng (bg-yellow-200) và dùng màu chữ tối (text-gray-900)
-          <mark key={i} className="bg-transparent text-blue-600  rounded font-medium">
+          <span key={i} className="bg-indigo-100 text-indigo-700 font-bold rounded px-1">
             {part}
-          </mark>
+          </span>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={i} className="text-gray-800">
+            {part}
+          </span>
         ),
       )}
-    </>
+    </span>
   );
 };
 
-// Component Loading State
+// === LOADING & EMPTY STATE ===
 const LoadingState = () => (
-  <div className="flex items-center justify-center py-12">
-    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-    <span className="ml-2 text-sm text-gray-600">Đang tìm kiếm...</span>
+  <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+    <p className="text-lg font-medium">Đang tìm kiếm...</p>
   </div>
 );
 
-// Component Empty State
 const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-    <svg className="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-      />
-    </svg>
-    <p className="text-sm font-medium">Không tìm thấy kết quả</p>
+  <div className="flex flex-col items-center justify-center py-20 text-center text-gray-400">
+    <div className="p-10 bg-gray-100 rounded-full mb-6">
+      <HiMagnifyingGlass className="w-20 h-20 text-gray-300" />
+    </div>
+    <p className="text-xl font-semibold text-gray-500">Không tìm thấy kết quả</p>
+    <p className="text-sm mt-2">Thử tìm với từ khóa khác nhé!</p>
   </div>
 );
 
-// Format time utility
+// === FORMAT TIME ===
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
   const now = new Date();
@@ -152,7 +173,7 @@ const formatTime = (timestamp: number) => {
   return date.toLocaleDateString('vi-VN');
 };
 
-// Component Contacts Section
+// === SECTIONS ===
 const ContactsSection = ({
   contacts,
   searchTerm,
@@ -165,60 +186,63 @@ const ContactsSection = ({
   if (contacts.length === 0) return null;
 
   return (
-    <section>
-      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center z-10 gap-1 sticky top-12 bg-white py-1 -mx-3 px-3">
-        <div className="w-1 h-3 bg-blue-500 rounded-full" />
-        Liên hệ ({contacts.length})
-      </h4>
-      <div className="space-y-1">
-        {contacts.map((contact) => {
-          const isGroupContact = Boolean((contact as ChatItemType & { isGroup?: boolean }).isGroup);
+    <section className="space-y-3">
+      <div className="flex items-center gap-3 px-2">
+        <div className="w-2 h-8 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full" />
+        <h4 className="text-lg font-bold text-gray-800">Liên hệ ({contacts.length})</h4>
+      </div>
 
-          return (
-            <div
-              key={contact._id}
-              onClick={() => onSelectContact(contact)}
-              className="flex items-center p-3 rounded-lg hover:bg-blue-50 cursor-pointer transition-all"
-            >
-              <div className="relative flex-shrink-0">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
-                  {contact.avatar ? (
-                    <Image
-                      src={getProxyUrl(contact.avatar as string)}
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-cover"
-                      alt=""
-                    />
-                  ) : (
-                    String(contact.name ?? '')
-                      .charAt(0)
-                      .toUpperCase()
-                  )}
-                </div>
-                {isGroupContact && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                    </svg>
+      {contacts.map((contact) => {
+        const isGroup = Boolean((contact as ChatItemType & { isGroup?: boolean }).isGroup);
+        const displayName = String(contact.name || contact.username || 'Người dùng').trim();
+
+        return (
+          <button
+            key={contact._id}
+            onClick={() => onSelectContact(contact)}
+            className="w-full cursor-pointer flex items-center gap-4 p-2 rounded-2xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all active:scale-98 group"
+          >
+            <div className="relative">
+              <div className="w-12 h-12 rounded-3xl overflow-hidden ring-2 ring-white shadow-xl">
+                {contact.avatar ? (
+                  <Image
+                    src={getProxyUrl(contact.avatar as string)}
+                    width={56}
+                    height={56}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">
+                    {displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0 ml-3">
-                <p className="font-medium text-gray-800 truncate text-sm">
-                  <HighlightText text={String(contact.name ?? '')} keyword={searchTerm} />
-                </p>
-                <p className="text-xs text-gray-500">{isGroupContact ? 'Nhóm' : 'Liên hệ'}</p>
-              </div>
+              {isGroup && (
+                <div className="absolute -bottom-1 -right-1 p-1.5 bg-purple-600 rounded-full shadow-lg">
+                  <HiUsers className="w-3 h-3 text-white" />
+                </div>
+              )}
             </div>
-          );
-        })}
-      </div>
+
+            <div className="flex-1 text-left">
+              <p className="font-bold text-gray-900 text-lg">
+                <HighlightText text={displayName} keyword={searchTerm} />
+              </p>
+              <p className="text-sm text-gray-500 flex items-center gap-2">
+                {isGroup ? <HiUsers className="w-4 h-4" /> : <HiUser className="w-4 h-4" />}
+                {isGroup ? 'Nhóm chat' : 'Liên hệ cá nhân'}
+              </p>
+            </div>
+
+            <HiChevronRight className="w-6 h-6 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+          </button>
+        );
+      })}
     </section>
   );
 };
 
-// Component Messages Section
 const MessagesSection = ({
   groupedMessages,
   searchTerm,
@@ -233,94 +257,83 @@ const MessagesSection = ({
   if (groupedMessages.length === 0) return null;
 
   return (
-    <section>
-      <h4 className="font-semibold text-gray-700  mb-2 text-xs flex items-center gap-1 z-10 sticky top-12 bg-white py-1 -mx-3 px-3">
-        <div className="w-1 h-3 bg-green-500 rounded-full" />
-        Tin nhắn ({groupedMessages.length} cuộc trò chuyện)
-      </h4>
-      <div className="space-y-3">
-        {groupedMessages.map((group: MessageGroup) => (
-          <div
-            key={group.roomId}
-            className="border border-gray-200 rounded-xl overflow-hidden  transition-all bg-white shadow-sm"
-          >
-            <div className="bg-gradient-to-r from-gray-50 to-white p-3 border-b-[1px] border-gray-300  flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                  {group.roomName.charAt(0).toUpperCase()}
-                </div>
-                {group.isGroupChat && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center border border-white">
-                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 truncate text-sm">{group.roomName}</p>
-                <p className="text-xs text-gray-500">
-                  {group.isGroupChat ? '📱 Nhóm' : '💬 Chat'} • {group.messages.length} tin nhắn
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-y divide-gray-100">
-              {group.messages.slice(0, 10).map((msg: Message) => (
-                <div
-                  key={msg._id}
-                  onClick={() => {
-                    onNavigateToMessage(msg);
-                    onClearSearch();
-                  }}
-                  className="p-3 hover:bg-blue-50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="mt-0.5">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                        />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-gray-600">{msg.senderName}</span>
-                        <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 line-clamp-2">
-                        <HighlightText text={msg.content || msg.fileName || '[Media]'} keyword={searchTerm} />
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {group.messages.length > 10 && (
-              <div className="p-2 bg-gray-50 text-center border-t-[1px] border-gray-300">
-                <button
-                  onClick={() => {
-                    onNavigateToMessage(group.messages[0]);
-                    onClearSearch();
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Xem thêm {group.messages.length - 10} tin nhắn
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+    <section className="space-y-4">
+      <div className="flex items-center gap-3 px-2">
+        <div className="w-2 h-8 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full" />
+        <h4 className="text-lg font-bold text-gray-800">
+          Tin nhắn ({groupedMessages.reduce((a, g) => a + g.messages.length, 0)})
+        </h4>
       </div>
+
+      {groupedMessages.map((group) => (
+        <div key={group.roomId} className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 flex items-center gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-xl">
+                {group.roomName.charAt(0).toUpperCase()}
+              </div>
+              {group.isGroupChat && (
+                <div className="absolute -bottom-1 -right-1 p-1.5 bg-emerald-700 rounded-full">
+                  <HiUsers className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900 text-lg">{group.roomName}</p>
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                <HiChatBubbleLeftRight className="w-4 h-4" />
+                {group.isGroupChat ? 'Nhóm' : 'Chat cá nhân'} • {group.messages.length} kết quả
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {group.messages.slice(0, 8).map((msg) => (
+              <button
+                key={msg._id}
+                onClick={() => {
+                  onNavigateToMessage(msg);
+                  onClearSearch();
+                }}
+                className="w-full cursor-pointer p-5 text-left hover:bg-green-50 transition-all flex items-start gap-4 active:scale-99"
+              >
+                <HiChatBubbleLeftRight className="w-6 h-6 text-green-600 mt-1 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-gray-800">{msg.senderName}</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <HiClock className="w-3 h-3" />
+                      {formatTime(msg.timestamp)}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 line-clamp-2">
+                    <HighlightText text={msg.content || '[Media]'} keyword={searchTerm} />
+                  </p>
+                </div>
+                <HiChevronRight className="w-6 h-6 text-gray-400" />
+              </button>
+            ))}
+          </div>
+
+          {group.messages.length > 8 && (
+            <div className="p-4 bg-green-50 text-center">
+              <button
+                onClick={() => {
+                  onNavigateToMessage(group.messages[0]);
+                  onClearSearch();
+                }}
+                className="cursor-pointer text-green-700 font-bold hover:text-green-800"
+              >
+                Xem thêm {group.messages.length - 8} tin nhắn
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
     </section>
   );
 };
 
-// Component Files Section
 const FilesSection = ({
   groupedFiles,
   fileMessages,
@@ -337,117 +350,80 @@ const FilesSection = ({
   if (groupedFiles.length === 0) return null;
 
   return (
-    <section>
-      <h4 className="font-semibold text-gray-700 mb-2 text-xs flex items-center gap-1 sticky z-10 top-12 bg-white py-1 -mx-3 px-3">
-        <div className="w-1 h-3 bg-orange-500 rounded-full" />
-        File ({fileMessages.length} file)
-      </h4>
-      <div className="space-y-3">
-        {groupedFiles.map((group: FileGroup) => (
-          <div
-            key={group.roomId}
-            className="border border-gray-200 rounded-xl overflow-hidden hover:border-orange-300 transition-all bg-white shadow-sm"
-          >
-            <div className="bg-gradient-to-r from-orange-50 to-white p-3 border-b-[1px] border-gray-300 flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold overflow-hidden">
-                  {group.roomName.charAt(0).toUpperCase()}
-                </div>
-                {group.isGroupChat && (
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center border border-white">
-                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                    </svg>
+    <section className="space-y-4">
+      <div className="flex items-center gap-3 px-2">
+        <div className="w-2 h-8 bg-gradient-to-b from-orange-500 to-red-600 rounded-full" />
+        <h4 className="text-lg font-bold text-gray-800">File & Media ({fileMessages.length})</h4>
+      </div>
+
+      {groupedFiles.map((group) => (
+        <div key={group.roomId} className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+          <div className="bg-gradient-to-r from-orange-50 to-red-50 p-5 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-2xl font-bold">
+              {group.roomName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900 text-lg">{group.roomName}</p>
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                <HiFolder className="w-5 h-5" />
+                {group.files.length} file/media
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 p-5">
+            {group.files.slice(0, 9).map((file) => (
+              <button
+                key={file._id}
+                onClick={() => {
+                  onNavigateToMessage(file);
+                  onClearSearch();
+                }}
+                className="cursor-pointer group relative overflow-hidden rounded-2xl bg-gray-100 hover:bg-orange-100 transition-all active:scale-95"
+              >
+                {file.type === 'image' ? (
+                  <Image
+                    src={getProxyUrl(file.fileUrl as string)}
+                    width={200}
+                    height={200}
+                    alt=""
+                    className="w-full h-32 object-cover"
+                  />
+                ) : (
+                  <div className="h-32 flex flex-col items-center justify-center gap-3">
+                    <HiDocumentText className="w-12 h-12 text-orange-600" />
+                    <p className="text-xs font-medium text-gray-700 px-2 line-clamp-2">
+                      <HighlightText text={file.fileName || 'File'} keyword={searchTerm} />
+                    </p>
                   </div>
                 )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 truncate text-sm">{group.roomName}</p>
-                <p className="text-xs text-gray-500">
-                  {group.isGroupChat ? '📱 Nhóm' : '💬 Chat'} • {group.files.length} file
-                </p>
-              </div>
-            </div>
-
-            <div className="divide-y divide-gray-100">
-              {group.files.slice(0, 10).map((file: Message) => (
-                <div
-                  key={file._id}
-                  onClick={() => {
-                    onNavigateToMessage(file);
-                    onClearSearch();
-                  }}
-                  className="p-3 hover:bg-orange-50 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      {file.type === 'image' ? (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
-                          <Image
-                            src={getProxyUrl(file.fileUrl as string)}
-                            width={48}
-                            height={48}
-                            alt={file.fileName || 'File'}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 truncate text-sm">
-                        <HighlightText text={file.fileName || 'File'} keyword={searchTerm} />
-                      </p>
-                      <p className="text-xs text-gray-500 flex items-center gap-2">
-                        <span>{file.senderName}</span>
-                        <span>•</span>
-                        <span>{formatTime(file.timestamp)}</span>
-                      </p>
-                    </div>
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                      />
-                    </svg>
-                  </div>
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <HiChevronRight className="w-10 h-10 text-white" />
                 </div>
-              ))}
-            </div>
-
-            {group.files.length > 10 && (
-              <div className="p-2 bg-orange-50 text-center border-t-[1px] border-gray-300">
-                <button
-                  onClick={() => {
-                    onNavigateToMessage(group.files[0]);
-                    onClearSearch();
-                  }}
-                  className="text-xs text-orange-600 hover:text-orange-700 font-medium"
-                >
-                  Xem thêm {group.files.length - 10} file
-                </button>
-              </div>
-            )}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+
+          {group.files.length > 9 && (
+            <div className="p-4 bg-orange-50 text-center">
+              <button
+                onClick={() => {
+                  onNavigateToMessage(group.files[0]);
+                  onClearSearch();
+                }}
+                className="cursor-pointer text-orange-700 font-bold hover:text-orange-800"
+              >
+                Xem thêm {group.files.length - 9} file
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
     </section>
   );
 };
 
-// Main SearchResults Component
+// === MAIN COMPONENT ===
 export default function SearchResults({
   activeTab,
   setActiveTab,
@@ -462,35 +438,26 @@ export default function SearchResults({
   onNavigateToMessage,
 }: SearchResultsProps) {
   const handleClearSearch = () => {
-    // This will be called from parent to reset search
+    // Gọi từ Sidebar
   };
 
   return (
-    <div className="p-3">
-      {/* Tabs */}
+    <div className="pb-20">
       <SearchTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         contactsCount={contacts.length}
-        messagesCount={groupedMessages.length}
+        messagesCount={groupedMessages.reduce((a, g) => a + g.messages.length, 0)}
         filesCount={fileMessages.length}
       />
 
-      {/* Loading State */}
       {isSearching && <LoadingState />}
-
-      {/* Empty State */}
       {!isSearching && !hasResults && <EmptyState />}
-
-      {/* Search Results */}
       {!isSearching && hasResults && (
-        <div className="space-y-4">
-          {/* Contacts */}
+        <div className="space-y-10 px-2 pt-4">
           {(activeTab === 'all' || activeTab === 'contacts') && (
             <ContactsSection contacts={contacts} searchTerm={searchTerm} onSelectContact={onSelectContact} />
           )}
-
-          {/* Messages */}
           {(activeTab === 'all' || activeTab === 'messages') && (
             <MessagesSection
               groupedMessages={groupedMessages}
@@ -499,8 +466,6 @@ export default function SearchResults({
               onClearSearch={handleClearSearch}
             />
           )}
-
-          {/* Files */}
           {(activeTab === 'all' || activeTab === 'files') && (
             <FilesSection
               groupedFiles={groupedFiles}

@@ -293,7 +293,7 @@ export default function GroupMembersModal({
           </div>
           <button
             onClick={onClose}
-            className="p-3 rounded-full hover:bg-white/20 transition-all duration-200 active:scale-95"
+            className="p-3 rounded-full cursor-pointer hover:bg-white/20 transition-all duration-200 active:scale-95"
           >
             <HiX className="sm:w-7 sm:h-7 h-5 w-5" />
           </button>
@@ -306,7 +306,7 @@ export default function GroupMembersModal({
             {(myRole === 'OWNER' || myRole === 'ADMIN') && (
               <button
                 onClick={() => setShowCreateGroupModal(true)}
-                className="w-full py-1.5 sm:py-2.5 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold sm:text-lg text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-98"
+                className="w-full py-1.5 cursor-pointer sm:py-2.5 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold sm:text-lg text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-98"
               >
                 <HiUserPlus className="sm:w-6 sm:h-6 w-4 h-4" />
                 Thêm thành viên mới
@@ -386,7 +386,7 @@ export default function GroupMembersModal({
                         {canPromote(memberRole) && (
                           <button
                             onClick={() => handleAction('promote', memberId)}
-                            className="p-3 bg-green-100 hover:bg-green-200 rounded-2xl transition-all active:scale-95"
+                            className="p-3 cursor-pointer bg-green-100 hover:bg-green-200 rounded-2xl transition-all active:scale-95"
                             title="Bổ nhiệm làm Phó nhóm"
                           >
                             <HiCheck className="w-4 h-4 text-green-700" />
@@ -396,7 +396,7 @@ export default function GroupMembersModal({
                         {canDemote(memberRole) && (
                           <button
                             onClick={() => handleAction('demote', memberId)}
-                            className="p-3 bg-yellow-100 hover:bg-yellow-200 rounded-2xl transition-all active:scale-95"
+                            className="p-3 cursor-pointer bg-yellow-100 hover:bg-yellow-200 rounded-2xl transition-all active:scale-95"
                             title="Bãi nhiệm"
                           >
                             <HiUserMinus className="w-4 h-4 text-yellow-700" />
@@ -413,7 +413,7 @@ export default function GroupMembersModal({
                                 onOk: () => handleAction('kick', memberId),
                               })
                             }
-                            className="p-3 bg-red-100 hover:bg-red-200 rounded-2xl transition-all active:scale-95"
+                            className="p-3 cursor-pointer bg-red-100 hover:bg-red-200 rounded-2xl transition-all active:scale-95"
                             title="Xóa khỏi nhóm"
                           >
                             <HiUserMinus className="w-4 h-4 text-red-600" />
@@ -446,7 +446,7 @@ export default function GroupMembersModal({
         <div className="flex-none px-4 py-3 bg-white border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="w-full py-1 sm:py-3 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold text-sm sm:text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-98"
+            className="w-full py-1 cursor-pointer sm:py-3 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold text-sm sm:text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-98"
           >
             Đóng
           </button>

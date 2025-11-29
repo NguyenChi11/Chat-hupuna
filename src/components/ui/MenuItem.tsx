@@ -7,7 +7,7 @@ export const MenuItem: React.FC<{
 }> = ({ icon, label, trailing, onClick, className = '' }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center justify-between px-5 py-3 hover:bg-gray-100 transition-all ${className}`}
+    className={`w-full cursor-pointer flex items-center justify-between px-5 py-3 hover:bg-gray-100 transition-all ${className}`}
   >
     <div className="flex items-center gap-4">
       <span className="text-xl">{icon}</span>

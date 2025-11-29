@@ -5,7 +5,7 @@ export default function ReminderSection() {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <button
-        className="w-full px-5 py-5 flex items-center gap-4 hover:bg-gray-50 transition-all duration-200 group"
+        className="cursor-pointer w-full px-5 py-5 flex items-center gap-4 hover:bg-gray-50 transition-all duration-200 group"
         // Bạn có thể thêm onClick khi có chức năng thực tế
         title="Xem danh sách nhắc hẹn"
       >

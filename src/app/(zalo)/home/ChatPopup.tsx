@@ -1064,7 +1064,7 @@ export default function ChatWindow({
           {/* Messages Area */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar"
+            className="flex-1 overflow-y-auto p-2 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar"
           >
             {(initialLoading || loadingMore) && (
               <div className="sticky top-0 z-20 flex items-center justify-center py-2">
@@ -1098,7 +1098,7 @@ export default function ChatWindow({
           </div>
 
           {/* Phần Footer (Input Chat) */}
-          <div className="bg-white p-2 sm:p-3 border-t rounded-t-xl border-gray-200 relative space-y-2">
+          <div className="bg-white p-0  border-t rounded-t-xl border-gray-200 relative space-y-1">
             {/* ... Popup Picker & Inputs ... */}
             <EmojiStickerPicker
               showEmojiPicker={showEmojiPicker}

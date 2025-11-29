@@ -30,7 +30,7 @@ export default function GroupDangerZone({
             <button
               type="button"
               onClick={onLeaveClick}
-              className="group flex flex-col items-center gap-3 p-5 rounded-2xl hover:bg-red-100/70 transition-all duration-300 active:scale-95"
+              className="cursor-pointer group flex flex-col items-center gap-3 p-5 rounded-2xl hover:bg-red-100/70 transition-all duration-300 active:scale-95"
               title="Rời khỏi nhóm này"
             >
               <div className="p-4 rounded-2xl bg-red-100 text-red-600 ring-4 ring-red-100 group-hover:ring-red-200 group-hover:bg-red-200 transition-all duration-300 shadow-lg group-hover:shadow-xl">
@@ -45,7 +45,7 @@ export default function GroupDangerZone({
             <button
               type="button"
               onClick={onDisbandClick}
-              className="group flex flex-col items-center gap-3 p-5 rounded-2xl hover:bg-red-100/70 transition-all duration-300 active:scale-95"
+              className="cursor-pointer group flex flex-col items-center gap-3 p-5 rounded-2xl hover:bg-red-100/70 transition-all duration-300 active:scale-95"
               title="Xóa hoàn toàn nhóm này"
             >
               <div className="p-4 rounded-2xl bg-red-600 text-white ring-4 ring-red-200 group-hover:ring-red-300 group-hover:bg-red-700 transition-all duration-300 shadow-lg group-hover:shadow-xl animate-pulse group-hover:animate-none">

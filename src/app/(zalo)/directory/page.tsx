@@ -20,7 +20,7 @@ export default function HomePage() {
   return (
     <div className="h-screen bg-gray-100">
       {/* Desktop layout */}
-      <div className="hidden md:flex h-full bg-white shadow-md">
+      <div className="hidden sm:flex h-full bg-white shadow-md">
         <div className="w-80 border-r border-gray-200">
           <Sidebar selectedMenu={selectedMenu} onMenuClick={handleMenuClick} />
         </div>
@@ -29,7 +29,7 @@ export default function HomePage() {
         </div>
       </div>
       {/* Mobile layout */}
-      <div className="block md:hidden h-full relative">
+      <div className="block sm:hidden h-full relative">
         {mobileMenu === null ? (
           // Hiện Sidebar full màn
           <div className="w-full h-full bg-white shadow-md">
@@ -41,7 +41,7 @@ export default function HomePage() {
             {/* Nút X chỉ có ở mobile */}
             <button
               onClick={handleCloseMain}
-              className="absolute top-4 right-4 z-10 px-3 py-1 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition cursor-pointer"
+              className="absolute cursor-pointer top-4 right-4 z-10 px-3 py-1 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition cursor-pointer"
             >
               ✕
             </button>

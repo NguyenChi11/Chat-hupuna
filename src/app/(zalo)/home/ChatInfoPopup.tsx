@@ -217,7 +217,10 @@ export default function ChatInfoPopup({
         {/* Header cố định */}
         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between shadow-lg">
           <h2 className="text-lg font-semibold">Thông tin trò chuyện</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 transition-all duration-200">
+          <button
+            onClick={onClose}
+            className="p-2 cursor-pointer rounded-full hover:bg-white/20 transition-all duration-200"
+          >
             <HiX className="w-5 h-5" />
           </button>
         </div>

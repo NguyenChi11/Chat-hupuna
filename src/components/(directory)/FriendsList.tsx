@@ -128,7 +128,7 @@ export default function FriendsList() {
             ))}
           </ul>
           <div className="border-t mt-2 pt-2">
-            <button className="text-blue-500 text-xs hover:underline">Quản lý thẻ phân loại</button>
+            <button className="cursor-pointer text-blue-500 text-xs hover:underline">Quản lý thẻ phân loại</button>
           </div>
         </div>
       </div>

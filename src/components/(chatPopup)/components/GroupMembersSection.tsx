@@ -24,7 +24,7 @@ export default function GroupMembersSection({
 
       <button
         onClick={onOpenMembers}
-        className="w-full px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-all duration-200 group flex items-center justify-between border-t border-gray-200"
+        className="cursor-pointer w-full px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-all duration-200 group flex items-center justify-between border-t border-gray-200"
       >
         <div className="flex items-center gap-4">
           {/* Icon + số lượng */}

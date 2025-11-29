@@ -1,11 +1,23 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import React, { useRef, useState } from 'react';
 import { User } from '../../types/User';
 import { useToast } from './toast';
 import { getProxyUrl } from '../../utils/utils';
+
+// React Icons – Modern & Beautiful
+import {
+  HiX,
+  HiPencil,
+  HiLockClosed,
+  HiUser,
+  HiOfficeBuilding,
+  HiStatusOnline,
+  HiCamera,
+  HiCheck,
+  HiChevronDown,
+} from 'react-icons/hi';
+import Image from 'next/image';
 
 interface PopupProfileProps {
   isOpen: boolean;
@@ -17,18 +29,27 @@ interface PopupProfileProps {
 
 type ViewMode = 'profile' | 'editInfo' | 'changePassword';
 
-const PopupProfile: React.FC<PopupProfileProps> = ({
-                                                     isOpen,
-                                                     onClose,
-                                                     user,
-                                                     onAvatarUpdated,
-                                                     onUserUpdated
-                                                   }) => {
+const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAvatarUpdated, onUserUpdated }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('profile');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deptOpen, setDeptOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
 
-  // Form states - Department và Status là number nên cần convert
+  const departmentOptions = [
+    { value: '101', label: 'Kinh doanh' },
+    { value: '102', label: 'Marketing' },
+    { value: '103', label: 'Kỹ thuật' },
+    { value: '104', label: 'Nhân sự' },
+    { value: '105', label: 'Tài chính' },
+  ];
+
+  const statusOptions = [
+    { value: '1', label: 'Hoạt động' },
+    { value: '2', label: 'Tạm khóa' },
+    { value: '3', label: 'Nghỉ phép' },
+  ];
+
   const [editForm, setEditForm] = useState({
     name: String(user.name || ''),
     department: user.department !== undefined && user.department !== null ? String(user.department) : '',
@@ -76,7 +97,7 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('roomId', 'avatar');
-      formData.append('sender', String(user._id)); // 🔥 FIX: Convert to string
+      formData.append('sender', String(user._id));
       formData.append('receiver', '');
       formData.append('type', 'image');
       formData.append('folderName', 'Avatars');
@@ -93,50 +114,37 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
 
       const newAvatarUrl = uploadJson.link as string;
 
-      // 🔥 FIX: Sử dụng string cho _id thay vì gửi trực tiếp user._id
-      const userId = String(user._id);
-
       const updateRes = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'update',
           field: '_id',
-          value: userId,
+          value: String(user._id),
           data: { avatar: newAvatarUrl },
         }),
       });
 
       const updateJson = await updateRes.json();
       if (!updateRes.ok || updateJson.error) {
-        console.error('Update avatar failed:', updateJson);
         throw new Error(updateJson.error || 'Cập nhật avatar thất bại');
       }
 
-      // Cập nhật localStorage
+      // Update localStorage
       if (typeof window !== 'undefined') {
         try {
           const raw = localStorage.getItem('info_user');
           if (raw) {
             const parsed = JSON.parse(raw) as User;
-            localStorage.setItem(
-              'info_user',
-              JSON.stringify({
-                ...parsed,
-                avatar: newAvatarUrl,
-              }),
-            );
+            localStorage.setItem('info_user', JSON.stringify({ ...parsed, avatar: newAvatarUrl }));
           }
         } catch (err) {
           console.error('Không cập nhật được info_user trong localStorage', err);
         }
       }
 
-      if (onAvatarUpdated) {
-        onAvatarUpdated(newAvatarUrl);
-      }
-
-      toast({ type: 'success', message: 'Cập nhật ảnh đại diện thành công', duration: 2500 });
+      onAvatarUpdated?.(newAvatarUrl);
+      toast({ type: 'success', message: 'Cập nhật ảnh đại diện thành công!', duration: 2500 });
     } catch (err) {
       console.error(err);
       const message = err instanceof Error ? err.message : 'Có lỗi khi cập nhật ảnh đại diện';
@@ -147,7 +155,6 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
     }
   };
 
-  // 🔥 XỬ LÝ CẬP NHẬT THÔNG TIN
   const handleUpdateInfo = async () => {
     if (!editForm.name.trim()) {
       toast({ type: 'error', message: 'Tên hiển thị không được để trống', duration: 2500 });
@@ -157,21 +164,12 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
     try {
       setIsSubmitting(true);
 
-      // 🔥 Convert department và status về số nếu có giá trị
       const departmentValue = editForm.department.trim() ? Number(editForm.department.trim()) : undefined;
       const statusValue = editForm.status.trim() ? Number(editForm.status.trim()) : undefined;
 
-      const updateData: Record<string, unknown> = {
-        name: editForm.name.trim(),
-      };
-
-      // Chỉ thêm department và status nếu có giá trị
-      if (departmentValue !== undefined && !isNaN(departmentValue)) {
-        updateData.department = departmentValue;
-      }
-      if (statusValue !== undefined && !isNaN(statusValue)) {
-        updateData.status = statusValue;
-      }
+      const updateData: Record<string, unknown> = { name: editForm.name.trim() };
+      if (departmentValue !== undefined && !isNaN(departmentValue)) updateData.department = departmentValue;
+      if (statusValue !== undefined && !isNaN(statusValue)) updateData.status = statusValue;
 
       const updateRes = await fetch('/api/users', {
         method: 'POST',
@@ -185,67 +183,38 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
       });
 
       const updateJson = await updateRes.json();
-      if (!updateRes.ok || updateJson.error) {
-        throw new Error(updateJson.error || 'Cập nhật thông tin thất bại');
-      }
+      if (!updateRes.ok || updateJson.error) throw new Error(updateJson.error || 'Cập nhật thất bại');
 
-      // Cập nhật localStorage
+      // Update localStorage
       if (typeof window !== 'undefined') {
-        try {
-          const raw = localStorage.getItem('info_user');
-          if (raw) {
-            const parsed = JSON.parse(raw) as User;
-            const updatedUser: Record<string, unknown> = {
-              ...parsed,
-              name: editForm.name.trim(),
-            };
-
-            if (departmentValue !== undefined && !isNaN(departmentValue)) {
-              updatedUser.department = departmentValue;
-            }
-            if (statusValue !== undefined && !isNaN(statusValue)) {
-              updatedUser.status = statusValue;
-            }
-
-            localStorage.setItem('info_user', JSON.stringify(updatedUser));
-          }
-        } catch (err) {
-          console.error('Không cập nhật được info_user trong localStorage', err);
+        const raw = localStorage.getItem('info_user');
+        if (raw) {
+          const parsed = JSON.parse(raw) as User;
+          const updated = { ...parsed, name: editForm.name.trim() };
+          if (departmentValue !== undefined) updated.department = String(departmentValue);
+          if (statusValue !== undefined) updated.status = String(statusValue);
+          localStorage.setItem('info_user', JSON.stringify(updated));
         }
       }
 
-      // Callback để cập nhật UI
-      if (onUserUpdated) {
-        const updatedFields: Record<string, unknown> = {
-          name: editForm.name.trim(),
-        };
+      onUserUpdated?.({
+        name: editForm.name.trim(),
+        department: departmentValue !== undefined ? String(departmentValue) : undefined,
+        status: statusValue !== undefined ? String(statusValue) : undefined,
+      });
 
-        if (departmentValue !== undefined && !isNaN(departmentValue)) {
-          updatedFields.department = departmentValue;
-        }
-        if (statusValue !== undefined && !isNaN(statusValue)) {
-          updatedFields.status = statusValue;
-        }
-
-        onUserUpdated(updatedFields);
-      }
-
-      toast({ type: 'success', message: 'Cập nhật thông tin thành công', duration: 2500 });
+      toast({ type: 'success', message: 'Cập nhật thông tin thành công!', duration: 2500 });
       setViewMode('profile');
     } catch (err) {
-      console.error(err);
-      const message = err instanceof Error ? err.message : 'Có lỗi khi cập nhật thông tin';
-      toast({ type: 'error', message, duration: 3000 });
+      toast({ type: 'error', message: err instanceof Error ? err.message : 'Lỗi hệ thống', duration: 3000 });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 🔥 XỬ LÝ ĐỔI MẬT KHẨU
   const handleChangePassword = async () => {
     const { currentPassword, newPassword, confirmPassword } = passwordForm;
 
-    // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin', duration: 2500 });
       return;
@@ -264,113 +233,171 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
     try {
       setIsSubmitting(true);
 
-      const changeRes = await fetch('/api/users', {
+      const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'changePassword',
-          data: {
-            userId: String(user._id), // 🔥 FIX: Convert to string
-            currentPassword,
-            newPassword,
-          },
+          data: { userId: String(user._id), currentPassword, newPassword },
         }),
       });
 
-      const changeJson = await changeRes.json();
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || 'Đổi mật khẩu thất bại');
 
-      if (!changeRes.ok || !changeJson.success) {
-        throw new Error(changeJson.message || 'Đổi mật khẩu thất bại');
-      }
-
-      toast({ type: 'success', message: 'Đổi mật khẩu thành công', duration: 2500 });
-
-      // Reset form
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-
+      toast({ type: 'success', message: 'Đổi mật khẩu thành công!', duration: 2500 });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setViewMode('profile');
     } catch (err) {
-      console.error(err);
-      const message = err instanceof Error ? err.message : 'Có lỗi khi đổi mật khẩu';
-      toast({ type: 'error', message, duration: 3000 });
+      toast({ type: 'error', message: err instanceof Error ? err.message : 'Lỗi hệ thống', duration: 3000 });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 🎨 RENDER CÁC VIEW MODES
   const renderContent = () => {
     switch (viewMode) {
       case 'editInfo':
         return (
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Cập nhật thông tin</h3>
+          <div className="space-y-6">
+            {/* Tiêu đề */}
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-100 rounded-2xl">
+                <HiPencil className="w-6 h-6 text-indigo-600" />
+              </div>
+              Cập nhật thông tin
+            </h3>
 
+            {/* Tên hiển thị */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <HiUser className="w-4 h-4 text-indigo-600" />
                 Tên hiển thị <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Nhập tên hiển thị"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full pl-12 pr-5 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 text-base placeholder-gray-400"
+                  placeholder="Nhập tên của bạn"
+                />
+                <HiUser className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-indigo-500 opacity-70" />
+              </div>
             </div>
 
+            {/* Phòng ban - Custom Dropdown */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <HiOfficeBuilding className="w-4 h-4 text-blue-600" />
                 Phòng ban
               </label>
-              <input
-                type="number"
-                value={editForm.department}
-                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Nhập mã phòng ban"
-              />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setDeptOpen(!deptOpen)}
+                  className="w-full cursor-pointer pl-12 pr-12 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl text-left text-base flex items-center justify-between focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 hover:border-blue-300"
+                >
+                  <span className={editForm.department ? 'text-gray-900' : 'text-gray-400'}>
+                    {departmentOptions.find((o) => o.value === editForm.department)?.label || 'Chọn phòng ban'}
+                  </span>
+                  <HiChevronDown
+                    className={`w-6 h-6 text-gray-500 transition-transform duration-300 ${deptOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                <HiOfficeBuilding className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-500 opacity-70 pointer-events-none" />
+
+                {/* Dropdown List */}
+                {deptOpen && (
+                  <div className="absolute top-full overflow-auto max-h-[16rem] mt-2 w-full bg-white border-2 border-gray-200 rounded-3xl shadow-2xl  z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {departmentOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setEditForm({ ...editForm, department: opt.value });
+                          setDeptOpen(false);
+                        }}
+                        className="w-full cursor-pointer px-12 py-4 text-left hover:bg-indigo-50 transition-all flex items-center justify-between group"
+                      >
+                        <span className="text-gray-800 group-hover:text-indigo-600 font-medium">{opt.label}</span>
+                        {editForm.department === opt.value && <HiCheck className="w-5 h-5 text-indigo-600" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Trạng thái - Custom Dropdown */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                <HiStatusOnline className="w-4 h-4 text-green-600" />
                 Trạng thái
               </label>
-              <input
-                type="number"
-                value={editForm.status}
-                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Nhập mã trạng thái"
-              />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setStatusOpen(!statusOpen)}
+                  className="w-full cursor-pointer pl-12 pr-12 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl text-left text-base flex items-center justify-between focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-300 hover:border-green-300"
+                >
+                  <span className={editForm.status ? 'text-gray-900' : 'text-gray-400'}>
+                    {statusOptions.find((o) => o.value === editForm.status)?.label || 'Chọn trạng thái'}
+                  </span>
+                  <HiChevronDown
+                    className={`w-6 h-6 text-gray-500 transition-transform duration-300 ${statusOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                <HiStatusOnline className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-green-500 opacity-70 pointer-events-none" />
+
+                {/* Dropdown List */}
+                {statusOpen && (
+                  <div className="absolute top-full mt-2 w-full bg-white border-2 border-gray-200 rounded-3xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {statusOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setEditForm({ ...editForm, status: opt.value });
+                          setStatusOpen(false);
+                        }}
+                        className="w-full cursor-pointer px-12 py-4 text-left hover:bg-green-50 transition-all flex items-center justify-between group"
+                      >
+                        <span className="text-gray-800 group-hover:text-green-600 font-medium">{opt.label}</span>
+                        {editForm.status === opt.value && <HiCheck className="w-5 h-5 text-green-600" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            {/* Nút hành động */}
+            <div className="flex gap-4 pt-6">
               <button
-                type="button"
                 onClick={handleUpdateInfo}
                 disabled={isSubmitting}
-                className="flex-1 h-10 hover:cursor-pointer bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-full transition"
+                className="flex-1 cursor-pointer py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-lg rounded-3xl shadow-xl transition-all duration-300 active:scale-95 flex items-center justify-center gap-3 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <HiCheck className="w-6 h-6" />
+                    Lưu thay đổi
+                  </>
+                )}
               </button>
+
               <button
-                type="button"
-                onClick={() => {
-                  setEditForm({
-                    name: String(user.name || ''),
-                    department: user.department !== undefined && user.department !== null ? String(user.department) : '',
-                    status: user.status !== undefined && user.status !== null ? String(user.status) : '',
-                  });
-                  setViewMode('profile');
-                }}
+                onClick={() => setViewMode('profile')}
                 disabled={isSubmitting}
-                className="flex-1 h-10 border hover:cursor-pointer border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-full transition"
+                className="flex-1 cursor-pointer py-5 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-bold text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
               >
+                <HiX className="w-6 h-6" />
                 Hủy
               </button>
             </div>
@@ -379,69 +406,60 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
 
       case 'changePassword':
         return (
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Đổi mật khẩu</h3>
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <HiLockClosed className="w-5 h-5 text-red-600" />
+              Đổi mật khẩu
+            </h3>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mật khẩu hiện tại <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu hiện tại *</label>
               <input
                 type="password"
                 value={passwordForm.currentPassword}
                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Nhập mật khẩu hiện tại"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="••••••••"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mật khẩu mới <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu mới *</label>
               <input
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Ít nhất 6 ký tự"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Xác nhận mật khẩu mới <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Xác nhận mật khẩu *</label>
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500"
                 placeholder="Nhập lại mật khẩu mới"
               />
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-3 pt-4">
               <button
-                type="button"
                 onClick={handleChangePassword}
                 disabled={isSubmitting}
-                className="flex-1 h-10 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white text-sm font-semibold rounded-full transition"
+                className="flex-1 cursor-pointer py-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-98 disabled:opacity-70"
               >
-                {isSubmitting ? 'Đang lưu...' : 'Đổi mật khẩu'}
+                {isSubmitting ? 'Đang đổi...' : 'Đổi mật khẩu'}
               </button>
               <button
-                type="button"
                 onClick={() => {
-                  setPasswordForm({
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
-                  });
+                  setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
                   setViewMode('profile');
                 }}
                 disabled={isSubmitting}
-                className="flex-1 h-10 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-full transition"
+                className="flex-1 cursor-pointer py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-2xl transition-all active:scale-98"
               >
                 Hủy
               </button>
@@ -452,83 +470,69 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
       default:
         return (
           <>
-            {/* Thông tin tài khoản */}
-            <div className="space-y-2 bg-gray-50 rounded-2xl px-4 py-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Tên hiển thị</span>
-                <span className="font-medium text-gray-900 max-w-[60%] truncate text-right">{displayName}</span>
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 space-y-5">
+              <div className="flex items-center gap-4">
+                <HiUser className="w-6 h-6 text-indigo-600" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Tên hiển thị</p>
+                  <p className="text-lg font-bold text-gray-900">{displayName}</p>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">ID Zalo nội bộ</span>
-                <span className="font-medium text-gray-900">{displayId}</span>
+
+              <div className="flex items-center gap-4">
+                <HiUser className="w-6 h-6 text-purple-600" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">ID Zalo nội bộ</p>
+                  <p className="text-lg font-bold text-gray-900">{displayId}</p>
+                </div>
               </div>
-              {user.department && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Phòng ban</span>
-                  <span className="font-medium text-gray-900 max-w-[60%] truncate text-right">
-                    {String(user.department)}
-                  </span>
+
+              {user.department !== undefined && (
+                <div className="flex items-center gap-4">
+                  <HiOfficeBuilding className="w-6 h-6 text-blue-600" />
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Phòng ban</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {departmentOptions.find((o) => o.value === String(user.department))?.label ||
+                        String(user.department)}
+                    </p>
+                  </div>
                 </div>
               )}
-              {/*{user.role && (*/}
-              {/*  <div className="flex items-center justify-between text-sm">*/}
-              {/*    <span className="text-gray-500">Vai trò</span>*/}
-              {/*    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">*/}
-              {/*      {String(user.role)}*/}
-              {/*    </span>*/}
-              {/*  </div>*/}
-              {/*)}*/}
-              {user.status && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Trạng thái</span>
-                  <span className="font-medium text-gray-900">{String(user.status)}</span>
+
+              {user.status !== undefined && (
+                <div className="flex items-center gap-4">
+                  <HiStatusOnline className="w-6 h-6 text-green-600" />
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Trạng thái</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {statusOptions.find((o) => o.value === String(user.status))?.label || String(user.status)}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Khu vực hành động */}
-            <div className="mt-5 space-y-2">
+            <div className="mt-8 space-y-4">
               <button
-                type="button"
                 onClick={() => setViewMode('editInfo')}
-                className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-full border-none hover:cursor-pointer bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold shadow-md shadow-blue-500/30 transition"
+                className="w-full cursor-pointer py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-lg rounded-3xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-3"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className="w-4 h-4"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                <HiPencil className="w-6 h-6" />
                 Cập nhật thông tin
               </button>
 
               <button
-                type="button"
                 onClick={() => setViewMode('changePassword')}
-                className="w-full h-10 inline-flex items-center justify-center gap-2 hover:cursor-pointer rounded-full border border-blue-500 bg-white hover:bg-blue-50 text-blue-500 text-sm font-semibold transition"
+                className="w-full cursor-pointer py-5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-lg rounded-3xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-3"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className="w-4 h-4"
-                >
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
+                <HiLockClosed className="w-6 h-6" />
                 Đổi mật khẩu
               </button>
 
               <button
-                type="button"
                 onClick={onClose}
-                className="w-full h-10 inline-flex hover:cursor-pointer items-center justify-center rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-sm font-medium text-gray-700 transition"
+                className="w-full cursor-pointer py-5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-lg rounded-3xl transition-all active:scale-98"
               >
                 Đóng
               </button>
@@ -540,85 +544,71 @@ const PopupProfile: React.FC<PopupProfileProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-3"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100 relative"
+        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl h-[80vh]  overflow-auto relative"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="popup-profile-title"
       >
-        {/* Header cover */}
-        <div className="relative h-28 bg-gradient-to-r from-blue-500 via-blue-400 to-sky-400">
-          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_top,_white,_transparent_60%)]" />
+        {/* Gradient Header */}
+        <div className="h-40 bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 relative">
           <button
             onClick={onClose}
-            className="absolute right-3 top-3 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/30 transition"
+            className="absolute cursor-pointer top-4 right-4 p-3 bg-white/20 hover:bg-white/30 rounded-full backdrop-blur-sm transition-all active:scale-95"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              className="w-4 h-4"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <HiX className="w-6 h-6 text-white" />
           </button>
 
-          {/* Avatar nổi */}
-          <div className="absolute left-1/2 -bottom-10 -translate-x-1/2">
+          {/* Avatar lớn, nổi bật */}
+          <div className="absolute left-1/2 -bottom-16 -translate-x-1/2">
             <button
-              type="button"
               onClick={handleAvatarClick}
               disabled={isUploading}
-              className="group relative w-20 h-20 rounded-full border-[0.1875rem] border-white shadow-lg overflow-hidden bg-blue-200 flex items-center justify-center text-white text-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-white/80"
+              className="group cursor-pointer relative w-32 h-32 rounded-full overflow-hidden ring-8 ring-white shadow-2xl transition-all hover:ring-indigo-300"
             >
               {user.avatar ? (
-                <img
+                <Image
+                  width={128}
+                  height={128}
                   src={getProxyUrl(user.avatar)}
                   alt={displayName}
-                  className={`w-full h-full object-cover ${isUploading ? 'opacity-60' : ''}`}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                  }}
+                  className="w-full h-full object-cover"
                 />
               ) : (
-                (displayName || 'U').charAt(0).toUpperCase()
+                <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-5xl font-bold text-white">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
               )}
 
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[0.6875rem] font-medium transition text-white">
-                {isUploading ? 'Đang cập nhật...' : 'Đổi ảnh đại diện'}
+              {/* Overlay đổi ảnh */}
+              <div
+                className={`absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white transition-opacity ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+              >
+                <HiCamera className="w-10 h-10 mb-1" />
+                <span className="text-sm font-medium">{isUploading ? 'Đang tải...' : 'Đổi ảnh'}</span>
               </div>
             </button>
-
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           </div>
         </div>
 
-        {/* Nội dung chính */}
-        <div className="pt-14 pb-4 px-5">
-          {/* Tên + ID */}
-          <div className="text-center mb-4">
-            <h2 id="popup-profile-title" className="text-lg font-semibold text-gray-900 leading-tight line-clamp-2">
-              {displayName}
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">Tài khoản: {displayId}</p>
+        {/* Nội dung */}
+        <div className="pt-20 pb-8 px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">{displayName}</h2>
+            <p className="text-lg text-gray-500 mt-2">@{displayId}</p>
           </div>
 
-          {/* Dynamic content based on view mode */}
           {renderContent()}
         </div>
 
-        {/* Loading overlay */}
+        {/* Loading overlay toàn màn hình */}
         {isUploading && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-xl px-4 py-3 shadow-xl flex items-center gap-3">
-              <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-medium text-gray-700">Đang cập nhật ảnh đại diện...</span>
+          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4">
+              <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xl font-bold text-gray-800">Đang cập nhật ảnh đại diện...</p>
             </div>
           </div>
         )}

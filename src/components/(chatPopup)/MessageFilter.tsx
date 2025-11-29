@@ -2,6 +2,9 @@
 
 import React from 'react';
 
+// React Icons – Bộ hiện đại nhất
+import { HiChatBubbleLeftRight, HiEnvelopeOpen, HiEnvelope, HiEyeSlash } from 'react-icons/hi2';
+
 export type FilterType = 'all' | 'unread' | 'read' | 'hidden';
 
 interface MessageFilterProps {
@@ -15,53 +18,85 @@ interface MessageFilterProps {
   };
 }
 
-const LABELS: Record<FilterType, string> = {
-  all: 'Tất cả',
-  unread: 'Chưa đọc',
-  read: 'Đã đọc',
-  hidden: 'Ẩn trò chuyện',
+const FILTER_CONFIG: Record<FilterType, { label: string; icon: React.ElementType; color: string }> = {
+  all: { label: 'Tất cả', icon: HiChatBubbleLeftRight, color: 'indigo' },
+  unread: { label: 'Chưa đọc', icon: HiEnvelope, color: 'blue' },
+  read: { label: 'Đã đọc', icon: HiEnvelopeOpen, color: 'green' },
+  hidden: { label: 'Ẩn', icon: HiEyeSlash, color: 'gray' },
 };
 
 export default function MessageFilter({ filterType, setFilterType, counts }: MessageFilterProps) {
+  // Chỉ hiển thị tab "Ẩn" nếu có cuộc trò chuyện bị ẩn
   const filters: FilterType[] =
-    counts.hidden && counts.hidden > 0
-      ? (['all', 'unread', 'read', 'hidden'] as FilterType[])
-      : (['all', 'unread', 'read'] as FilterType[]);
+    counts.hidden > 0 ? (['all', 'unread', 'read', 'hidden'] as const) : (['all', 'unread', 'read'] as const);
 
   return (
-    <div className="px-3 py-2 border-b border-gray-200 bg-white flex gap-2 overflow-x-auto whitespace-nowrap custom-scrollbar ">
-      {filters.map((filter) => (
-        <button
-          key={filter}
-          onClick={() => setFilterType(filter)}
-          className={`
-            relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 flex-shrink-0
-            min-w-fit shadow-sm hover:shadow-md active:scale-95
-            ${
-              filterType === filter
-                ? 'bg-blue-600 text-white shadow-blue-500/30'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-150'
-            }
-          `}
-        >
-          <span>{LABELS[filter]}</span>
+    <div className=" bg-gradient-to-b from-white via-white to-gray-50/50 border-b border-gray-200">
+      <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-3 pt-1">
+        {filters.map((filter) => {
+          const { label, icon: Icon, color } = FILTER_CONFIG[filter];
+          const isActive = filterType === filter;
+          const count = counts[filter];
 
-          {/* Badge số lượng */}
-          <span
-            className={`
-              min-w-[1.4rem] px-1.5 py-0.5 text-xs font-bold rounded-full
-              ${filterType === filter ? 'bg-white text-blue-600' : 'bg-gray-300 text-gray-700'}
-            `}
-          >
-            {counts[filter] > 99 ? '99+' : counts[filter]}
-          </span>
+          // Màu gradient theo từng filter
+          const gradientFrom = {
+            indigo: 'from-indigo-500',
+            blue: 'from-blue-500',
+            green: 'from-emerald-500',
+            gray: 'from-gray-500',
+          }[color];
 
-          {/* Hiệu ứng active dưới dạng thanh nhỏ (giống Zalo) */}
-          {filterType === filter && (
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-blue-600 rounded-t-full shadow-md" />
-          )}
-        </button>
-      ))}
+          const gradientTo = {
+            indigo: 'to-purple-600',
+            blue: 'to-cyan-600',
+            green: 'to-teal-600',
+            gray: 'to-slate-600',
+          }[color];
+
+          return (
+            <button
+              key={filter}
+              onClick={() => setFilterType(filter)}
+              className={`
+                relative flex cursor-pointer items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-sm
+                transition-all duration-300 transform hover:scale-105 active:scale-95
+                shadow-lg hover:shadow-2xl flex-shrink-0 min-w-fit
+                ${
+                  isActive
+                    ? `bg-gradient-to-r ${gradientFrom} ${gradientTo} text-white shadow-${color}-500/30`
+                    : 'bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-gray-100 border border-gray-200'
+                }
+              `}
+            >
+              {/* Icon */}
+              <Icon className="w-5 h-5" />
+
+              {/* Label */}
+              <span>{label}</span>
+
+              {/* Badge số lượng */}
+              {count > 0 && (
+                <span
+                  className={`
+                    min-w-[1.6rem] px-2 py-0.5 text-xs font-bold rounded-full
+                    ${isActive ? 'bg-white/30 text-white backdrop-blur-sm' : 'bg-gray-200 text-gray-700'}
+                  `}
+                >
+                  {count > 99 ? '99+' : count}
+                </span>
+              )}
+
+              {/* Active Indicator – thanh dưới đẹp như Zalo Premium */}
+              {isActive && (
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-white/40 rounded-full blur-md" />
+              )}
+              {isActive && (
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-white rounded-t-full shadow-lg" />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

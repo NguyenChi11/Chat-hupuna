@@ -39,7 +39,7 @@ export default function ItemDropdownMenu({
             onJumpToMessage(itemId);
             onClose();
           }}
-          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+          className="cursor-pointer w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

@@ -32,7 +32,7 @@ export default function FileSection({
       {/* Header: File + mũi tên */}
       <button
         onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
+        className="w-full px-5 cursor-pointer py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
       >
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-md">
@@ -79,7 +79,7 @@ export default function FileSection({
 
                   {/* Nút "..." hiện đại */}
                   <button
-                    className={`p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10
+                    className={`cursor-pointer p-2 rounded-full  bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10
                       ${activeMenuId === file.id ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'}
                       hover:bg-white hover:scale-110`}
                     onClick={(e) => {

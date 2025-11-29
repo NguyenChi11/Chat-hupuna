@@ -28,7 +28,7 @@ export default function ConfirmGroupActionModal({
         <div className="relative px-6 pt-6 pb-4 bg-gradient-to-br from-red-500 to-red-600 text-white">
           <button
             onClick={onCancel}
-            className="absolute top-3 right-3 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200"
+            className="absolute cursor-pointer top-3 right-3 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200"
           >
             <HiX className="w-5 h-5" />
           </button>
@@ -55,14 +55,14 @@ export default function ConfirmGroupActionModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 active:scale-95"
+            className="cursor-pointer px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-200 active:scale-95"
           >
             Hủy
           </button>
           <button
             type="button"
             onClick={isLeave ? onConfirmLeave : onConfirmDisband}
-            className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all duration-200 active:scale-95 flex items-center gap-2
+            className={`cursor-pointer px-6 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all duration-200 active:scale-95 flex items-center gap-2
               ${
                 isLeave
                   ? 'bg-red-500 hover:bg-red-600 ring-4 ring-red-200'

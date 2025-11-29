@@ -137,7 +137,7 @@ export default function GroupsList() {
               <span className="font-semibold text-gray-800 text-sm md:text-base truncate block">{group.name}</span>
               <span className="text-gray-500 text-xs md:text-sm">{group.members} thành viên</span>
             </div>
-            <button className="p-1.5 md:p-2 rounded-full hover:bg-gray-200 text-gray-500">
+            <button className="cursor-pointer p-1.5 md:p-2 rounded-full hover:bg-gray-200 text-gray-500">
               <img src={IconDot.src} alt="More" className="w-3 h-3 md:w-4 md:h-4" />
             </button>
           </div>

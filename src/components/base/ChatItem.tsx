@@ -8,8 +8,8 @@ import type { User } from '@/types/User';
 import Image from 'next/image';
 import { getProxyUrl } from '@/utils/utils';
 
-// React Icons - đúng và đẹp
-import { HiOutlinePlus, HiEye, HiEyeSlash } from 'react-icons/hi2';
+// React Icons – Bộ hiện đại nhất 2025
+import { HiEye, HiEyeSlash, HiUserGroup, HiCheck, HiOutlineMapPin } from 'react-icons/hi2';
 
 interface ChatItemProps {
   item: ChatItemType;
@@ -66,12 +66,12 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
 
     const x = e.clientX;
     const y = e.clientY;
-    const menuWidth = 220;
-    const menuHeight = 110;
+    const menuWidth = 240;
+    const menuHeight = 130;
 
     setMenuPosition({
-      x: x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 12 : x + 8,
-      y: y + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 12 : y + 8,
+      x: x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 16 : x + 12,
+      y: y + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 16 : y + 12,
     });
     setShowMenu(true);
   };
@@ -95,87 +95,109 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
 
   return (
     <>
-      {/* Chat Item */}
+      {/* Chat Item – SIÊU ĐẸP */}
       <div
         onClick={() => onSelectChat(item)}
         onContextMenu={handleContextMenu}
         className={`
-          group relative flex items-center gap-3.5 px-4 py-3.5 cursor-pointer transition-all duration-200 rounded-lg mx-2 my-1
-          ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}
-          ${isHidden ? 'opacity-65' : ''}
+          group relative mx-3 my-2 rounded-3xl transition-all duration-300 cursor-pointer
+          ${
+            isSelected
+              ? 'bg-gradient-to-r from-indigo-100 to-purple-100 shadow-xl ring-2 ring-indigo-300'
+              : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-indigo-50 hover:shadow-lg'
+          }
+          ${isHidden ? 'opacity-60' : ''}
+          active:scale-98
         `}
       >
-        {/* Icon ghim chuẩn */}
-        {isPinned && (
-          <HiOutlinePlus
-            className="absolute top-2 right-3 w-4 h-4 text-yellow-600 drop-shadow-sm z-10"
-            title="Đã ghim"
-          />
-        )}
-
-        {/* Avatar */}
-        <div className="relative flex-shrink-0">
-          <div
-            className={`
-            w-12 h-12 rounded-full overflow-hidden ring-2 ring-white shadow-lg flex items-center justify-center text-white font-bold text-lg
-            ${isGroup ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-gray-400 to-gray-600'}
-          `}
-          >
-            {item.avatar ? (
-              <Image
-                src={getProxyUrl(item.avatar)}
-                alt={displayName}
-                width={48}
-                height={48}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-xl">{avatarChar}</span>
-            )}
-          </div>
-          {!isGroup && (
+        <div className="flex items-center gap-4 p-2">
+          {/* Avatar + Online + Group Icon */}
+          <div className="relative flex-shrink-0">
             <div
-              className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white shadow ${
-                presenceOnline ? 'bg-green-500' : 'bg-gray-400'
-              }`}
-            />
-          )}
-        </div>
-
-        {/* Nội dung */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <h4
               className={`
-              text-sm font-semibold truncate max-w-[10rem]
-              ${unreadCount > 0 ? 'text-gray-900' : 'text-gray-800'}
-            `}
+                w-12 h-12 rounded-3xl overflow-hidden ring-2 ring-white shadow-2xl flex items-center justify-center text-white font-bold text-2xl
+                ${
+                  isGroup
+                    ? 'bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500'
+                    : 'bg-gradient-to-br from-indigo-500 to-blue-600'
+                }
+              `}
             >
-              {displayName}
-            </h4>
-            <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{timeDisplay}</span>
-          </div>
+              {item.avatar ? (
+                <Image
+                  src={getProxyUrl(item.avatar)}
+                  alt={displayName}
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{avatarChar}</span>
+              )}
+            </div>
 
-          <div className="flex items-center justify-between mt-1">
-            <p
-              className={`
-              text-xs truncate max-w-[12.5rem]
-              ${unreadCount > 0 ? 'font-medium text-gray-700' : 'text-gray-500'}
-            `}
-            >
-              {formatMessagePreview(lastMessage)}
-            </p>
+            {/* Online indicator (chỉ cá nhân) */}
+            {!isGroup && (
+              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-400 rounded-full border-4 border-white shadow-lg" />
+            )}
 
-            {unreadCount > 0 && (
-              <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
-                <span className="text-xs font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            {/* Group icon */}
+            {isGroup && (
+              <div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-2xl shadow-xl">
+                <HiUserGroup className="w-4 h-4 text-purple-600" />
               </div>
             )}
+
+            {/* Pin icon – đẹp hơn */}
+            {isPinned && (
+              <div className="absolute -top-2 -left-2 p-1 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl shadow-xl animate-pulse">
+                <HiOutlineMapPin className="w-4 h-4 text-white rotate-12" />
+              </div>
+            )}
+          </div>
+
+          {/* Nội dung */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <h4
+                className={`
+                  text-lg font-bold truncate max-w-[11rem]
+                  ${unreadCount > 0 ? 'text-gray-900' : 'text-gray-800'}
+                `}
+              >
+                {displayName}
+              </h4>
+              <span className="text-sm text-gray-500 flex items-center gap-1">
+                <HiCheck className="w-4 h-4 text-indigo-500" />
+                {timeDisplay}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p
+                className={`
+                  text-sm truncate max-w-[14rem]
+                  ${unreadCount > 0 ? 'font-semibold text-gray-800' : 'text-gray-600'}
+                `}
+              >
+                {formatMessagePreview(lastMessage)}
+              </p>
+
+              {/* Unread Badge – đẹp hơn Zalo */}
+              {unreadCount > 0 && (
+                <div className="relative">
+                  <div className="absolute -inset-1 bg-red-500 rounded-full blur-md opacity-70" />
+                  <div className="relative px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 rounded-full shadow-xl">
+                    <span className="text-sm font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Context Menu */}
+      {/* Context Menu – ĐẸP NHƯ ZALO PREMIUM */}
       {showMenu && menuPosition && (
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowMenu(false)} />
@@ -183,26 +205,34 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
           <div
             ref={menuRef}
             style={{ top: menuPosition.y, left: menuPosition.x, position: 'fixed' }}
-            className="z-[9999] w-64 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+            className="z-[9999] w-72 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
           >
+            {/* Ghim */}
             <button
               onClick={() => handleAction('pin')}
-              className="flex items-center gap-3 w-full px-5 py-4 text-gray-800 hover:bg-gray-50 transition-colors font-medium"
+              className="flex items-center cursor-pointer gap-4 w-full px-6 py-5 hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 transition-all font-semibold text-gray-800"
             >
-              <HiOutlinePlus className={`w-5 h-5 ${isPinned ? 'text-yellow-600 rotate-45' : 'text-gray-500'}`} />
-              <span>{isPinned ? 'Bỏ ghim' : 'Ghim lên đầu'}</span>
+              <div className={`p-3 rounded-2xl ${isPinned ? 'bg-orange-100' : 'bg-gray-100'}`}>
+                <HiOutlineMapPin className={`w-6 h-6 ${isPinned ? 'text-orange-600 rotate-45' : 'text-gray-600'}`} />
+              </div>
+              <span className="flex-1 text-left">{isPinned ? 'Bỏ ghim' : 'Ghim lên đầu'}</span>
+              {isPinned && <HiCheck className="w-5 h-5 text-orange-600" />}
             </button>
 
+            {/* Ẩn/Hiện */}
             <button
               onClick={() => handleAction('hide')}
-              className="flex items-center gap-3 w-full px-5 py-4 text-gray-800 hover:bg-gray-50 transition-colors font-medium border-t border-gray-100"
+              className="flex items-center cursor-pointer gap-4 w-full px-6 py-5 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 transition-all font-semibold text-gray-800 border-t border-gray-100"
             >
-              {isHidden ? (
-                <HiEye className="w-5 h-5 text-green-600" />
-              ) : (
-                <HiEyeSlash className="w-5 h-5 text-red-600" />
-              )}
-              <span>{isHidden ? 'Hiện lại' : 'Ẩn trò chuyện'}</span>
+              <div className={`p-3 rounded-2xl ${isHidden ? 'bg-green-100' : 'bg-red-100'}`}>
+                {isHidden ? (
+                  <HiEye className="w-6 h-6 text-green-600" />
+                ) : (
+                  <HiEyeSlash className="w-6 h-6 text-red-600" />
+                )}
+              </div>
+              <span className="flex-1 text-left">{isHidden ? 'Hiện lại' : 'Ẩn trò chuyện'}</span>
+              {isHidden && <HiCheck className="w-5 h-5 text-green-600" />}
             </button>
           </div>
         </>

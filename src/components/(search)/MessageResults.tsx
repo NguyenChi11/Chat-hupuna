@@ -210,7 +210,7 @@ export default function MessageResults({ groupedMessages, searchTerm, onNavigate
               <div className="p-2 bg-gray-50 text-center border-t">
                 <button
                   onClick={() => onNavigateToMessage(group.messages[0])}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-xs cursor-pointer text-blue-600 hover:text-blue-700 font-medium"
                 >
                   Xem thêm {group.messages.length - 3} tin nhắn
                 </button>

@@ -22,7 +22,7 @@ export default function ChatQuickActions({
       {/* Ghim / Bỏ ghim */}
       <button
         onClick={onPinToggle}
-        className="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 hover:bg-gray-50 active:scale-95"
+        className="cursor-pointer group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 hover:bg-gray-50 active:scale-95"
         title={localIsPinned ? 'Bỏ ghim hội thoại' : 'Ghim lên đầu'}
       >
         <div
@@ -42,7 +42,7 @@ export default function ChatQuickActions({
       {/* Ẩn / Hiện trò chuyện */}
       <button
         onClick={onHideToggle}
-        className="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 hover:bg-gray-50 active:scale-95"
+        className="cursor-pointer group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 hover:bg-gray-50 active:scale-95"
         title={localIsHidden ? 'Hiện lại trò chuyện' : 'Ẩn trò chuyện'}
       >
         <div
@@ -62,7 +62,7 @@ export default function ChatQuickActions({
       {/* Tạo nhóm trò chuyện */}
       <button
         onClick={onCreateGroup}
-        className="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 hover:bg-blue-50 active:scale-95"
+        className="cursor-pointer group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all duration-300 hover:bg-blue-50 active:scale-95"
         title="Tạo nhóm chat mới"
       >
         <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg group-hover:shadow-xl ring-4 ring-blue-200 transition-all duration-300">

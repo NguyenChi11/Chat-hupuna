@@ -43,18 +43,18 @@ export default function EmojiStickerPicker({
   if (!showEmojiPicker) return null;
 
   return (
-    <div className="absolute bottom-full left-0 right-0 sm:right-auto mb-2 bg-white shadow-xl border border-gray-200 rounded-xl z-50 w-full sm:w-80 md:w-96 lg:w-[28rem] xl:w-[32rem] max-w-[90vw] flex flex-col overflow-hidden">
+    <div className="absolute bottom-full left-0 right-0 sm:right-auto mb-2 bg-white shadow-xl border border-gray-200 rounded-xl z-50 w-full sm:w-80 lg:w-[28rem] xl:w-[32rem] max-w-[90vw] flex flex-col overflow-hidden">
       {/* Tabs */}
       <div className="flex border-b">
         <button
-          className={`flex-1 p-2 sm:p-3 text-xs sm:text-sm font-medium ${pickerTab === 'emoji' ? 'bg-gray-100 text-blue-600' : 'hover:bg-gray-50'}`}
+          className={`flex-1 p-2 sm:p-3 cursor-pointer text-xs sm:text-sm font-medium ${pickerTab === 'emoji' ? 'bg-gray-100 text-blue-600' : 'hover:bg-gray-50'}`}
           onClick={() => setPickerTab('emoji')}
         >
           Emoji
         </button>
 
         <button
-          className={`flex-1 p-2 sm:p-3 text-xs sm:text-sm font-medium ${pickerTab === 'sticker' ? 'bg-gray-100 text-blue-600' : 'hover:bg-gray-50'}`}
+          className={`flex-1 p-2 sm:p-3 cursor-pointer text-xs sm:text-sm font-medium ${pickerTab === 'sticker' ? 'bg-gray-100 text-blue-600' : 'hover:bg-gray-50'}`}
           onClick={() => setPickerTab('sticker')}
         >
           <img src={IconSticker.src} alt="Sticker" className="inline mr-1 w-[14px] h-[14px]" />

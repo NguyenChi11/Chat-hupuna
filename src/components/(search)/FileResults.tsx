@@ -181,7 +181,7 @@ export default function FileResults({ groupedFiles, searchTerm, onNavigateToMess
               <div className="p-2 bg-orange-50 text-center border-t">
                 <button
                   onClick={() => onNavigateToMessage(group.files[0])}
-                  className="text-xs text-orange-600 hover:text-orange-700 font-medium"
+                  className="text-xs cursor-pointer text-orange-600 hover:text-orange-700 font-medium"
                 >
                   Xem thêm {group.files.length - 3} file
                 </button>

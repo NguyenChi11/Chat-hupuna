@@ -191,7 +191,7 @@ export default function GlobalSearchModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl h-full md:h-[40rem] max-h-[calc(100vh-3rem)] md:max-h-[40rem] flex flex-col overflow-hidden border border-gray-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl h-full sm:h-[40rem] max-h-[calc(100vh-3rem)] sm:max-h-[40rem] flex flex-col overflow-hidden border border-gray-200">
         <SearchHeader
           searchTerm={localSearchTerm}
           onSearch={onSearch}
