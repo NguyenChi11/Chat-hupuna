@@ -64,7 +64,7 @@ export default function CreateGroupModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 sm:px-0">
-      <div className="bg-white w-full max-w-2xl h-[95vh] sm:h-auto sm:max-h-[90vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-white w-full max-w-2xl h-[80vh] sm:h-auto sm:max-h-[90vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-2 py-2 sm:px-6 sm:py-5 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white">
           <div className="flex items-center gap-3">
@@ -232,7 +232,9 @@ export default function CreateGroupModal({
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-900 px-1">{user.name}</p>
                           </div>
-                          <span className={`text-xs px-1 font-medium ${user.online ? 'text-green-600' : 'text-gray-500'}`}>
+                          <span
+                            className={`text-xs px-1 font-medium ${user.online ? 'text-green-600' : 'text-gray-500'}`}
+                          >
                             {user.online
                               ? 'Đang hoạt động'
                               : user.lastSeen

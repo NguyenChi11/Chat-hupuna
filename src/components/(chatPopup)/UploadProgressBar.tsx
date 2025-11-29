@@ -12,7 +12,7 @@ const UploadProgressBar: React.FC<UploadProgressBarProps> = ({ uploadingCount, o
   const progress = Math.max(4, Math.round(overallUploadPercent)); // không bao giờ 0% để thấy thanh
 
   return (
-    <div className="sm:mx-1 sm:mt-1 sm:mb-3 sm:relative fixed bottom-0 left-0 right-0 z-[10000] w-full px-3 py-2 bg-white/95 backdrop-blur border-t border-gray-200 animate-in slide-in-from-bottom-3 duration-300">
+    <div className="sm:mx-1 sm:mt-1 sm:mb-3 sm:relative fixed bottom-[6rem] left-0 right-0 z-[10000] w-full px-3 py-2 bg-white/95 backdrop-blur border-t border-gray-200 animate-in slide-in-from-bottom-3 duration-300">
       {/* Header: số file + phần trăm */}
       <div className="flex items-center justify-between text-xs text-gray-600 mb-2 px-1">
         <div className="flex items-center gap-2.5 font-medium">

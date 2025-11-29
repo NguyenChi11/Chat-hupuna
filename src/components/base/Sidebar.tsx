@@ -8,9 +8,10 @@ import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Gr
 import { getProxyUrl } from '../../utils/utils';
 import MessageFilter, { FilterType } from '../(chatPopup)/MessageFilter';
 import Image from 'next/image';
+import { FaPlus } from 'react-icons/fa6';
 
 // React Icons – Bộ hiện đại nhất 2025
-import { HiMagnifyingGlass, HiXMark, HiUsers, HiUserCircle, HiChatBubbleLeftRight } from 'react-icons/hi2';
+import { HiMagnifyingGlass, HiXMark, HiUserCircle, HiChatBubbleLeftRight } from 'react-icons/hi2';
 
 interface SidebarProps {
   currentUser: User;
@@ -304,7 +305,7 @@ export default function Sidebar({
       {/* HEADER GRADIENT SIÊU SANG */}
       <div className="bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 shadow-2xl">
         {/* User Info */}
-        <div className="px-4 py-4  items-center gap-4 hidden sm:flex text-white">
+        <div className="px-4 py-4  items-center gap-4 hidden md:flex text-white">
           <div className="relative">
             <div className="w-12 h-12 rounded-3xl overflow-hidden ring-2 ring-white/30 shadow-xl">
               {currentUser.avatar ? (
@@ -365,7 +366,7 @@ export default function Sidebar({
               className="cursor-pointer p-2 bg-gradient-to-br from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 rounded-3xl shadow-xl transition-all duration-300 active:scale-95"
               title="Tạo nhóm mới"
             >
-              <HiUsers className="w-5 h-5 text-white" />
+              <FaPlus className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
@@ -414,7 +415,7 @@ export default function Sidebar({
                 {filterType === 'all' && <p className="text-sm mt-2 text-gray-400">Nhấn vào nút tạo nhóm để bắt đầu</p>}
               </div>
             ) : (
-              <div className="space-y-1 px-1 py-1">
+              <div className="space-y-1 px-1 py-1 pb-[5rem] ">
                 <div className="px-2 pt-2 sm:hidden block bg-white/70 backdrop-blur-sm border-b border-gray-200">
                   <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
                 </div>

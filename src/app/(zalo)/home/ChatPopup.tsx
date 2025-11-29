@@ -283,10 +283,24 @@ export default function ChatWindow({
 
   const handleContextMenu = useCallback((e: React.MouseEvent, msg: Message) => {
     e.preventDefault();
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const menuWidth = 176;
+    const menuHeight = 200;
+    let x = rect.left + (rect.width - menuWidth) / 2;
+    x = Math.min(Math.max(x, 8), window.innerWidth - menuWidth - 8);
+    let yBelow = rect.bottom + 8;
+    let placement: 'above' | 'below' = 'below';
+    if (yBelow + menuHeight > window.innerHeight - 8) {
+      placement = 'above';
+      yBelow = rect.top - menuHeight - 8;
+    }
+    const y = yBelow;
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x,
+      y,
+      placement,
       message: msg,
     });
   }, []);
@@ -315,6 +329,17 @@ export default function ChatWindow({
     }, 0);
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [contextMenu, closeContextMenu]);
+
+  useEffect(() => {
+    if (!contextMenu?.visible) return;
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const closeOnScroll = () => {
+      closeContextMenu();
+    };
+    container.addEventListener('scroll', closeOnScroll, { passive: true });
+    return () => container.removeEventListener('scroll', closeOnScroll);
   }, [contextMenu, closeContextMenu]);
 
   useEffect(() => {
@@ -1094,7 +1119,6 @@ export default function ChatWindow({
               highlightedMsgId={highlightedMsgId}
               isGroup={isGroup}
               onContextMenu={handleContextMenu}
-              onReply={handleReplyTo}
               onJumpToMessage={handleJumpToMessage}
               getSenderInfo={getSenderInfo}
               renderMessageContent={renderMessageContent}
@@ -1222,6 +1246,7 @@ export default function ChatWindow({
             setEditingMessageId={setEditingMessageId}
             setEditContent={setEditContent}
             closeContextMenu={closeContextMenu}
+            onReplyMessage={handleReplyTo}
           />
         )}
 

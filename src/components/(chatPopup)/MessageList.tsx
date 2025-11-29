@@ -7,8 +7,7 @@ import type { User } from '@/types/User';
 import { isVideoFile, getProxyUrl } from '@/utils/utils';
 
 // Icons
-import { RiReplyLine } from 'react-icons/ri';
-import { HiOutlineDocumentText, HiPlay } from 'react-icons/hi2';
+import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical } from 'react-icons/hi2';
 
 interface SenderInfo {
   _id: string;
@@ -25,7 +24,6 @@ interface MessageListProps {
   highlightedMsgId: string | null;
   isGroup: boolean;
   onContextMenu: (e: React.MouseEvent, msg: Message) => void;
-  onReply: (msg: Message) => void;
   onJumpToMessage: (id: string) => void;
   getSenderInfo: (sender: User | string) => SenderInfo;
   renderMessageContent: (content: string, mentionedUserIds?: string[], isMe?: boolean) => React.ReactNode;
@@ -46,7 +44,6 @@ export default function MessageList({
   highlightedMsgId,
   isGroup,
   onContextMenu,
-  onReply,
   onJumpToMessage,
   getSenderInfo,
   renderMessageContent,
@@ -59,6 +56,7 @@ export default function MessageList({
 }: MessageListProps) {
   const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
   const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
+  const [activeMoreId, setActiveMoreId] = useState<string | null>(null);
   const formatTimestamp = (ts: number) => {
     const d = new Date(ts);
     const now = new Date();
@@ -131,7 +129,9 @@ export default function MessageList({
               <div
                 key={msg._id}
                 id={`msg-${msg._id}`}
-                onContextMenu={(e) => onContextMenu(e, msg)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                }}
                 className={`
                   w-full px-3 sm:max-w-[22rem]
                   flex gap-2 group relative
@@ -195,23 +195,28 @@ export default function MessageList({
                       ${msg.type === 'file' ? '!px-2 !py-2' : ''}
                     relative
                     `}
-                    onClick={() => setTimeVisibleId((prev) => (prev === msg._id ? null : msg._id))}
+                    onClick={() => {
+                      setTimeVisibleId((prev) => (prev === msg._id ? null : msg._id));
+                      setActiveMoreId(msg._id);
+                    }}
                   >
-                    {/* Reply icon (bên phải, cách 0.5rem) */}
                     {!isRecalled && (
                       <button
                         onClick={(e) => {
                           e.preventDefault();
-                          onReply(msg);
+                          onContextMenu(e, msg);
                         }}
                         className={`
                           absolute top-1/2 -translate-y-1/2 z-10
-                          cursor-pointer opacity-0 group-hover:opacity-100 
-                          p-1.5 bg-white/90 rounded-4xl shadow hover:bg-blue-50
+                          cursor-pointer p-1.5 bg-white/90 rounded-4xl shadow hover:bg-blue-50
                           ${isMe ? 'right-full mr-2' : 'left-full ml-2'}
+                          ${activeMoreId === msg._id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+                          sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100
                         `}
+                        aria-label="Mở menu"
+                        title="Thêm"
                       >
-                        <RiReplyLine className="w-4 h-4 text-gray-600" />
+                        <HiEllipsisVertical className="w-4 h-4 text-gray-600" />
                       </button>
                     )}
                     {/* Group sender name */}

@@ -36,6 +36,7 @@ export function useHomePage() {
 
   // State quản lý dữ liệu
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const allUsersRef = useRef<User[]>([]);
   const [groups, setGroups] = useState<GroupConversation[]>([]);
   const [selectedChat, setSelectedChat] = useState<ChatItem | null>(null);
   const selectedChatRef = useRef<ChatItem | null>(null);
@@ -54,6 +55,10 @@ export function useHomePage() {
   });
 
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    allUsersRef.current = allUsers;
+  }, [allUsers]);
 
   // 1. Hàm Fetch Data (User & Group)
   const fetchAllData = useCallback(async () => {
@@ -333,11 +338,18 @@ export function useHomePage() {
       } catch {}
     }, HEARTBEAT_MS);
 
-    socketRef.current.on('presence_update', (payload: { userId: string; online: boolean; lastSeen?: number | null }) => {
-      setAllUsers((prev) =>
-        prev.map((u) => (String(u._id) === String(payload.userId) ? { ...u, online: payload.online, lastSeen: payload.lastSeen ?? u.lastSeen } : u)),
-      );
-    });
+    socketRef.current.on(
+      'presence_update',
+      (payload: { userId: string; online: boolean; lastSeen?: number | null }) => {
+        setAllUsers((prev) =>
+          prev.map((u) =>
+            String(u._id) === String(payload.userId)
+              ? { ...u, online: payload.online, lastSeen: payload.lastSeen ?? u.lastSeen }
+              : u,
+          ),
+        );
+      },
+    );
 
     const handleBeforeUnload = () => {
       try {
@@ -368,7 +380,7 @@ export function useHomePage() {
         if (isMyMsg) {
           senderName = 'Bạn';
         } else {
-          const foundUser = allUsers.find((u) => u._id === data.sender);
+          const foundUser = allUsersRef.current.find((u) => u._id === data.sender);
           if (foundUser) senderName = foundUser.name || 'Người lạ';
           if (data.senderName) senderName = data.senderName;
         }
@@ -440,7 +452,7 @@ export function useHomePage() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       socketRef.current?.disconnect();
     };
-  }, [currentUser, fetchAllData, allUsers]);
+  }, [currentUser, fetchAllData]);
 
   // 5. Xử lý Chat Action (Pin/Hide)
   const handleChatAction = useCallback(

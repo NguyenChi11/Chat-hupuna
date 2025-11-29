@@ -295,30 +295,30 @@ export default function SidebarMenu() {
         </div>
 
         {/* Main Navigation */}
-        <nav className="flex-1 flex flex-col items-center gap-6 mt-8">
+        <nav className="flex-1 flex flex-col items-center gap-4 mt-4">
           <button
             onClick={() => navigate('/home', 'home')}
             className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${activeItem === 'home' ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
           >
-            <HiHome className="w-7 h-7" />
+            <HiHome className="w-5 h-5" />
           </button>
           <button
             onClick={() => navigate('/directory', 'directory')}
             className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${activeItem === 'directory' ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
           >
-            <HiUserGroup className="w-7 h-7" />
+            <HiUserGroup className="w-5 h-5" />
           </button>
         </nav>
 
         {/* Bottom Actions */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {/* Cloud Z */}
           <div className="relative">
             <button
               onClick={() => toggleMenu('cloud')}
               className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${openMenu.cloud ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
             >
-              <HiUpload className="w-7 h-7" />
+              <HiUpload className="w-5 h-5" />
             </button>
             {openMenu.cloud && (
               <div className="absolute left-24 bottom-0 z-50">
@@ -328,7 +328,7 @@ export default function SidebarMenu() {
           </div>
 
           <button className="p-4 cursor-pointer rounded-2xl hover:bg-white/10 hover:scale-110 transition-all">
-            <HiDeviceMobile className="w-7 h-7" />
+            <HiDeviceMobile className="w-5 h-5" />
           </button>
 
           {/* zBusiness */}
@@ -337,7 +337,7 @@ export default function SidebarMenu() {
               onClick={() => toggleMenu('business')}
               className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${openMenu.business ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
             >
-              <HiBriefcase className="w-7 h-7" />
+              <HiBriefcase className="w-5 h-5" />
             </button>
             {openMenu.business && (
               <div className="absolute left-24 bottom-0 w-96 bg-white rounded-3xl shadow-2xl p-8 z-50 border border-gray-100">
@@ -374,7 +374,7 @@ export default function SidebarMenu() {
             onClick={() => navigate('/setting', 'setting')}
             className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${activeItem === 'setting' ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
           >
-            <HiCog className="w-7 h-7" />
+            <HiCog className="w-5 h-5" />
           </button>
         </div>
       </div>

@@ -47,41 +47,37 @@ export default function ChatInput({
         </button>
 
         {/* Ảnh/Video */}
-        <input
-          type="file"
-          accept="image/*,video/*"
-          id="imageInput"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.[0]) onSelectImage(e.target.files[0]);
-            e.target.value = '';
-          }}
-        />
-        <button
-          onClick={() => document.getElementById('imageInput')?.click()}
-          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+        <label
+          className="group relative p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Gửi ảnh hoặc video"
         >
           <HiPhoto className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
-        </button>
+          <input
+            type="file"
+            accept="image/*,video/*"
+            className="sr-only"
+            onChange={(e) => {
+              if (e.target.files?.[0]) onSelectImage(e.target.files[0]);
+              e.target.value = '';
+            }}
+          />
+        </label>
 
         {/* File */}
-        <input
-          type="file"
-          id="fileInput"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files?.[0]) onSelectFile(e.target.files[0]);
-            e.target.value = '';
-          }}
-        />
-        <button
-          onClick={() => document.getElementById('fileInput')?.click()}
-          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+        <label
+          className="group relative p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Gửi file"
         >
           <HiPaperClip className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform rotate-12" />
-        </button>
+          <input
+            type="file"
+            className="sr-only"
+            onChange={(e) => {
+              if (e.target.files?.[0]) onSelectFile(e.target.files[0]);
+              e.target.value = '';
+            }}
+          />
+        </label>
 
         {/* Voice – Hiệu ứng pulse đỏ đẹp hơn Zalo */}
         <button

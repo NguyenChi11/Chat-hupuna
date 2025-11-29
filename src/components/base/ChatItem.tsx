@@ -25,6 +25,8 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const unreadCount = item.unreadCount || 0;
   const isPinned = !!item.isPinned;
@@ -76,6 +78,43 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
     setShowMenu(true);
   };
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current != null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    clearLongPressTimer();
+    longPressTriggeredRef.current = false;
+    const t = e.touches && e.touches[0];
+    const x0 = t ? t.clientX : 0;
+    const y0 = t ? t.clientY : 0;
+    longPressTimerRef.current = window.setTimeout(() => {
+      const menuWidth = 240;
+      const menuHeight = 130;
+      const x = x0 + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 16 : x0 + 12;
+      const y = y0 + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 16 : y0 + 12;
+      setMenuPosition({ x, y });
+      setShowMenu(true);
+      longPressTriggeredRef.current = true;
+    }, 500);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const triggered = longPressTriggeredRef.current;
+    clearLongPressTimer();
+    if (triggered) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleTouchMove = () => {
+    clearLongPressTimer();
+  };
+
   const handleAction = (type: 'pin' | 'hide') => {
     setShowMenu(false);
     onChatAction(item._id, type, type === 'pin' ? !isPinned : !isHidden, isGroup);
@@ -99,6 +138,10 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
       <div
         onClick={() => onSelectChat(item)}
         onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={clearLongPressTimer}
+        onTouchMove={handleTouchMove}
         className={`
           group relative mx-3 my-2 rounded-3xl transition-all duration-300 cursor-pointer
           ${
@@ -186,8 +229,7 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
               {/* Unread Badge – đẹp hơn Zalo */}
               {unreadCount > 0 && (
                 <div className="relative">
-                  <div className="absolute -inset-1 bg-red-500 rounded-full blur-md opacity-70" />
-                  <div className="relative px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 rounded-full shadow-xl">
+                  <div className="relative w-6 h-6 flex items-center justify-center bg-gradient-to-r from-red-500 to-pink-600 rounded-full shadow-xl">
                     <span className="text-sm font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
                   </div>
                 </div>

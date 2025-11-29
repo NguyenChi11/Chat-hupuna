@@ -7,6 +7,7 @@ import {
   HiOutlineTrash,
   HiPencil,
 } from 'react-icons/hi';
+import { RiReplyLine } from 'react-icons/ri';
 
 const getId = (u: Message['sender'] | string | undefined | null): string => {
   if (!u) return '';
@@ -23,6 +24,7 @@ export interface ContextMenuState {
   x: number;
   y: number;
   message: Message;
+  placement?: 'above' | 'below';
 }
 
 interface MenuItemProps {
@@ -68,6 +70,7 @@ interface MessageContextMenuProps {
   setEditingMessageId?: (id: string | null) => void;
   setEditContent?: (content: string) => void;
   closeContextMenu?: () => void;
+  onReplyMessage?: (msg: Message) => void;
 }
 
 const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
@@ -79,10 +82,11 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   setEditingMessageId,
   setEditContent,
   closeContextMenu,
+  onReplyMessage,
 }) => {
   if (!contextMenu || !contextMenu.visible) return null;
 
-  const { x, y, message: msg } = contextMenu;
+  const { x, y, message: msg, placement } = contextMenu;
   const isMe = getId(msg.sender) === currentUserId;
   const isText = msg.type === 'text';
   const isRecalled = msg.isRecalled;
@@ -93,13 +97,57 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   const canEdit = isMe && isText && !isRecalled;
   const style = {
     top: y,
-    left: x > window.innerWidth - 200 ? x - 180 : x,
+    left: x,
   };
+
+  const copyTextToClipboard = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator.clipboard && (window as unknown as { isSecureContext?: boolean }).isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) return true;
+    } catch {}
+    try {
+      const ta2 = document.createElement('input');
+      ta2.value = text;
+      ta2.style.position = 'fixed';
+      ta2.style.top = '0';
+      ta2.style.left = '0';
+      ta2.style.opacity = '0';
+      document.body.appendChild(ta2);
+      ta2.focus();
+      ta2.select();
+      const ok2 = document.execCommand('copy');
+      document.body.removeChild(ta2);
+      if (ok2) return true;
+    } catch {}
+    return false;
+  };
+
+  const animClass =
+    placement === 'above'
+      ? 'animate-in fade-in slide-in-from-bottom-2 duration-200'
+      : 'animate-in fade-in slide-in-from-top-2 duration-200';
 
   return (
     <div
       data-context-menu="true"
-      className="fixed z-[9999] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 w-44 text-sm"
+      className={`fixed z-[9999] bg-white rounded-lg shadow-2xl border border-gray-200 py-1 w-44 text-sm ${animClass}`}
       style={style}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -126,6 +174,22 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
         </MenuItem>
       )}
 
+      {!isRecalled && onReplyMessage && (
+        <MenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onReplyMessage(msg);
+            onClose();
+          }}
+        >
+          <span className="flex gap-2">
+            <RiReplyLine className="w-5 h-5" />
+            Phản hồi tin nhắn
+          </span>
+        </MenuItem>
+      )}
+
       {canEdit && (
         <MenuItem
           onClick={(e) => {
@@ -148,14 +212,11 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
           onClick={async (e) => {
             e.stopPropagation();
             e.preventDefault();
-            try {
-              await navigator.clipboard.writeText(msg.content || '');
-            } catch (err) {
-              console.error('Copy lỗi:', err);
+            const ok = await copyTextToClipboard(msg.content || '');
+            if (!ok) {
               alert('Sao chép thất bại!');
-            } finally {
-              onClose();
             }
+            onClose();
           }}
         >
           <HiOutlineClipboardCopy className="w-5 h-5" />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { User } from '../../types/User';
 import { useToast } from './toast';
 import { getProxyUrl } from '../../utils/utils';
@@ -62,18 +62,12 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
     confirmPassword: '',
   });
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const toast = useToast();
 
   if (!isOpen) return null;
 
   const displayName = user.name || user.username || 'Tài khoản của tôi';
   const displayId = user.username || user._id;
-
-  const handleAvatarClick = () => {
-    if (isUploading) return;
-    fileInputRef.current?.click();
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -562,11 +556,7 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
 
           {/* Avatar lớn, nổi bật */}
           <div className="absolute left-1/2 -bottom-16 -translate-x-1/2">
-            <button
-              onClick={handleAvatarClick}
-              disabled={isUploading}
-              className="group cursor-pointer relative w-32 h-32 rounded-full overflow-hidden ring-8 ring-white shadow-2xl transition-all hover:ring-indigo-300"
-            >
+            <label className="group cursor-pointer relative w-32 h-32 rounded-full overflow-hidden ring-8 ring-white shadow-2xl transition-all hover:ring-indigo-300">
               {user.avatar ? (
                 <Image
                   width={128}
@@ -581,15 +571,21 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
                 </div>
               )}
 
-              {/* Overlay đổi ảnh */}
               <div
                 className={`absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white transition-opacity ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
               >
                 <HiCamera className="w-10 h-10 mb-1" />
                 <span className="text-sm font-medium">{isUploading ? 'Đang tải...' : 'Đổi ảnh'}</span>
               </div>
-            </button>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handleFileChange}
+                disabled={isUploading}
+              />
+            </label>
           </div>
         </div>
 
