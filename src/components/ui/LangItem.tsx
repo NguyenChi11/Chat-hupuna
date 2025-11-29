@@ -9,7 +9,10 @@ export const LangItem: React.FC<{ label: string; flag: string; active?: boolean 
 );
 
 export const SupportItem: React.FC<{ label: string; onClick?: () => void }> = ({ label, onClick }) => (
-  <button onClick={onClick} className="w-full text-left px-5 py-3 hover:bg-gray-100 transition text-gray-700">
+  <button
+    onClick={onClick}
+    className="w-full cursor-pointer text-left px-5 py-3 hover:bg-gray-100 transition text-gray-700"
+  >
     {label}
   </button>
 );

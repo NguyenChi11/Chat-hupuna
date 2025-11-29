@@ -37,7 +37,7 @@ export default function PinnedMessageListModal({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/80 transition-all hover:scale-110"
+            className="p-2 cursor-pointer rounded-full hover:bg-white/80 transition-all hover:scale-110"
             title="Đóng"
           >
             <HiXMark className="w-6 h-6 text-gray-600" />

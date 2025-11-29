@@ -12,7 +12,7 @@ const ZaloCloudPopup: React.FC<ZaloCloudPopupProps> = ({ onClose }) => {
       {/* Close Button */}
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 p-1"
+        className="cursor-pointer absolute top-2 right-2 text-gray-400 hover:text-gray-600 p-1"
         aria-label="Close"
       >
         <svg
@@ -45,7 +45,7 @@ const ZaloCloudPopup: React.FC<ZaloCloudPopupProps> = ({ onClose }) => {
           lượng máy.
         </p>
 
-        <button className="w-full py-2 bg-[#e8e9ea] text-sm font-semibold text-gray-800 rounded-lg hover:bg-[#dcdde0] transition duration-200">
+        <button className="cursor-pointer w-full py-2 bg-[#e8e9ea] text-sm font-semibold text-gray-800 rounded-lg hover:bg-[#dcdde0] transition duration-200">
           Tìm hiểu zCloud ngay
         </button>
       </div>

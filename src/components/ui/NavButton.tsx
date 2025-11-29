@@ -7,7 +7,7 @@ export const NavButton: React.FC<{
 }> = ({ icon, active, onClick, tooltip }) => (
   <button
     onClick={onClick}
-    className={`p-3 rounded-xl transition-all duration-200 group relative ${
+    className={`cursor-pointer p-3 rounded-xl transition-all duration-200 group relative ${
       active ? 'bg-white/20 shadow-lg scale-110' : 'hover:bg-white/10 hover:scale-110'
     }`}
   >

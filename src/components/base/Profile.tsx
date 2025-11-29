@@ -18,7 +18,7 @@ const AccountInfoModal: React.FC<AccountInfoModalProps> = ({ show, onClose, user
         {/* Header */}
         <div className="flex justify-between items-center border-b border-gray-200 pb-3">
           <h2 className="text-lg font-semibold text-gray-800"> </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-800 text-xl font-bold">
+          <button onClick={onClose} className="cursor-pointer text-gray-400 hover:text-gray-800 text-xl font-bold">
             ×
           </button>
         </div>
@@ -44,7 +44,7 @@ const AccountInfoModal: React.FC<AccountInfoModalProps> = ({ show, onClose, user
 
         {/* Footer */}
         <div className="mt-6 flex justify-center">
-          <button className="flex items-center gap-2 px-6 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition cursor-pointer">
+          <button className="flex cursor-pointer items-center gap-2 px-6 py-2 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition active:scale-95">
             Cập nhật
           </button>
         </div>

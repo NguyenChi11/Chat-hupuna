@@ -50,7 +50,7 @@ export function useHomePage() {
     messages: GlobalSearchMessage[];
   }>({
     contacts: [],
-    messages: [], 
+    messages: [],
   });
 
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
@@ -261,7 +261,6 @@ export function useHomePage() {
         setShowGlobalSearchModal(false);
         setScrollToMessageId(String(message._id));
         handleSelectChat(targetChat); // Tái sử dụng hàm select/reset unread
-
       } else {
         // Fallback nếu không tìm thấy: Refetch và thử lại
         console.warn('❌ Chat not found locally. Refetching data...');
@@ -294,6 +293,21 @@ export function useHomePage() {
       }
     };
     fetchCurrentUser();
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'info_user') {
+        try {
+          const next = e.newValue ? JSON.parse(e.newValue) : null;
+          if (next && next._id) {
+            setCurrentUser(next);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+    };
   }, [router]);
 
   // 3. Gọi Fetch Data lần đầu
@@ -369,10 +383,7 @@ export function useHomePage() {
               lastMessage: contentDisplay,
               lastMessageAt: data.timestamp || Date.now(),
               isRecall: data.isRecalled || false,
-              unreadCount:
-                isMyMsg || isActiveChat
-                  ? 0
-                  : (prev[index].unreadCount || 0) + 1,
+              unreadCount: isMyMsg || isActiveChat ? 0 : (prev[index].unreadCount || 0) + 1,
             };
             const newGroups = [...prev];
             newGroups.splice(index, 1);
@@ -393,10 +404,7 @@ export function useHomePage() {
               lastMessage: contentDisplay,
               lastMessageAt: data.timestamp || Date.now(),
               isRecall: data.isRecalled || false,
-              unreadCount:
-                isMyMsg || isActiveChat
-                  ? 0
-                  : (prev[index].unreadCount || 0) + 1,
+              unreadCount: isMyMsg || isActiveChat ? 0 : (prev[index].unreadCount || 0) + 1,
             };
             const newUsers = [...prev];
             newUsers.splice(index, 1);

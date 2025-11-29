@@ -60,7 +60,7 @@ export default function SettingsMobile() {
           {menuItems.map((item) => (
             <button
               key={item.id}
-              className="w-full flex items-center justify-between px-6 py-5 hover:bg-gray-50 transition-all"
+              className="w-full cursor-pointer flex items-center justify-between px-6 py-5 hover:bg-gray-50 transition-all"
             >
               <div className="flex items-center gap-4">
                 <div className="text-blue-600">{item.icon}</div>
@@ -75,7 +75,7 @@ export default function SettingsMobile() {
         <div className="mt-12 px-6 mb-20 pb-10 bg-white">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-3 py-4 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 active:scale-98 transition-all shadow-lg"
+            className="w-full cursor-pointer flex items-center justify-center gap-3 py-4 bg-red-600 text-white font-semibold rounded-2xl hover:bg-red-700 active:scale-98 transition-all shadow-lg"
           >
             <HiOutlineLogout className="w-5 h-5" />
             Đăng xuất

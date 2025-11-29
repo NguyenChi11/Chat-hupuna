@@ -336,7 +336,7 @@ function ProfilePageContent() {
           <p className="text-gray-500 mt-1 text-sm">ID: {displayId}</p>
           <button
             onClick={copyLink}
-            className="mt-2 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            className="mt-2 px-3 cursor-pointer py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
           >
             Sao chép link hồ sơ
           </button>
@@ -395,7 +395,7 @@ function ProfilePageContent() {
                 <button
                   onClick={issueSSO}
                   disabled={isIssuingSSO || !ssoTarget}
-                  className={`px-3 py-2 rounded-lg text-sm text-white ${
+                  className={`px-3 cursor-pointer py-2 rounded-lg text-sm text-white ${
                     isIssuingSSO || !ssoTarget ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
@@ -404,7 +404,7 @@ function ProfilePageContent() {
                 <button
                   onClick={quickTestSSO}
                   disabled={isIssuingSSO}
-                  className={`px-3 py-2 rounded-lg text-sm text-white ${
+                  className={`px-3 cursor-pointer py-2 rounded-lg text-sm text-white ${
                     isIssuingSSO ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
                   }`}
                 >
@@ -413,14 +413,14 @@ function ProfilePageContent() {
                 <button
                   onClick={copySSOLink}
                   disabled={!ssoLink}
-                  className={`px-3 py-2 rounded-lg text-sm ${!ssoLink ? 'bg-gray-200 text-gray-500' : 'bg-gray-100'}`}
+                  className={`px-3 cursor-pointer py-2 rounded-lg text-sm ${!ssoLink ? 'bg-gray-200 text-gray-500' : 'bg-gray-100'}`}
                 >
                   Sao chép link
                 </button>
                 <button
                   onClick={openSSO}
                   disabled={!ssoLink}
-                  className={`px-3 py-2 rounded-lg text-sm text-white ${
+                  className={`px-3 cursor-pointer py-2 rounded-lg text-sm text-white ${
                     !ssoLink ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
                   }`}
                 >

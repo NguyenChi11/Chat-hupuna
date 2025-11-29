@@ -1,11 +1,9 @@
 'use client';
 
 import React, { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
-import { HiOutlineEmojiHappy } from 'react-icons/hi';
-import { HiOutlinePaperClip } from 'react-icons/hi';
-import { HiOutlinePhotograph } from 'react-icons/hi';
-import { HiOutlineMicrophone } from 'react-icons/hi';
-import { HiPaperAirplane } from 'react-icons/hi';
+
+// React Icons hi2 – Đỉnh cao nhất 2025
+import { HiFaceSmile, HiPaperClip, HiPhoto, HiMicrophone, HiPaperAirplane, HiSparkles } from 'react-icons/hi2';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -36,16 +34,16 @@ export default function ChatInput({
   onSelectFile,
 }: ChatInputProps) {
   return (
-    <div className="flex flex-wrap sm:flex-row flex-col items-end w-full gap-3 p-3 bg-white ">
-      {/* Toolbar trái */}
-      <div className="flex items-center gap-1">
+    <div className="relative w-full p-2 bg-gradient-to-t from-white via-white to-gray-50/50">
+      {/* Toolbar trái – Sang trọng như Zalo Premium */}
+      <div className="flex items-center gap-2 mb-2">
         {/* Emoji */}
         <button
           onClick={onToggleEmojiPicker}
-          className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Chọn emoji"
         >
-          <HiOutlineEmojiHappy className="w-6 h-6" />
+          <HiFaceSmile className="w-5 h-5 text-purple-600 group-hover:scale-110 transition-transform" />
         </button>
 
         {/* Ảnh/Video */}
@@ -61,10 +59,10 @@ export default function ChatInput({
         />
         <button
           onClick={() => document.getElementById('imageInput')?.click()}
-          className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Gửi ảnh hoặc video"
         >
-          <HiOutlinePhotograph className="w-6 h-6" />
+          <HiPhoto className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
         </button>
 
         {/* File */}
@@ -79,78 +77,72 @@ export default function ChatInput({
         />
         <button
           onClick={() => document.getElementById('fileInput')?.click()}
-          className="p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 rotate-12"
+          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Gửi file"
         >
-          <HiOutlinePaperClip className="w-6 h-6" />
+          <HiPaperClip className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform rotate-12" />
         </button>
 
-        {/* Voice */}
+        {/* Voice – Hiệu ứng pulse đỏ đẹp hơn Zalo */}
         <button
           onClick={onVoiceInput}
-          className={`p-2.5 rounded-xl transition-all duration-300 ${
+          className={`relative p-2 rounded-3xl cursor-pointer transition-all duration-500 shadow-2xl ${
             isListening
-              ? 'bg-red-500 text-white shadow-lg animate-pulse ring-4 ring-red-200'
-              : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
+              ? 'bg-gradient-to-br from-red-500 to-pink-600 text-white animate-pulse ring-4 ring-red-300/50 scale-110'
+              : 'bg-gradient-to-br from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 hover:scale-105'
           }`}
           aria-label="Nhập bằng giọng nói"
         >
-          <HiOutlineMicrophone className="w-6 h-6" />
+          <HiMicrophone className="w-5 h-5" />
+          {isListening && <div className="absolute inset-0 rounded-3xl bg-red-500/30 animate-ping" />}
         </button>
       </div>
 
-      {/* Input + Send */}
-      <div className="flex-1 flex items-end gap-2 w-full">
-        <div
-          ref={editableRef}
-          contentEditable
-          onInput={onInputEditable}
-          onKeyDown={onKeyDownEditable}
-          onFocus={onFocusEditable}
-          onPaste={onPasteEditable}
-          className="flex-1 min-h-12 max-h-32 px-4 py-3 bg-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 text-sm md:text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400"
-          data-placeholder="Aa"
-          style={{
-            wordBreak: 'break-word',
-            whiteSpace: 'pre-wrap',
-          }}
-        />
+      {/* Input Area + Send Button */}
+      <div className="flex items-end gap-3">
+        {/* Input contentEditable – Đẹp như iMessage */}
+        <div className="relative flex-1">
+          <div
+            ref={editableRef}
+            contentEditable
+            onInput={onInputEditable}
+            onKeyDown={onKeyDownEditable}
+            onFocus={onFocusEditable}
+            onPaste={onPasteEditable}
+            className="w-full min-h-10 max-h-40 px-6 py-2 bg-white/90 rounded-3xl shadow-xl border border-gray-200/50 focus:outline-none  transition-all duration-300 text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400"
+            data-placeholder="Nhập tin nhắn..."
+          />
 
+          {/* Placeholder đẹp hơn */}
+          <div className="pointer-events-none absolute inset-0 flex items-center px-6 py-4 text-gray-400 select-none">
+            <span className="flex items-center gap-2">
+              <HiSparkles className="w-5 h-5 text-indigo-400" />
+              Nhập tin nhắn...
+            </span>
+          </div>
+        </div>
+
+        {/* Send Button – Gradient + hover scale */}
         <button
           onClick={onSendMessage}
-          className="mb-1 p-2.5 rounded-xl bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
+          className="mb-1 p-2 rounded-3xl cursor-pointer bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 active:scale-90 group"
           aria-label="Gửi tin nhắn"
         >
-          <HiPaperAirplane className="w-5 h-5 -rotate-12" />
+          <HiPaperAirplane className="w-5 h-5 -rotate-12 group-hover:rotate-0 transition-transform duration-300" />
         </button>
       </div>
 
-      {/* Placeholder đẹp hơn */}
+      {/* Custom CSS cho placeholder */}
       <style jsx>{`
-        [contenteditable]:empty:before {
-          content: attr(data-placeholder);
-          color: #9ca3af;
-          opacity: 0.8;
-          pointer-events: none;
-          position: absolute;
-          left: 15rem;
-          top: 50%;
-          transform: translateY(-50%);
+        [contenteditable]:empty ~ div > span {
+          opacity: 1;
         }
-        [contenteditable]:focus:before {
-          opacity: 0.6;
+        [contenteditable]:not(:empty) ~ div > span,
+        [contenteditable]:focus ~ div > span {
+          opacity: 0;
         }
-        /* Ẩn placeholder khi có nội dung hoặc focus */
-        [contenteditable]:not(:empty):before,
-        [contenteditable]:focus:before {
-          display: none;
-        }
-
-        @media (max-width: 640px) {
-          [contenteditable]:empty:before {
-            left: 2rem;
-            top: 6.25rem;
-          }
+        [contenteditable]:focus ~ div > span {
+          transition: opacity 0.3s ease;
         }
       `}</style>
     </div>

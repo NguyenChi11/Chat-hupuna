@@ -33,7 +33,7 @@ export default function GroupAvatarSection({
         <button
           type="button"
           onClick={() => avatarInputRef.current?.click()}
-          className="relative block focus:outline-none focus:ring-4 focus:ring-blue-300 rounded-full transition-all duration-300"
+          className="cursor-pointer relative block focus:outline-none focus:ring-4 focus:ring-blue-300 rounded-full transition-all duration-300"
           disabled={isGroupAvatarUploading}
           title="Nhấn để thay đổi ảnh nhóm"
         >
@@ -108,7 +108,7 @@ export default function GroupAvatarSection({
         <h3 className="text-2xl font-bold text-gray-900 tracking-tight">{groupName || 'Nhóm chat'}</h3>
         <button
           onClick={onRenameGroup}
-          className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 hover:shadow-md active:scale-95"
+          className="cursor-pointer p-2.5 rounded-xl  bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-200 hover:shadow-md active:scale-95"
           title="Đổi tên nhóm"
         >
           <HiPencil className="w-4 h-4" />

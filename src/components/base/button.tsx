@@ -24,7 +24,7 @@ export const ButtonBase = ({
     <button
       type={type}
       title={title}
-      className={`${className} flex items-center justify-center gap-2 py-[0.5rem] px-[1.25rem] text-md font-medium rounded-md`}
+      className={`${className} flex items-center cursor-pointer justify-center gap-2 py-[0.5rem] px-[1.25rem] text-md font-medium rounded-md`}
       style={{
         ...style,
         backgroundColor: disabled ? '#CECECE' : '',

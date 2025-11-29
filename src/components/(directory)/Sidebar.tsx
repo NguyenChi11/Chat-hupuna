@@ -49,10 +49,10 @@ export default function Sidebar({ selectedMenu, onMenuClick }: SidebarProps) {
             className="px-3 py-2 text-sm w-48 rounded-full text-black bg-gray-100 focus:outline-none"
           />
           <div className="flex items-center gap-4">
-            <button className="w-6 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <button className="cursor-pointer w-6 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
               <img src={IconBB.src} alt="Avatar" className="w-8 h-8 object-contain" />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <button className="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
               <img src={IconGroup.src} alt="Avatar" className="w-8 h-8 object-contain" />
             </button>
           </div>

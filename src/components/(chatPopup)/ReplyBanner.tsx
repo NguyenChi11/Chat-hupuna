@@ -24,7 +24,7 @@ export default function ReplyBanner({ replyingTo, getSenderName, onCancel }: Rep
           {replyingTo.isRecalled ? 'Tin nhắn đã bị thu hồi' : replyingTo.content || `[${replyingTo.type}]`}
         </p>
       </div>
-      <button onClick={onCancel} className="text-red-500 hover:text-red-700 p-1">
+      <button onClick={onCancel} className="cursor-pointer text-red-500 hover:text-red-700 p-1">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -39,5 +39,3 @@ export default function ReplyBanner({ replyingTo, getSenderName, onCancel }: Rep
     </div>
   );
 }
-
-

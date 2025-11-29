@@ -74,7 +74,7 @@ export default function CreateGroupModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2.5 rounded-full hover:bg-white/20 transition-all duration-200 active:scale-90"
+            className="p-2.5 cursor-pointer rounded-full hover:bg-white/20 transition-all duration-200 active:scale-90"
           >
             <HiX className="w-4 h-4" />
           </button>
@@ -256,14 +256,14 @@ export default function CreateGroupModal({
         <div className="p-2 sm:p-6 bg-white border-t border-gray-200 flex gap-3 shadow-2xl">
           <button
             onClick={onClose}
-            className="flex-1 py-2 sm:py-4 sm:text-base text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all duration-200 active:scale-95"
+            className="flex-1 cursor-pointer py-2 sm:py-4 sm:text-base text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all duration-200 active:scale-95"
           >
             Hủy
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || selectedMembers.length === 0}
-            className={`flex-1 py-2 sm:py-4 text-sm sm:text-base font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
+            className={`flex-1 cursor-pointer py-2 sm:py-4 text-sm sm:text-base font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
               ${
                 loading || selectedMembers.length === 0
                   ? 'bg-gray-400 cursor-not-allowed'

@@ -22,7 +22,7 @@ export default function SearchTabs({ activeTab, tabs, onTabChange, searchTerm }:
         <button
           key={tab.key}
           onClick={() => onTabChange(tab.key)}
-          className={`flex-1 px-3 py-2 text-xs font-medium relative transition-colors ${
+          className={`flex-1 px-3 cursor-pointer py-2 text-xs font-medium relative transition-colors ${
             activeTab === tab.key ? 'text-[#0088ff]' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
           }`}
         >

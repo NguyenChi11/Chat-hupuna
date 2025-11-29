@@ -99,7 +99,7 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose, roomId, 
       <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
         <h2 className="text-xl font-bold text-black">Tìm kiếm tin nhắn</h2>
         {/* Nút đóng (Sử dụng icon ArrowRight để trông như đóng tab) */}
-        <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full" title="Đóng tìm kiếm">
+        <button onClick={onClose} className="cursor-pointer p-2 hover:bg-gray-200 rounded-full" title="Đóng tìm kiếm">
           <Image
             src={ArrowRightICon}
             alt="Close"
@@ -124,7 +124,7 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose, roomId, 
           />
           <button
             onClick={() => fetchSearchResults(searchTerm)}
-            className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors shrink-0"
+            className="cursor-pointer bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors shrink-0"
             disabled={isSearching || !searchTerm.trim()}
           >
             {isSearching ? (

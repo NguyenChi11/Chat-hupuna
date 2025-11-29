@@ -25,7 +25,7 @@ export default function RenameGroupModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header gradient đẹp như Zalo */}
-        <div className="relative px-6 pt-8 pb-6 bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-600 text-white text-center">
+        <div className="relative cursor-pointer px-6 pt-8 pb-6 bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-600 text-white text-center">
           <div className="absolute top-4 right-4">
             <button
               onClick={onClose}
@@ -71,14 +71,14 @@ export default function RenameGroupModal({
         <div className="flex gap-3 px-6 pb-8">
           <button
             onClick={onClose}
-            className="flex-1 py-4 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all duration-200 active:scale-95"
+            className="cursor-pointer flex-1 py-4 text-base font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all duration-200 active:scale-95"
           >
             Hủy
           </button>
           <button
             onClick={onSubmit}
             disabled={!renameInput.trim()}
-            className={`flex-1 py-4 text-base font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
+            className={`flex-1 py-4 cursor-pointer text-base font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
               ${
                 !renameInput.trim()
                   ? 'bg-gray-400 cursor-not-allowed'

@@ -75,7 +75,6 @@ export default function MessageList({
   };
 
   return (
-
     <>
       {Array.from(messagesGrouped.entries()).map(([dateKey, msgs]) => (
         <React.Fragment key={dateKey}>
@@ -162,12 +161,12 @@ export default function MessageList({
 
                 {/* Content */}
                 <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
-                  {isEdited && !isRecalled   && (
+                  {isEdited && !isRecalled && (
                     <span
                       className="text-[10px] px-1 text-blue-500 hover:underline hover:cursor-pointer"
                       onClick={() => setExpandedOriginalId((prev) => (prev === msg._id ? null : msg._id))}
                     >
-                          {expandedOriginalId === msg._id ? <p>Ẩn chỉnh sửa</p> : <p>Đã chỉnh sửa</p>}
+                      {expandedOriginalId === msg._id ? <p>Ẩn chỉnh sửa</p> : <p>Đã chỉnh sửa</p>}
                     </span>
                   )}
                   {/* Reply preview */}
@@ -207,7 +206,7 @@ export default function MessageList({
                         }}
                         className={`
                           absolute top-1/2 -translate-y-1/2 z-10
-                          opacity-0 group-hover:opacity-100
+                          cursor-pointer opacity-0 group-hover:opacity-100 
                           p-1.5 bg-white/90 rounded-4xl shadow hover:bg-blue-50
                           ${isMe ? 'right-full mr-2' : 'left-full ml-2'}
                         `}
@@ -238,13 +237,12 @@ export default function MessageList({
                           rows={3}
                         />
                         <div className={`mt-2 flex gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
-
                           <button
                             onClick={() => {
                               setEditingMessageId?.(null);
                               setEditContent?.('');
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 hover:cursor-pointer"
+                            className="px-3 py-1.5 cursor-pointer rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 hover:cursor-pointer"
                           >
                             Hủy
                           </button>
@@ -253,7 +251,7 @@ export default function MessageList({
                               const content = typeof editContent === 'string' ? editContent : msg.content || '';
                               onSaveEdit?.(msg._id, content);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 hover:cursor-pointer"
+                            className="px-3 py-1.5 cursor-pointer rounded-lg bg-blue-500 text-white hover:bg-blue-600 hover:cursor-pointer"
                           >
                             Lưu
                           </button>
@@ -339,21 +337,19 @@ export default function MessageList({
                       <div className=" border-gray-300 ">
                         {expandedOriginalId === msg._id && (
                           <div className="text-xs border-t-[1px] border-t-gray-300  text-gray-500 space-y-1 flex items-center justify-between">
-                            <p className={`p-1 m-1 whitespace-pre-wrap pt-2 pb-1 rounded ${isMe ? "bg-white" : ""}`}>{msg.originalContent}</p>
+                            <p className={`p-1 m-1 whitespace-pre-wrap pt-2 pb-1 rounded ${isMe ? 'bg-white' : ''}`}>
+                              {msg.originalContent}
+                            </p>
                           </div>
                         )}
                       </div>
                     )}
-
                   </div>
 
                   {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}
 
-
-                    {timeVisibleId === msg._id && (
-                    <span className={`text-xs mt-1  text-gray-500`}>
-                      {formatTimestamp(msg.timestamp)}
-                    </span>
+                  {timeVisibleId === msg._id && (
+                    <span className={`text-xs mt-1  text-gray-500`}>{formatTimestamp(msg.timestamp)}</span>
                   )}
                 </div>
               </div>

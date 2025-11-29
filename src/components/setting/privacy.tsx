@@ -67,7 +67,7 @@ const SettingsPage = () => {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden ">
           <button
             onClick={() => setShowList(!showList)}
-            className="w-full flex justify-between items-center py-2 sm:py-3 px-3 sm:px-5 hover:bg-gray-50 cursor-pointer"
+            className="w-full cursor-pointer flex justify-between items-center py-2 sm:py-3 px-3 sm:px-5 hover:bg-gray-50 cursor-pointer"
           >
             <span className="text-sm sm:text-base text-black font-medium ">Danh sách chặn</span>
             <span className="text-gray-400">

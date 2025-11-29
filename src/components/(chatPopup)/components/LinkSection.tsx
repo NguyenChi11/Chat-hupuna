@@ -31,10 +31,10 @@ export default function LinkSection({
       {/* Header: Link + mũi tên */}
       <button
         onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
+        className="cursor-pointer w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-md">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white shadow-md">
             <HiLink className="w-5 h-5" />
           </div>
           <span className="font-semibold text-gray-900">Link</span>
@@ -72,7 +72,7 @@ export default function LinkSection({
                     onClick={() => window.open(href, '_blank')}
                   >
                     {/* Icon link gradient */}
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white shadow-lg">
                       <HiLink className="w-6 h-6" />
                     </div>
 
@@ -86,7 +86,7 @@ export default function LinkSection({
 
                     {/* Nút "..." hiện đại */}
                     <button
-                      className={`p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10
+                      className={`cursor-pointer p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10
                         ${activeMenuId === link.id ? 'opacity-100 ring-2 ring-purple-500' : 'opacity-0 group-hover:opacity-100'}
                         hover:bg-white hover:scale-110`}
                       onClick={(e) => {

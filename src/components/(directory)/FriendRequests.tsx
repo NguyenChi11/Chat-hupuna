@@ -35,10 +35,10 @@ export default function FriendRequests() {
               </div>
               <p className="text-sm text-gray-600 mt-1">{request.message}</p>
               <div className="flex space-x-2 mt-3">
-                <button className="px-4 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
+                <button className="cursor-pointer px-4 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
                   Từ chối
                 </button>
-                <button className="px-4 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                <button className="cursor-pointer px-4 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
                   Đồng ý
                 </button>
               </div>
@@ -55,7 +55,7 @@ export default function FriendRequests() {
               <img src={request.avatar} alt={request.name} className="w-16 h-16 rounded-full object-cover mb-2" />
               <h3 className="font-medium text-gray-800 text-base">{request.name}</h3>
               <p className="text-xs text-gray-500 mb-4">{request.time}</p>
-              <button className="px-4 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
+              <button className="cursor-pointer px-4 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
                 Thu hồi lời mời
               </button>
             </div>
@@ -64,7 +64,7 @@ export default function FriendRequests() {
       </div>
 
       <div className="text-center mt-auto">
-        <button className="text-blue-500 text-sm font-semibold hover:underline">Xem thêm</button>
+        <button className="cursor-pointer text-blue-500 text-sm font-semibold hover:underline">Xem thêm</button>
       </div>
 
       <div className="mt-6">

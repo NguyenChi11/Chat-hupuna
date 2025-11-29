@@ -35,7 +35,7 @@ export default function ChatHeader({
   const avatarChar = chatName?.trim()?.charAt(0)?.toUpperCase() || (isGroup ? 'N' : 'U');
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+    <div className="flex items-center cursor-pointer justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
       {/* Left: Back + Avatar + Tên */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
         {/* Nút Back (mobile only) */}
@@ -79,7 +79,7 @@ export default function ChatHeader({
         {/* Tên + info */}
         <button
           onClick={onOpenMembers}
-          className="flex-1 min-w-0 text-left hover:bg-gray-50 rounded-xl px-3 py-2 -ml-2 transition-colors"
+          className="flex-1 min-w-0 cursor-pointer text-left hover:bg-gray-50 rounded-xl px-3 py-2 -ml-2 transition-colors"
         >
           <h1 className="font-semibold text-gray-900 truncate text-base">{chatName}</h1>
           <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
@@ -104,7 +104,7 @@ export default function ChatHeader({
             onToggleSearchSidebar();
           }}
           className={`
-            p-2.5 rounded-full transition-all duration-200
+            p-2.5 rounded-full cursor-pointer transition-all duration-200
             ${showSearchSidebar ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-100 text-gray-600'}
           `}
           title="Tìm kiếm tin nhắn"
@@ -119,7 +119,7 @@ export default function ChatHeader({
             onTogglePopup();
           }}
           className={`
-            p-2.5 rounded-full transition-all duration-200 relative
+            p-2.5 rounded-full cursor-pointer transition-all duration-200 relative
             ${showPopup ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-100 text-gray-600'}
           `}
           title="Thông tin trò chuyện"

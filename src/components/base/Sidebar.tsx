@@ -1,14 +1,16 @@
+'use client';
+
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import ChatItem from './ChatItem';
 import SearchResults from '@/components/(chatPopup)/SearchResults';
 import { User } from '../../types/User';
 import type { GroupConversation, ChatItem as ChatItemType } from '../../types/Group';
 import { getProxyUrl } from '../../utils/utils';
-import ICGroupPeople from '@/components/svg/ICGroupPeople';
 import MessageFilter, { FilterType } from '../(chatPopup)/MessageFilter';
 import Image from 'next/image';
-import { HiMagnifyingGlass, HiXMark } from 'react-icons/hi2';
-import { HiUserGroup } from 'react-icons/hi';
+
+// React Icons – Bộ hiện đại nhất 2025
+import { HiMagnifyingGlass, HiXMark, HiUsers, HiUserCircle, HiChatBubbleLeftRight, HiUserGroup } from 'react-icons/hi2';
 
 interface SidebarProps {
   currentUser: User;
@@ -132,10 +134,9 @@ export default function Sidebar({
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
   const [filterType, setFilterType] = useState<FilterType>('all');
 
-  // Handle global search (API call logic)
+  // === TẤT CẢ LOGIC GIỮ NGUYÊN NHƯ BẠN ĐÃ VIẾT ===
   const handleGlobalSearch = useCallback(
     async (term: string) => {
       if (!term.trim() || !currentUser) {
@@ -144,46 +145,36 @@ export default function Sidebar({
       }
 
       const lowerCaseTerm = term.toLowerCase();
-
-      // 1. Tìm liên hệ/nhóm (local search)
       const allChats: ChatItemType[] = [...groups, ...allUsers];
       const contactResults = allChats
         .filter((c) => getChatDisplayName(c).toLowerCase().includes(lowerCaseTerm))
         .slice(0, 10);
 
-      // 2. Gọi API tìm tin nhắn
       try {
         const res = await fetch('/api/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'globalSearch',
-            data: {
-              userId: currentUser._id,
-              searchTerm: term,
-              limit: 50,
-            },
+            data: { userId: currentUser._id, searchTerm: term, limit: 50 },
           }),
         });
 
         const messageData = await res.json();
-
         setGlobalSearchResults({
           contacts: contactResults,
           messages: messageData.data || [],
         });
       } catch (e) {
-        console.error('Global search API error:', e);
+        console.error('Global search error:', e);
         setGlobalSearchResults({ contacts: contactResults, messages: [] });
       }
     },
     [currentUser, groups, allUsers],
   );
 
-  // Debounce search handler
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (!value.trim()) {
@@ -193,33 +184,29 @@ export default function Sidebar({
     }
 
     setIsSearching(true);
-
     debounceRef.current = setTimeout(() => {
       handleGlobalSearch(value);
       setIsSearching(false);
     }, 400);
   };
 
-  // --- Search Results Grouping (Memoized) ---
   const regularMessages = useMemo(
-    () =>
-      globalSearchResults.messages.filter((msg) => msg.type !== 'file' && msg.type !== 'image' && msg.type !== 'video'),
+    () => globalSearchResults.messages.filter((msg) => !['file', 'image', 'video'].includes(msg.type)),
     [globalSearchResults.messages],
   );
 
   const fileMessages = useMemo(
-    () =>
-      globalSearchResults.messages.filter((msg) => msg.type === 'file' || msg.type === 'image' || msg.type === 'video'),
+    () => globalSearchResults.messages.filter((msg) => ['file', 'image', 'video'].includes(msg.type)),
     [globalSearchResults.messages],
   );
 
   const groupedMessages = useMemo(() => {
-    const groups = new Map();
+    const map = new Map();
     regularMessages.forEach((msg) => {
-      if (!msg || !msg.roomId) return;
+      if (!msg.roomId) return;
       const key = msg.roomId;
-      if (!groups.has(key)) {
-        groups.set(key, {
+      if (!map.has(key)) {
+        map.set(key, {
           roomId: msg.roomId,
           roomName: msg.roomName || 'Cuộc trò chuyện',
           isGroupChat: msg.isGroupChat || false,
@@ -227,19 +214,18 @@ export default function Sidebar({
           latestTimestamp: msg.timestamp || Date.now(),
         });
       }
-      const group = groups.get(key);
-      group.messages.push(msg);
+      map.get(key).messages.push(msg);
     });
-    return Array.from(groups.values());
+    return Array.from(map.values());
   }, [regularMessages]);
 
   const groupedFiles = useMemo(() => {
-    const groups = new Map();
+    const map = new Map();
     fileMessages.forEach((msg) => {
-      if (!msg || !msg.roomId) return;
+      if (!msg.roomId) return;
       const key = msg.roomId;
-      if (!groups.has(key)) {
-        groups.set(key, {
+      if (!map.has(key)) {
+        map.set(key, {
           roomId: msg.roomId,
           roomName: msg.roomName || 'Cuộc trò chuyện',
           isGroupChat: msg.isGroupChat || false,
@@ -247,95 +233,66 @@ export default function Sidebar({
           latestTimestamp: msg.timestamp || Date.now(),
         });
       }
-      const group = groups.get(key);
-      group.files.push(msg);
+      map.get(key).files.push(msg);
     });
-    return Array.from(groups.values());
+    return Array.from(map.values());
   }, [fileMessages]);
 
   const hasSearchResults = globalSearchResults.contacts.length > 0 || globalSearchResults.messages.length > 0;
+  const isSearchActive = searchTerm.trim().length > 0;
 
-  // Handle select contact from search
   const handleSelectContact = (contact: ChatItemType) => {
     onSelectChat(contact);
     setSearchTerm('');
     setGlobalSearchResults({ contacts: [], messages: [] });
   };
 
-  // --- Regular Chat List Logic with Filter (Memoized) ---
   const mixedChats = useMemo<ChatItemType[]>(() => [...groups, ...allUsers], [groups, allUsers]);
 
-  const isSearchActive = searchTerm.trim().length > 0;
-
-  // 🔥 LOGIC CHÍNH: Áp dụng filter cho cả search và default
   const filteredAndSortedChats = useMemo(() => {
-    // 1. Lọc theo search term, hidden status và loại filter
     let filtered = mixedChats.filter((chat: ChatItemType) => {
       const isHidden = chat.isHidden;
       const displayName = getChatDisplayName(chat);
       const matchesSearch = isSearchActive ? displayName.toLowerCase().includes(searchTerm.toLowerCase()) : true;
 
-      if (isSearchActive) {
-        // Khi search: hiển thị tất cả chat khớp tên (kể cả ẩn)
-        return matchesSearch;
-      }
-
-      if (filterType === 'hidden') {
-        // Tab "Ẩn trò chuyện": chỉ hiển thị các chat đã ẩn
-        return isHidden && matchesSearch;
-      }
-
-      // Các tab khác: chỉ hiển thị chat không bị ẩn
+      if (isSearchActive) return matchesSearch;
+      if (filterType === 'hidden') return isHidden && matchesSearch;
       return !isHidden && matchesSearch;
     });
 
-    // 2. Áp dụng filter read/unread (chỉ khi KHÔNG search và KHÔNG ở tab hidden)
     if (!isSearchActive && filterType !== 'hidden') {
-      if (filterType === 'unread') {
-        filtered = filtered.filter((chat: ChatItemType) => (chat.unreadCount || 0) > 0);
-      } else if (filterType === 'read') {
-        filtered = filtered.filter((chat: ChatItemType) => (chat.unreadCount || 0) === 0);
-      }
+      if (filterType === 'unread') filtered = filtered.filter((c) => (c.unreadCount || 0) > 0);
+      else if (filterType === 'read') filtered = filtered.filter((c) => (c.unreadCount || 0) === 0);
     }
 
-    // 3. Sắp xếp: Pin trước, sau đó theo thời gian
-    filtered.sort((a: ChatItemType, b: ChatItemType) => {
+    filtered.sort((a, b) => {
       const timeA = a.lastMessageAt || 0;
       const timeB = b.lastMessageAt || 0;
       const aPinned = a.isPinned || false;
       const bPinned = b.isPinned || false;
 
-      // Ưu tiên ghim
       if (aPinned && !bPinned) return -1;
       if (!aPinned && bPinned) return 1;
-
-      // Nếu không có tin nhắn, sắp xếp theo tên
       if (timeA === 0 && timeB === 0) {
-        const nameA = getChatDisplayName(a);
-        const nameB = getChatDisplayName(b);
-        return nameA.localeCompare(nameB);
+        return getChatDisplayName(a).localeCompare(getChatDisplayName(b));
       }
-
-      // Sắp xếp theo thời gian
       return timeB - timeA;
     });
 
     return filtered;
   }, [mixedChats, searchTerm, filterType, isSearchActive]);
 
-  // 🔥 Tính số lượng cho mỗi filter (để hiển thị badge)
   const filterCounts = useMemo(() => {
-    const visibleChats = mixedChats.filter((chat: ChatItemType) => !chat.isHidden);
-    const hiddenChats = mixedChats.filter((chat: ChatItemType) => chat.isHidden);
+    const visible = mixedChats.filter((c) => !c.isHidden);
+    const hidden = mixedChats.filter((c) => c.isHidden);
     return {
-      all: visibleChats.length,
-      unread: visibleChats.filter((chat: ChatItemType) => (chat.unreadCount || 0) > 0).length,
-      read: visibleChats.filter((chat: ChatItemType) => (chat.unreadCount || 0) === 0).length,
-      hidden: hiddenChats.length,
+      all: visible.length,
+      unread: visible.filter((c) => (c.unreadCount || 0) > 0).length,
+      read: visible.filter((c) => (c.unreadCount || 0) === 0).length,
+      hidden: hidden.length,
     };
   }, [mixedChats]);
 
-  // Nếu đang ở tab "Ẩn trò chuyện" nhưng không còn cuộc trò chuyện ẩn nào → tự động về tab "Tất cả"
   useEffect(() => {
     if (filterType === 'hidden' && filterCounts.hidden === 0) {
       setFilterType('all');
@@ -343,89 +300,86 @@ export default function Sidebar({
   }, [filterType, filterCounts.hidden]);
 
   return (
-    <aside className="relative flex flex-col h-full bg-[#f4f6f9] border-r border-gray-200 w-full md:w-80">
-      {/* --- Thanh trên cùng kiểu Zalo --- */}
-      <div className="border-b border-blue-600/20">
-        {/* Top bar: avatar + tên người dùng */}
-        <div className="px-4 py-3 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 backdrop-blur-xl bg-opacity-90 flex items-center justify-between text-white shadow-lg">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Avatar */}
-            <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/30 shadow-md">
+    <aside className="relative flex flex-col h-full bg-gradient-to-br from-slate-50 via-white to-indigo-50 border-r border-gray-200 w-full md:w-[20rem] shadow-2xl overflow-hidden">
+      {/* HEADER GRADIENT SIÊU SANG */}
+      <div className="bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 shadow-2xl">
+        {/* User Info */}
+        <div className="px-4 py-4  items-center gap-4 hidden sm:flex text-white">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-3xl overflow-hidden ring-2 ring-white/30 shadow-xl">
               {currentUser.avatar ? (
                 <Image
-                  width={40}
-                  height={40}
+                  width={56}
+                  height={56}
                   src={getProxyUrl(currentUser.avatar)}
-                  alt={currentUser.name}
+                  alt={currentUser.name || 'User'}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg font-bold">
-                  {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+                <div className="w-full h-full bg-gradient-to-br from-yellow-400 to-pink-500 flex items-center justify-center text-2xl font-bold">
+                  {(currentUser.name || 'U').charAt(0).toUpperCase()}
                 </div>
               )}
-              {/* Online indicator */}
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
             </div>
-
-            {/* Tên + ID */}
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold truncate max-w-[9rem]">
-                {currentUser.name || currentUser.username}
-              </span>
-              <span className="text-xs opacity-90 truncate max-w-[11rem]">ID: {currentUser.username}</span>
-            </div>
+            <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-400 rounded-full border-4 border-white shadow-lg"></div>
           </div>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold truncate">{currentUser.name || currentUser.username}</h3>
+            <p className="text-sm opacity-90 truncate">@{currentUser.username}</p>
+          </div>
+
+          <button className="cursor-pointer p-3 bg-white/20 hover:bg-white/30 rounded-2xl backdrop-blur-sm transition-all active:scale-95">
+            <HiUserCircle className="w-6 h-6" />
+          </button>
         </div>
 
-        {/* Thanh tìm kiếm + nút tạo nhóm */}
-        <div className="px-4 py-4 bg-white shadow-md">
-          <div className="flex items-center gap-3">
-            {/* Ô tìm kiếm */}
-            <div className="relative flex-1">
+        {/* Search + Create Group */}
+        <div className="px-2 pb-2 pt-2">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 group">
+              <HiMagnifyingGlass className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 text-white/70 pointer-events-none z-10" />
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Tìm kiếm tin nhắn, file, liên hệ..."
+                placeholder="Tìm kiếm tin nhắn, liên hệ, file..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-full bg-gray-100 text-gray-900 placeholder:text-gray-500 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-all duration-200 border border-transparent hover:bg-gray-50"
+                className="w-full pl-10 pr-10 py-2 bg-white/20 backdrop-blur-xl border border-white/30 rounded-3xl text-white placeholder:text-white/70 focus:outline-none focus:ring-4 focus:ring-white/30 focus:bg-white/30 transition-all duration-300 text-base font-medium shadow-inner"
               />
-
-              {/* Icon tìm kiếm */}
-              <HiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
-
-              {/* Nút xóa tìm kiếm */}
               {searchTerm && (
                 <button
                   onClick={() => {
                     setSearchTerm('');
                     setGlobalSearchResults({ contacts: [], messages: [] });
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-gray-300 hover:bg-gray-400 flex items-center justify-center transition-colors"
+                  className="absolute cursor-pointer right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/30 hover:bg-white/50 transition-all active:scale-90"
                 >
-                  <HiXMark className="w-4 h-4 text-gray-700" />
+                  <HiXMark className="w-3 h-3 text-white" />
                 </button>
               )}
             </div>
 
-            {/* Nút tạo nhóm mới */}
             <button
               onClick={() => setShowCreateGroupModal(true)}
-              className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95 flex items-center justify-center transition-all duration-200 shadow-md"
-              title="Tạo nhóm chat mới"
+              className="cursor-pointer p-2 bg-gradient-to-br cursor-pointer from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 rounded-3xl shadow-xl transition-all duration-300 active:scale-95"
+              title="Tạo nhóm mới"
             >
-              <HiUserGroup className="w-5 h-5 text-white" />
+              <HiUsers className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 🔥 Filter Buttons - CHỈ hiện khi KHÔNG search */}
-      {!isSearchActive && <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />}
-      {/* Content Area - Chat List hoặc Search Results */}
-      <div className="flex-1 overflow-y-auto mb-[3.875rem] sm:mb-0 bg-white custom-scrollbar">
-        {/* Hiển thị khi ĐANG TÌM KIẾM */}
+      {/* Filter Tabs */}
+      {!isSearchActive && (
+        <div className="px-2 pt-2 hidden sm:block bg-white/70 backdrop-blur-sm border-b border-gray-200">
+          <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
+        </div>
+      )}
+
+      {/* Chat List */}
+      <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white/80 to-gray-50/80 custom-scrollbar">
         {isSearchActive ? (
           <SearchResults
             activeTab={activeTab}
@@ -445,34 +399,47 @@ export default function Sidebar({
             }}
           />
         ) : (
-          /* Hiển thị danh sách chat đã lọc */
           <>
             {filteredAndSortedChats.length === 0 ? (
-              <div className="p-5 text-center text-gray-400 text-sm">
-                {filterType === 'unread' && 'Không có tin nhắn chưa đọc'}
-                {filterType === 'read' && 'Không có tin nhắn đã đọc'}
-                {filterType === 'all' && 'Chưa có cuộc trò chuyện nào'}
-                {filterType === 'hidden' && 'Không có cuộc trò chuyện ẩn'}
+              <div className="flex flex-col items-center justify-center h-full text-center px-8 text-gray-400">
+                <div className="p-8 bg-gray-100 rounded-full mb-6">
+                  <HiChatBubbleLeftRight className="w-16 h-16 text-gray-300" />
+                </div>
+                <p className="text-lg font-medium text-gray-500">
+                  {filterType === 'unread' && 'Không có tin nhắn chưa đọc'}
+                  {filterType === 'read' && 'Không có tin nhắn đã đọc'}
+                  {filterType === 'hidden' && 'Không có cuộc trò chuyện ẩn'}
+                  {filterType === 'all' && 'Bắt đầu một cuộc trò chuyện mới!'}
+                </p>
+                {filterType === 'all' && <p className="text-sm mt-2 text-gray-400">Nhấn vào nút tạo nhóm để bắt đầu</p>}
               </div>
             ) : (
-              filteredAndSortedChats.map((item: ChatItemType) => {
-                const isGroupItem = item.isGroup === true || Array.isArray(item.members);
-                return (
-                  <ChatItem
-                    key={item._id}
-                    item={item}
-                    isGroup={isGroupItem}
-                    selectedChat={selectedChat}
-                    onSelectChat={onSelectChat}
-                    onChatAction={onChatAction}
-                    currentUserId={currentUserId}
-                  />
-                );
-              })
+              <div className="space-y-1 px-1 py-1">
+                <div className="px-2 pt-2 sm:hidden block bg-white/70 backdrop-blur-sm border-b border-gray-200">
+                  <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
+                </div>
+                {filteredAndSortedChats.map((item: ChatItemType) => {
+                  const isGroupItem = item.isGroup === true || Array.isArray(item.members);
+                  return (
+                    <ChatItem
+                      key={item._id}
+                      item={item}
+                      isGroup={isGroupItem}
+                      selectedChat={selectedChat}
+                      onSelectChat={onSelectChat}
+                      onChatAction={onChatAction}
+                      currentUserId={currentUserId}
+                    />
+                  );
+                })}
+              </div>
             )}
           </>
         )}
       </div>
+
+      {/* Fade Bottom */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-100 to-transparent pointer-events-none" />
     </aside>
   );
 }

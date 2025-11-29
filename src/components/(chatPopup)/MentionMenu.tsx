@@ -42,7 +42,7 @@ export default function MentionMenu({
           <button
             key={userId}
             onClick={() => onSelectMention(user)}
-            className={`w-full flex items-center gap-3 p-3 hover:bg-blue-50 transition-colors ${
+            className={`w-full flex cursor-pointer items-center gap-3 p-3 hover:bg-blue-50 transition-colors ${
               index === selectedMentionIndex ? 'bg-blue-100' : ''
             }`}
           >

@@ -120,11 +120,11 @@ export default function MiniHome() {
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700"
+                  className="px-3 cursor-pointer py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700"
                 >
                   Đăng xuất
                 </button>
-                <Link href="/" className="px-3 py-2 rounded-lg text-sm bg-gray-200 text-gray-800">
+                <Link href="/" className="px-3 cursor-pointer py-2 rounded-lg text-sm bg-gray-200 text-gray-800">
                   Về trang chính
                 </Link>
               </div>
@@ -153,14 +153,14 @@ export default function MiniHome() {
                 <button
                   onClick={handleRegister}
                   disabled={authLoading}
-                  className={`px-3 py-2 rounded-lg text-sm text-white ${authLoading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`px-3 cursor-pointer py-2 rounded-lg text-sm text-white ${authLoading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                 >
                   {authLoading ? 'Đang xử lý...' : 'Đăng ký mới'}
                 </button>
                 <button
                   onClick={handleLogin}
                   disabled={authLoading}
-                  className={`px-3 py-2 rounded-lg text-sm text-white ${authLoading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  className={`px-3 cursor-pointer py-2 rounded-lg text-sm text-white ${authLoading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                 >
                   {authLoading ? 'Đang xử lý...' : 'Đăng nhập'}
                 </button>
@@ -168,7 +168,7 @@ export default function MiniHome() {
               <button
                 onClick={handleIssueSSO}
                 disabled={issuing}
-                className={`px-3 py-2 rounded-lg text-sm text-white ${issuing ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                className={`px-3 cursor-pointer py-2 rounded-lg text-sm text-white ${issuing ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {issuing ? 'Đang lấy link...' : 'Đăng nhập bằng SSO'}
               </button>

@@ -57,7 +57,7 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose }:
             {/* Nút đóng */}
             <button
               onClick={onClose}
-              className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 border border-white/20 transition-all duration-200 active:scale-95 shadow-lg"
+              className="p-3 rounded-full cursor-pointer bg-white/10 backdrop-blur-md hover:bg-white/20 border border-white/20 transition-all duration-200 active:scale-95 shadow-lg"
               title="Đóng"
             >
               <HiX className="w-6 h-6 sm:w-7 sm:h-7" />
