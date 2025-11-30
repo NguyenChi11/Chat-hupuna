@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User } from '../../types/User';
 import { useToast } from './toast';
 import { getProxyUrl } from '../../utils/utils';
@@ -35,6 +35,21 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deptOpen, setDeptOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [backgroundUrl, setBackgroundUrl] = useState<string | undefined>(
+    typeof (user as Record<string, unknown>)['background'] === 'string'
+      ? String((user as Record<string, unknown>)['background'])
+      : undefined,
+  );
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('info_user') : null;
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const bg = typeof parsed['background'] === 'string' ? (parsed['background'] as string) : undefined;
+      if (bg) setBackgroundUrl(bg);
+    } catch {}
+  }, []);
 
   const departmentOptions = [
     { value: '101', label: 'Kinh doanh' },
@@ -52,7 +67,13 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
 
   const [editForm, setEditForm] = useState({
     name: String(user.name || ''),
+    phone: String((user as Record<string, unknown>)['phone'] || ''),
+    gender: String((user as Record<string, unknown>)['gender'] || ''),
+    birthday: String((user as Record<string, unknown>)['birthday'] || ''),
+    email: String((user as Record<string, unknown>)['email'] || ''),
+    address: String((user as Record<string, unknown>)['address'] || ''),
     department: user.department !== undefined && user.department !== null ? String(user.department) : '',
+    title: String((user as Record<string, unknown>)['title'] || ''),
     status: user.status !== undefined && user.status !== null ? String(user.status) : '',
   });
 
@@ -68,6 +89,9 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
 
   const displayName = user.name || user.username || 'Tài khoản của tôi';
   const displayId = user.username || user._id;
+  const profilePath = `/profile/${displayId}`;
+  const profileUrl =
+    typeof window !== 'undefined' && window.location?.origin ? `${window.location.origin}${profilePath}` : profilePath;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,7 +185,15 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
       const departmentValue = editForm.department.trim() ? Number(editForm.department.trim()) : undefined;
       const statusValue = editForm.status.trim() ? Number(editForm.status.trim()) : undefined;
 
-      const updateData: Record<string, unknown> = { name: editForm.name.trim() };
+      const updateData: Record<string, unknown> = {
+        name: editForm.name.trim(),
+        phone: editForm.phone.trim(),
+        gender: editForm.gender.trim(),
+        birthday: editForm.birthday.trim(),
+        email: editForm.email.trim(),
+        address: editForm.address.trim(),
+        title: editForm.title.trim(),
+      };
       if (departmentValue !== undefined && !isNaN(departmentValue)) updateData.department = departmentValue;
       if (statusValue !== undefined && !isNaN(statusValue)) updateData.status = statusValue;
 
@@ -183,10 +215,19 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
       if (typeof window !== 'undefined') {
         const raw = localStorage.getItem('info_user');
         if (raw) {
-          const parsed = JSON.parse(raw) as User;
-          const updated = { ...parsed, name: editForm.name.trim() };
-          if (departmentValue !== undefined) updated.department = String(departmentValue);
-          if (statusValue !== undefined) updated.status = String(statusValue);
+          const parsed = JSON.parse(raw) as User & Record<string, unknown>;
+          const updated: Record<string, unknown> = {
+            ...parsed,
+            name: editForm.name.trim(),
+            phone: editForm.phone.trim(),
+            gender: editForm.gender.trim(),
+            birthday: editForm.birthday.trim(),
+            email: editForm.email.trim(),
+            address: editForm.address.trim(),
+            title: editForm.title.trim(),
+          };
+          if (departmentValue !== undefined) updated['department'] = String(departmentValue);
+          if (statusValue !== undefined) updated['status'] = String(statusValue);
           localStorage.setItem('info_user', JSON.stringify(updated));
         }
       }
@@ -262,7 +303,6 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
               Cập nhật thông tin
             </h3>
 
-            {/* Tên hiển thị */}
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                 <HiUser className="w-4 h-4 text-indigo-600" />
@@ -277,6 +317,71 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
                   placeholder="Nhập tên của bạn"
                 />
                 <HiUser className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-indigo-500 opacity-70" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Số điện thoại</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                  placeholder="Nhập số điện thoại"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Giới tính</label>
+                <select
+                  value={editForm.gender}
+                  onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                >
+                  <option value="">Chọn giới tính</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Ngày sinh</label>
+                <input
+                  type="date"
+                  value={editForm.birthday}
+                  onChange={(e) => setEditForm({ ...editForm, birthday: e.target.value })}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                  placeholder="Nhập email"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Địa chỉ</label>
+                <input
+                  type="text"
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                  placeholder="Nhập địa chỉ"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Chức vụ</label>
+                <input
+                  type="text"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-3xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300"
+                  placeholder="Nhập chức vụ"
+                />
               </div>
             </div>
 
@@ -505,9 +610,85 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
                   </div>
                 </div>
               )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Số điện thoại</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {String((user as Record<string, unknown>)['phone'] || '')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Giới tính</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {String((user as Record<string, unknown>)['gender'] || '')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Ngày sinh</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {String((user as Record<string, unknown>)['birthday'] || '')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {String((user as Record<string, unknown>)['email'] || '')}
+                    </p>
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Địa chỉ</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {String((user as Record<string, unknown>)['address'] || '')}
+                    </p>
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Chức vụ</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {String((user as Record<string, unknown>)['title'] || '')}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="mt-8 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(profileUrl);
+                      toast({ type: 'success', message: 'Đã sao chép link hồ sơ', duration: 2000 });
+                    } catch {
+                      toast({ type: 'error', message: 'Không sao chép được link', duration: 2500 });
+                    }
+                  }}
+                  className="w-full cursor-pointer py-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold text-base rounded-2xl shadow-lg transition-all active:scale-98"
+                >
+                  Sao chép link hồ sơ
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      window.open(profilePath, '_blank');
+                    } catch {}
+                  }}
+                  className="w-full cursor-pointer py-4 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-bold text-base rounded-2xl shadow-lg transition-all active:scale-98"
+                >
+                  Xem hồ sơ
+                </button>
+              </div>
               <button
                 onClick={() => setViewMode('editInfo')}
                 className="w-full cursor-pointer py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-lg rounded-3xl shadow-xl transition-all active:scale-98 flex items-center justify-center gap-3"
@@ -542,11 +723,16 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl h-[80vh]  overflow-auto relative"
+        className="w-full max-w-lg bg-white rounded-3xl shadow-2xl h-[80vh] overflow-auto no-scrollbar relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Gradient Header */}
-        <div className="h-40 bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 relative">
+        {/* Header với nền động */}
+        <div className="h-40 relative">
+          {backgroundUrl ? (
+            <Image src={getProxyUrl(backgroundUrl)} alt="background" fill className="object-cover" sizes="100vw" />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500" />
+          )}
           <button
             onClick={onClose}
             className="absolute cursor-pointer top-4 right-4 p-3 bg-white/20 hover:bg-white/30 rounded-full backdrop-blur-sm transition-all active:scale-95"
@@ -555,15 +741,17 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
           </button>
 
           {/* Avatar lớn, nổi bật */}
-          <div className="absolute left-1/2 -bottom-16 -translate-x-1/2">
+          <div className="absolute left-1/2 -bottom-16 -translate-x-1/2 w-28 h-28 rounded-3xl overflow-hidden">
             <label className="group cursor-pointer relative w-32 h-32 rounded-full overflow-hidden ring-8 ring-white shadow-2xl transition-all hover:ring-indigo-300">
-              {user.avatar ? (
+              {user.avatar && !avatarFailed ? (
                 <Image
                   width={128}
                   height={128}
                   src={getProxyUrl(user.avatar)}
                   alt={displayName}
                   className="w-full h-full object-cover"
+                  unoptimized
+                  onError={() => setAvatarFailed(true)}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-5xl font-bold text-white">
@@ -609,6 +797,15 @@ const PopupProfile: React.FC<PopupProfileProps> = ({ isOpen, onClose, user, onAv
           </div>
         )}
       </div>
+      <style jsx>{`
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 };

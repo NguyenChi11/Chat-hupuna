@@ -85,7 +85,7 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
       {/* Trang chưa đăng nhập – Sang trọng như Zalo Premium */}
       {!isAuthed && checked && isProfilePage && (
         <div className="flex-1 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 opacity-90" />
+          <div className="absolute " />
           <div className="relative z-10 w-full max-w-md">
             <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
               <div className="p-10 text-center">

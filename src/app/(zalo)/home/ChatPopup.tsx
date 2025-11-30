@@ -1079,7 +1079,7 @@ export default function ChatWindow({
                 setOpenMember(true);
               } else {
                 const partnerId = getId(selectedChat);
-                if (partnerId) router.push(`/profile?userId=${partnerId}`);
+                if (partnerId) router.push(`/profile/${partnerId}`);
               }
             }}
             showSearchSidebar={showSearchSidebar}
