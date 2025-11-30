@@ -12,6 +12,7 @@ import { FaPlus } from 'react-icons/fa6';
 
 // React Icons – Bộ hiện đại nhất 2025
 import { HiMagnifyingGlass, HiXMark, HiUserCircle, HiChatBubbleLeftRight } from 'react-icons/hi2';
+import { useRouter } from 'next/navigation';
 
 interface SidebarProps {
   currentUser: User;
@@ -136,6 +137,7 @@ export default function Sidebar({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const router = useRouter();
 
   // === TẤT CẢ LOGIC GIỮ NGUYÊN NHƯ BẠN ĐÃ VIẾT ===
   const handleGlobalSearch = useCallback(
@@ -330,7 +332,10 @@ export default function Sidebar({
             <p className="text-sm opacity-90 truncate">@{currentUser.username}</p>
           </div>
 
-          <button className="cursor-pointer p-3 bg-white/20 hover:bg-white/30 rounded-2xl backdrop-blur-sm transition-all active:scale-95">
+          <button
+            onClick={() => router.push(`/profile/${currentUser.username}`)}
+            className="cursor-pointer p-3 bg-white/20 hover:bg-white/30 rounded-2xl backdrop-blur-sm transition-all active:scale-95"
+          >
             <HiUserCircle className="w-6 h-6" />
           </button>
         </div>

@@ -160,7 +160,7 @@ export default function SidebarMenu() {
                 className="px-4 py-3 rounded-t-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white cursor-pointer hover:from-indigo-700 hover:to-purple-700 transition-all"
                 onClick={() => {
                   setOpenMenu({ avatar: false, business: false, cloud: false, submenu: null });
-                  router.push('/profile');
+                  router.push(`/profile/${userInfo.username}`);
                 }}
               >
                 <div className="flex items-center gap-4">

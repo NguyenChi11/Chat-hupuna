@@ -163,7 +163,7 @@ export default function GroupMembersModal({
 
   const handleOpenProfile = (targetUserId: string) => {
     const id = normalizeId(targetUserId);
-    router.push(`/profile?userId=${id}`);
+    router.push(`/profile/${id}`);
   };
 
   const handleOptimisticAddMember = (newUsers: User[]) => {

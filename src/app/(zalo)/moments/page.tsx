@@ -1,9 +1,11 @@
-import React from 'react';
-
 import ComingSoonPage from '@/components/ComingSoonPage';
 
 const page = () => {
-  return <ComingSoonPage />;
+  return (
+    <div>
+      <ComingSoonPage />
+    </div>
+  );
 };
 
 export default page;

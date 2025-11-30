@@ -183,8 +183,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ total: usersWithData.length, data: usersWithData });
       }
 
-      case 'getById':
-        return NextResponse.json(await getRowByIdOrCode<User>(collectionName, { _id: requestId, code }));
+      case 'getById': {
+        const idStr = requestId ? String(requestId) : '';
+        const isObjId = idStr ? ObjectId.isValid(idStr) && idStr.length === 24 : false;
+        const isNumeric = idStr ? !isNaN(Number(idStr)) : false;
+
+        if (isObjId || isNumeric || code) {
+          return NextResponse.json(await getRowByIdOrCode<User>(collectionName, { _id: idStr, code }));
+        }
+
+        if (!idStr) return NextResponse.json(null);
+
+        const result = await getAllRows<User>(collectionName, {
+          filters: { $or: [{ username: idStr }, { _id: idStr }] },
+          limit: 1,
+        });
+        const row = (result.data || [])[0];
+        return NextResponse.json(row ? { rowIndex: 0, row } : null);
+      }
 
       case 'update':
         if (!field || value === undefined) {
