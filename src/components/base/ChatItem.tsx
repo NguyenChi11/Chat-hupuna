@@ -52,14 +52,14 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
   const lastMessage = item.lastMessage || (isGroup ? 'Nhóm mới tạo' : 'Bắt đầu trò chuyện');
   const timeDisplay = formatTimeAgo(item.lastMessageAt);
 
-  // const PRESENCE_THRESHOLD_MS = 5 * 60 * 1000;
-  // const presenceOnline = (() => {
-  //   if (isGroup) return undefined;
-  //   const u = item as User;
-  //   const ls = u.lastSeen ?? null;
-  //   if (ls != null) return Date.now() - ls <= PRESENCE_THRESHOLD_MS;
-  //   return !!u.online;
-  // })();
+  const PRESENCE_THRESHOLD_MS = 5 * 60 * 1000;
+  const presenceOnline = (() => {
+    if (isGroup) return undefined;
+    const u = item as User;
+    const ls = u.lastSeen ?? null;
+    if (ls != null) return Date.now() - ls <= PRESENCE_THRESHOLD_MS;
+    return !!u.online;
+  })();
 
   // Context menu thông minh
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -181,7 +181,10 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
 
             {/* Online indicator (chỉ cá nhân) */}
             {!isGroup && (
-              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-400 rounded-full border-4 border-white shadow-lg" />
+              <div 
+              className={`absolute bottom-0 right-0 w-5
+               h-5 rounded-full border-4 border-white shadow-lg
+                ${presenceOnline ? 'bg-green-400' : 'bg-gray-400'}`} />
             )}
 
             {/* Group icon */}
