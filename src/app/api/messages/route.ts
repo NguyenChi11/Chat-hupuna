@@ -1,6 +1,6 @@
 // src/app/api/messages/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { addRow, deleteByField, getAllRows, getRowByIdOrCode, updateByField, updateMany } from '@/lib/mongoDBCRUD';
+import { addRow, deleteByField, deleteById, getAllRows, getRowByIdOrCode, updateByField, updateMany } from '@/lib/mongoDBCRUD';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { GroupConversation, GroupMemberSchema, MemberInfo } from '@/types/Group';
@@ -178,8 +178,10 @@ export async function POST(req: NextRequest) {
       case 'update': {
         if (!field || value === undefined)
           return NextResponse.json({ error: 'Missing field or value' }, { status: 400 });
-        await updateByField<Message>(collectionName, field, value, data);
-        return NextResponse.json({ success: true });
+        const key = String(field) as keyof Message;
+        const val: string | number = typeof value === 'string' || typeof value === 'number' ? (value as string | number) : String(value);
+        const ok = await updateByField<Message>(collectionName, key, val, data as Partial<Message>);
+        return NextResponse.json({ success: ok });
       }
 
       case 'updateMany': {
@@ -195,8 +197,16 @@ export async function POST(req: NextRequest) {
       case 'delete': {
         if (!field || value === undefined)
           return NextResponse.json({ error: 'Missing field or value' }, { status: 400 });
-        await deleteByField<Message>(collectionName, field, value);
-        return NextResponse.json({ success: true });
+        const isIdField = String(field) === '_id';
+        let ok = false;
+        if (isIdField) {
+          ok = await deleteById(collectionName, String(value));
+        } else {
+          const key = String(field) as keyof Message;
+          const val: string | number = typeof value === 'string' || typeof value === 'number' ? (value as string | number) : String(value);
+          ok = await deleteByField<Message>(collectionName, key, val);
+        }
+        return NextResponse.json({ success: ok });
       }
 
       case 'globalSearch': {

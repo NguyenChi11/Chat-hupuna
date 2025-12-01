@@ -2,7 +2,7 @@ import { User } from '@/types/User';
 
 export const MESSAGES_COLLECTION_NAME = 'Messages';
 
-export type MessageType = 'text' | 'image' | 'file' | 'notify' | 'sticker' | 'video';
+export type MessageType = 'text' | 'image' | 'file' | 'notify' | 'sticker' | 'video' | 'reminder';
 
 export interface Message {
   [key: string]: unknown;
@@ -20,9 +20,13 @@ export interface Message {
   replyToMessageId?: string;
   replyToMessageName?: string;
   isPinned?: boolean;
-  mentions?: string[]; // Array của user IDs được mention
+  mentions?: string[];
   originalContent?: string;
   editedAt?: number;
+  reminderAt?: number;
+  reminderNote?: string;
+  reminderFired?: boolean;
+  reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly';
 }
 export interface MessageCreate {
   [key: string]: unknown;
@@ -40,4 +44,8 @@ export interface MessageCreate {
   isPinned?: boolean;
   originalContent?: string;
   editedAt?: number;
+  reminderAt?: number;
+  reminderNote?: string;
+  reminderFired?: boolean;
+  reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly';
 }

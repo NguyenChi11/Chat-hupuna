@@ -1,12 +1,14 @@
 import React from 'react';
 import { HiClock } from 'react-icons/hi';
-
-export default function ReminderSection() {
+interface ReminderSectionProps {
+  onOpen: () => void;
+}
+export default function ReminderSection({onOpen} :ReminderSectionProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <button
         className="cursor-pointer w-full px-5 py-5 flex items-center gap-4 hover:bg-gray-50 transition-all duration-200 group"
-        // Bạn có thể thêm onClick khi có chức năng thực tế
+        onClick={onOpen}
         title="Xem danh sách nhắc hẹn"
       >
         {/* Icon với gradient + hiệu ứng */}
@@ -24,11 +26,13 @@ export default function ReminderSection() {
 
         {/* Mũi tên chỉ thị */}
         <div className="ml-auto text-gray-400 group-hover:text-amber-600 transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-5 h-5 transition-transform duration-200 `} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
       </button>
     </div>
+    
   );
+    
 }
