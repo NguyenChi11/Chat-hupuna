@@ -38,6 +38,7 @@ import {
   HiBookOpen,
   HiCheck,
 } from 'react-icons/hi';
+import { FaPager } from 'react-icons/fa6';
 
 export default function SidebarMenu() {
   const router = useRouter();
@@ -301,6 +302,12 @@ export default function SidebarMenu() {
             className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${activeItem === 'home' ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
           >
             <HiHome className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => navigate('/moments', 'moments')}
+            className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${activeItem === 'moments' ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
+          >
+            <FaPager className="w-5 h-5" />
           </button>
           <button
             onClick={() => navigate('/directory', 'directory')}
