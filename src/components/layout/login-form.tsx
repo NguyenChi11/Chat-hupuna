@@ -35,19 +35,13 @@ export default function LoginForm() {
       if (result.success) {
         toast({ type: 'success', message: 'Đăng nhập thành công!', duration: 3000 });
 
-        const { _id, username, name, avatar, role, department, status } = result.user as User;
+        const userObj = result.user as User;
 
         if (typeof window !== 'undefined') {
           localStorage.setItem(
             'info_user',
             JSON.stringify({
-              _id,
-              username,
-              name,
-              avatar,
-              role,
-              department,
-              status,
+              ...userObj,
               version: APP_VERSION,
             }),
           );

@@ -10,13 +10,15 @@ import { io } from 'socket.io-client';
 import CreatePollModal from './CreatePollModal';
 import PollDetailModal from './PollDetailModal';
 
-
 interface PollListProps {
   onClose: () => void;
   onRefresh?: () => void;
 }
 
-export default function PollList({ onClose,onRefresh }: PollListProps) {
+export default function PollList({ onClose, onRefresh }: PollListProps) {
+  const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined);
+  const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined) ;
+  const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -63,7 +65,6 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
   }, [openMenuId]);
 
   useEffect(() => {
-    const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
     const socket = io(SOCKET_URL);
     socket.emit('join_room', roomId);
     socket.on('receive_message', (data: Message) => {
@@ -116,7 +117,12 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
       setItems((prev) =>
         prev.map((m) =>
           String(m._id) === String(data._id)
-            ? { ...m, content: data.newContent, editedAt: data.editedAt, originalContent: m.originalContent || m.content }
+            ? {
+                ...m,
+                content: data.newContent,
+                editedAt: data.editedAt,
+                originalContent: m.originalContent || m.content,
+              }
             : m,
         ),
       );
@@ -146,7 +152,6 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
         isPollLocked: false,
       });
       if (createRes?.success) {
-        const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
         const socket = io(SOCKET_URL);
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -195,8 +200,6 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
     setShowCreate(false);
   };
 
-  
-
   const canLock = (item: Message) => {
     const sender = item.sender as User | string;
     const senderId = typeof sender === 'object' && sender ? String(sender._id) : String(sender);
@@ -213,7 +216,6 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
         ? { isPollLocked: true, pollLockedAt: now, editedAt: now, timestamp: now }
         : { isPollLocked: false, editedAt: now, timestamp: now };
       await updateMessageApi(String(item._id), updateData);
-      const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
       const socket = io(SOCKET_URL);
       socket.emit('message_edited', { _id: item._id, roomId, ...updateData });
       if (next) {
@@ -221,7 +223,14 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const endStr = new Date(now).toLocaleString('vi-VN');
         const notifyText = `Đã khóa bình chọn: "${String(item.content || item.pollQuestion || '')}" (kết thúc lúc ${endStr})`;
-        const notifyRes = await createMessageApi({ roomId, sender: String(currentUser._id), type: 'notify', content: notifyText, timestamp: now, replyToMessageId: String(item._id) });
+        const notifyRes = await createMessageApi({
+          roomId,
+          sender: String(currentUser._id),
+          type: 'notify',
+          content: notifyText,
+          timestamp: now,
+          replyToMessageId: String(item._id),
+        });
         if (notifyRes?.success) {
           socket.emit('send_message', {
             roomId,
@@ -241,7 +250,14 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const notifyText = `Đã mở khóa bình chọn: "${String(item.content || item.pollQuestion || '')}"`;
-        const notifyRes = await createMessageApi({ roomId, sender: String(currentUser._id), type: 'notify', content: notifyText, timestamp: now, replyToMessageId: String(item._id) });
+        const notifyRes = await createMessageApi({
+          roomId,
+          sender: String(currentUser._id),
+          type: 'notify',
+          content: notifyText,
+          timestamp: now,
+          replyToMessageId: String(item._id),
+        });
         if (notifyRes?.success) {
           socket.emit('send_message', {
             roomId,
@@ -259,8 +275,8 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
         }
       }
 
-      if(onRefresh){
-        await onRefresh()
+      if (onRefresh) {
+        await onRefresh();
       }
       socket.disconnect();
     } catch {}
@@ -272,7 +288,6 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
     try {
       const now = Date.now();
       await updateMessageApi(String(item._id), { isPinned: next, editedAt: now });
-      const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
       const socket = io(SOCKET_URL);
       socket.emit('message_edited', { _id: item._id, roomId, isPinned: next, editedAt: now });
 
@@ -281,7 +296,14 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
       const who = currentUser.name || 'Ai đó';
       const action = next ? 'đã ghim' : 'đã bỏ ghim';
       const notifyText = `${who} ${action} một bình chọn: "${String(item.content || item.pollQuestion || '')}"`;
-      const notifyRes = await createMessageApi({ roomId, sender: String(currentUser._id), type: 'notify', content: notifyText, timestamp: now, replyToMessageId: String(item._id) });
+      const notifyRes = await createMessageApi({
+        roomId,
+        sender: String(currentUser._id),
+        type: 'notify',
+        content: notifyText,
+        timestamp: now,
+        replyToMessageId: String(item._id),
+      });
       if (notifyRes?.success) {
         socket.emit('send_message', {
           roomId,
@@ -330,11 +352,17 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
           <h2 className="text-lg font-semibold">Danh sách bình chọn</h2>
           <div className="flex items-center gap-2">
             {isGroup && (
-              <button onClick={() => setShowCreate(true)} className="px-3 py-2 cursor-pointer rounded-xl bg-white/20 hover:bg-white/30 transition-all duration-200">
+              <button
+                onClick={() => setShowCreate(true)}
+                className="px-3 py-2 cursor-pointer rounded-xl bg-white/20 hover:bg-white/30 transition-all duration-200"
+              >
                 Tạo
               </button>
             )}
-            <button onClick={onClose} className="p-2 cursor-pointer rounded-full hover:bg-white/20 transition-all duration-200">
+            <button
+              onClick={onClose}
+              className="p-2 cursor-pointer rounded-full hover:bg-white/20 transition-all duration-200"
+            >
               <HiX className="w-5 h-5" />
             </button>
           </div>
@@ -364,8 +392,9 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                           
-                            <p className="text-base font-semibold text-gray-900 break-words truncate">{it.content || it.pollQuestion || 'Bình chọn'}</p>
+                            <p className="text-base font-semibold text-gray-900 break-words truncate">
+                              {it.content || it.pollQuestion || 'Bình chọn'}
+                            </p>
                           </div>
                           <div className="relative flex items-center gap-2">
                             <button
@@ -395,7 +424,9 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
                                 onClick={() => handleEdit(it)}
                                 disabled={false}
                                 className={`w-full cursor-pointer px-4 py-3 rounded-xl border text-left transition-colors ${
-                                  voted ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50 text-gray-800'
+                                  voted
+                                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                    : 'border-gray-200 hover:bg-gray-50 text-gray-800'
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
@@ -406,9 +437,12 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
                             );
                           })}
                         </div>
-                       
+
                         {locked && (
-                          <p className="text-xs text-gray-500 mt-2">Kết thúc lúc {new Date(it.pollLockedAt || it.editedAt || it.timestamp).toLocaleString('vi-VN')}</p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Kết thúc lúc{' '}
+                            {new Date(it.pollLockedAt || it.editedAt || it.timestamp).toLocaleString('vi-VN')}
+                          </p>
                         )}
                         {senderName ? <p className="text-xs text-gray-400 mt-2">Tạo bởi {senderName}</p> : null}
                       </div>
@@ -419,21 +453,31 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
                           else menuRefs.current.delete(itemId);
                         }}
                       >
-                        
-                        
                         {isMenuOpen && (
                           <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-10">
-                            <button onClick={() => handleEdit(it)} className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            <button
+                              onClick={() => handleEdit(it)}
+                              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                            >
                               Xem chi tiết
                             </button>
-                            <button onClick={() => handleEdit(it)} className="w-full px-4 py-2.5 text-left text-sm text-blue-600 hover:bg-blue-50 cursor-pointer">
+                            <button
+                              onClick={() => handleEdit(it)}
+                              className="w-full px-4 py-2.5 text-left text-sm text-blue-600 hover:bg-blue-50 cursor-pointer"
+                            >
                               Chỉnh sửa
                             </button>
-                            <button onClick={() => handleTogglePin(it)} className="w-full px-4 py-2.5 text-left text-sm text-yellow-600 hover:bg-yellow-50 cursor-pointer">
+                            <button
+                              onClick={() => handleTogglePin(it)}
+                              className="w-full px-4 py-2.5 text-left text-sm text-yellow-600 hover:bg-yellow-50 cursor-pointer"
+                            >
                               {it.isPinned ? 'Bỏ ghim' : 'Ghim'}
                             </button>
                             {canLock(it) && (
-                              <button onClick={() => handleToggleLock(it)} className="w-full px-4 py-2.5 text-left text-sm text-indigo-600 hover:bg-indigo-50 cursor-pointer flex items-center gap-2">
+                              <button
+                                onClick={() => handleToggleLock(it)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-indigo-600 hover:bg-indigo-50 cursor-pointer flex items-center gap-2"
+                              >
                                 {locked ? <HiLockClosed className="w-4 h-4" /> : <HiLockOpen className="w-4 h-4" />}
                                 {locked ? 'Mở khóa' : 'Khóa'}
                               </button>

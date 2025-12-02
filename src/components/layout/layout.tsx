@@ -84,7 +84,7 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
 
       {/* Trang chưa đăng nhập – Sang trọng như Zalo Premium */}
       {!isAuthed && checked && isProfilePage && (
-        <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-1/3 flex items-center justify-center p-6">
           <div className="absolute " />
           <div className="relative z-10 w-full max-w-md">
             <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
@@ -142,7 +142,20 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
                 return (
                   <button
                     key={tab.key}
-                    onClick={() => router.push(tab.paths[0])}
+                    onClick={() => {
+                      if (tab.key === 'profile') {
+                        try {
+                          const raw = typeof window !== 'undefined' ? localStorage.getItem('info_user') : null;
+                          const u = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+                          const id = String((u?.['username'] as string) || (u?.['_id'] as string) || '').trim();
+                          router.push(id ? `/profile/${id}` : '/profile');
+                        } catch {
+                          router.push('/profile');
+                        }
+                      } else {
+                        router.push(tab.paths[0]);
+                      }
+                    }}
                     className="cursor-pointer flex-1 py-4 flex flex-col items-center gap-1 relative transition-all duration-300 active:scale-95"
                   >
                     <div className={`relative transition-all duration-300 ${active ? 'scale-125' : 'scale-100'}`}>

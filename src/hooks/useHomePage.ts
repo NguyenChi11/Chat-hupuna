@@ -27,7 +27,9 @@ interface GlobalSearchMessageApi {
   displayRoomName?: string;
 }
 
-const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`; // Đã thống nhất dùng 3001 từ component HomePage
+const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined) ;
+const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined) ;
+const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
 
 export function useHomePage() {
   const router = useRouter();

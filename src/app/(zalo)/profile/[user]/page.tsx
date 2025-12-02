@@ -1,267 +1,242 @@
+// components/(profile)/ProfileInfo.tsx
 'use client';
 
-import ProfileQR from '@/components/(profile)/PorfileQR';
-import { ProfileInfo } from '@/components/(profile)/ProfileInfo';
-import ProfileSettings from '@/components/(profile)/ProfileSettings';
-import Image from 'next/image';
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { getProxyUrl } from '@/utils/utils';
-import ProfileOverview from '@/components/(profile)/ProfileOverview';
+import { useState, useMemo } from 'react';
+import { useParams } from 'next/navigation';
+import { useViewingUser } from '@/hooks/(profile)/useViewingUser';
+import { useUploadImage } from '@/hooks/(profile)/useUploadImage';
+import { useCurrentUser } from '@/hooks/(profile)/useCurrentUser';
+
+import ProfileHeader from '@/components/(profile)/ProfileHeader';
+import ProfileTabs from '@/components/(profile)/ProfileTabs';
+import ProfileContent from '@/components/(profile)/ProfileContent';
+
+import { HiUserCircle, HiQrCode, HiCog6Tooth, HiInformationCircle } from 'react-icons/hi2';
 
 export default function ProfileByIdPage() {
   const params = useParams();
   const viewingId = typeof params?.['user'] === 'string' ? params['user'] : '';
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
-  const [tab, setTab] = useState<'info' | 'qr' | 'settings' | 'profile'>('info');
-  const [overviewData, setOverviewData] = useState({
-    phone: '',
-    gender: '',
-    birthday: '',
-    email: '',
-    address: '',
-    department: '',
-    title: '',
-  });
-  const [displayName, setDisplayName] = useState('');
-  const [displayDept, setDisplayDept] = useState('');
-  const [displayTitle, setDisplayTitle] = useState('');
-  const [avatar, setAvatar] = useState<string | undefined>(undefined);
-  const [background, setBackground] = useState<string | undefined>(undefined);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
-  const handleOverviewData = useCallback(
-    (v: {
-      phone: string;
-      gender: string;
-      birthday: string;
-      email: string;
-      address: string;
-      department: string;
-      title: string;
-    }) => setOverviewData(v),
-    [],
+  const { currentUser, currentId } = useCurrentUser();
+  const isOwner = Boolean(
+    viewingId &&
+      (viewingId === String(currentUser?.['_id'] || '') ||
+        viewingId === String((currentUser?.['username'] as string) || '')),
   );
 
-  const currentUser = useMemo(() => {
-    try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem('info_user') : null;
-      return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  const {
+    overviewData,
+    setOverviewData,
+    displayName,
+    displayDept,
+    displayTitle,
+    avatar,
+    background,
+    setAvatar,
+    setBackground,
+  } = useViewingUser(viewingId, !!isOwner, currentUser);
 
-  const currentId = useMemo(
-    () => String((currentUser?.['username'] as string) || currentUser?.['_id'] || ''),
-    [currentUser],
+  const { handleUpload, isUploadingAvatar, isUploadingBackground } = useUploadImage(
+    currentId,
+    !!isOwner,
+    setAvatar,
+    setBackground,
   );
-  const isOwner = currentId && viewingId && currentId === viewingId;
 
-  useEffect(() => {
-    const fillFrom = (u: Record<string, unknown> | null) => {
-      if (!u) return;
-      setDisplayName(String(u['name'] || ''));
-      setDisplayDept(String(u['department'] || ''));
-      setDisplayTitle(String(u['title'] || ''));
-      setAvatar(typeof u['avatar'] === 'string' ? (u['avatar'] as string) : undefined);
-      setBackground(typeof u['background'] === 'string' ? (u['background'] as string) : undefined);
-      const ov = {
-        phone: String(u['phone'] || ''),
-        gender: String(u['gender'] || ''),
-        birthday: String(u['birthday'] || ''),
-        email: String(u['email'] || ''),
-        address: String(u['address'] || ''),
-        department: String(u['department'] || ''),
-        title: String(u['title'] || ''),
-      };
-      setOverviewData(ov);
-    };
+  const [tabLeft, setTabLeft] = useState<'profile' | 'qr'>('profile');
+  const [tabRight, setTabRight] = useState<'info' | 'settings' | 'qr'>('info');
+  const [tabMobile, setTabMobile] = useState<'profile' | 'qr' | 'info' | 'settings'>('profile');
+  const [mobileModalOpen, setMobileModalOpen] = useState(false);
 
-    if (isOwner) {
-      fillFrom(currentUser as Record<string, unknown> | null);
-      setTab('info');
-      return;
-    }
+  const tabsLeft = isOwner ? ['profile', 'qr'] : [];
+  const tabsRight = isOwner ? ['info', 'settings'] : ['info', 'qr'];
+  const tabsMobile = isOwner ? ['profile', 'qr', 'info', 'settings'] : ['profile', 'qr'];
 
-    const fetchViewingUser = async () => {
-      try {
-        const res = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'getById', _id: viewingId }),
-        });
-        const json = await res.json();
-        const dataArr = Array.isArray(json?.data) ? (json.data as Array<Record<string, unknown>>) : undefined;
-        const userRow = (json?.row as Record<string, unknown> | undefined) || dataArr?.[0];
-        const userObj = (userRow ||
-          (json?.user as Record<string, unknown> | undefined) ||
-          (json as Record<string, unknown>)) as Record<string, unknown> | null;
-        if (userObj) fillFrom(userObj);
-      } catch {}
-    };
-    if (viewingId) void fetchViewingUser();
-  }, [isOwner, currentUser, viewingId, searchParams, router, currentId]);
+  const departmentLabel = useMemo(() => {
+    const opts = [
+      { value: '101', label: 'Kinh doanh' },
+      { value: '102', label: 'Marketing' },
+      { value: '103', label: 'Kỹ thuật' },
+      { value: '104', label: 'Nhân sự' },
+      { value: '105', label: 'Tài chính' },
+    ];
+    const val = String(displayDept || overviewData.department || '');
+    return opts.find((o) => o.value === val)?.label || val || 'Chưa xác định';
+  }, [displayDept, overviewData.department]);
 
-  const handleUpload = async (file: File, kind: 'avatar' | 'background') => {
-    if (!isOwner || !currentId) return;
-    if (!file.type.startsWith('image/')) return;
-    const MAX = 5 * 1024 * 1024;
-    if (file.size > MAX) return;
-    try {
-      if (kind === 'avatar') setIsUploadingAvatar(true);
-      else setIsUploadingBackground(true);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('roomId', kind);
-      formData.append('sender', currentId);
-      formData.append('receiver', '');
-      formData.append('type', 'image');
-      formData.append('folderName', kind === 'avatar' ? 'Avatars' : 'Backgrounds');
-      const uploadRes = await fetch(`/api/upload?uploadId=${kind}_${currentId}`, { method: 'POST', body: formData });
-      const uploadJson = await uploadRes.json();
-      if (!uploadRes.ok || !uploadJson.success || !uploadJson.link) return;
-      const newUrl = uploadJson.link as string;
-      const updateRes = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update',
-          field:
-            currentUser && typeof currentUser['username'] === 'string' && currentUser['username'] ? 'username' : '_id',
-          value: currentId,
-          data: { [kind]: newUrl },
-        }),
-      });
-      const updateJson = await updateRes.json();
-      if (!updateRes.ok || updateJson.error) return;
-      if (kind === 'avatar') setAvatar(newUrl);
-      else setBackground(newUrl);
-      try {
-        const raw = localStorage.getItem('info_user');
-        if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
-          localStorage.setItem('info_user', JSON.stringify({ ...parsed, [kind]: newUrl }));
-        }
-      } catch {}
-    } finally {
-      if (kind === 'avatar') setIsUploadingAvatar(false);
-      else setIsUploadingBackground(false);
+  const getTabIcon = (tab: string) => {
+    switch (tab) {
+      case 'profile':
+        return <HiUserCircle className="w-5 h-5" />;
+      case 'qr':
+        return <HiQrCode className="w-5 h-5" />;
+      case 'info':
+        return <HiInformationCircle className="w-5 h-5" />;
+      case 'settings':
+        return <HiCog6Tooth className="w-5 h-5" />;
+      default:
+        return null;
     }
   };
 
-  const tabs = isOwner ? ['info', 'profile', 'qr', 'settings'] : ['info', 'qr'];
-
   return (
-    <div className="w-full h-screen bg-[#F3F4F6] flex justify-center px-3 py-6 overflow-hidden">
-      <div className="w-full max-w-[700px] bg-white rounded-2xl shadow-md overflow-hidden flex flex-col">
-        <div className="relative h-48 md:h-56 shrink-0 bg-gradient-to-br from-[#1B92FF] to-[#147BCE]">
-          {background && (
-            <Image src={getProxyUrl(background)} alt="background" fill className="object-cover" sizes="100vw" />
-          )}
-          {isOwner && (
-            <label className="absolute right-3 top-3 px-3 py-2 bg-white/80 rounded-lg shadow cursor-pointer">
-              <input
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(f, 'background');
-                  e.currentTarget.value = '';
-                }}
-                disabled={isUploadingBackground}
-              />
-              {isUploadingBackground ? 'Đang tải...' : 'Đổi ảnh nền'}
-            </label>
-          )}
-          <div className="absolute bottom-[-3rem] left-1/2 -translate-x-1/2">
-            <label className="group cursor-pointer relative block">
-              <div className="w-[110px] h-[110px] rounded-full overflow-hidden border-4 border-white shadow-lg">
-                {avatar ? (
-                  <Image
-                    src={getProxyUrl(avatar)}
-                    alt="avatar"
-                    width={110}
-                    height={110}
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-200" />
-                )}
-              </div>
-              {isOwner && (
-                <>
-                  <div
-                    className={`absolute inset-0 flex items-center justify-center text-white transition-opacity ${
-                      isUploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}
-                  >
-                    <span className="px-2 py-1 rounded bg-black/50 text-xs">
-                      {isUploadingAvatar ? 'Đang tải...' : 'Đổi ảnh'}
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleUpload(f, 'avatar');
-                      e.currentTarget.value = '';
-                    }}
-                    disabled={isUploadingAvatar}
-                  />
-                </>
-              )}
-            </label>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
+      {/* ==================== MOBILE (<= md) & TABLET SMALL (<= lg) ==================== */}
+      <div className=" mx-auto md:hidden">
+        <div className="h-[80vh] bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/50">
+          {/* Header */}
+          <ProfileHeader
+            isOwner={!!isOwner}
+            background={background ?? null}
+            avatar={avatar ?? null}
+            handleUpload={handleUpload}
+            isUploadingAvatar={isUploadingAvatar}
+            isUploadingBackground={isUploadingBackground}
+          />
+
+          {/* Info */}
+          <div className="px-6 pt-16 pb-6 text-center">
+            <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              {displayName || 'Hồ sơ'}
+            </h1>
+            {departmentLabel && (
+              <p className="mt-2 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+                {departmentLabel}
+              </p>
+            )}
+            {displayTitle && <p className="mt-1.5 text-sm text-gray-600 font-medium">{displayTitle}</p>}
           </div>
-        </div>
 
-        <div className="mt-16 text-center shrink-0">
-          <h2 className="text-2xl font-semibold text-gray-900">{displayName || 'Hồ sơ'}</h2>
-          {(() => {
-            const departmentOptions = [
-              { value: '101', label: 'Kinh doanh' },
-              { value: '102', label: 'Marketing' },
-              { value: '103', label: 'Kỹ thuật' },
-              { value: '104', label: 'Nhân sự' },
-              { value: '105', label: 'Tài chính' },
-            ];
-            const deptLabel = departmentOptions.find((o) => o.value === String(displayDept))?.label || displayDept;
-            return displayDept ? (
-              <p className="text-gray-500 mt-1 text-sm md:text-base">Phòng ban: {deptLabel}</p>
-            ) : null;
-          })()}
-          {displayTitle && <p className="text-gray-400 mt-1 text-xs md:text-sm">Chức vụ: {displayTitle}</p>}
-        </div>
+          {/* Tabs Mobile → mở nội dung trong popup */}
+          <ProfileTabs
+            tabs={tabsMobile}
+            tab={tabMobile}
+            setTab={(item) => {
+              setTabMobile(item as 'profile' | 'qr' | 'info' | 'settings');
+              setMobileModalOpen(true);
+            }}
+            icon={getTabIcon}
+          />
 
-        <div className="flex mt-6 border-b shrink-0">
-          {tabs.map((item) => (
-            <button
-              key={item}
-              onClick={() => setTab(item as 'info' | 'qr' | 'settings' | 'profile')}
-              className={`flex-1 py-3 text-center capitalize md:text-lg ${
-                tab === item ? 'text-blue-600 font-semibold border-b-2 border-blue-600' : 'text-gray-500'
-              }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+          {/* Ẩn hoàn toàn phần nội dung bên dưới trên mobile; chỉ hiển thị qua popup */}
+          {false && (
+            <div className="h-96 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white">
+              <ProfileContent
+                tab={tabMobile}
+                isOwner={!!isOwner}
+                overviewData={overviewData}
+                handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+              />
+            </div>
+          )}
 
-        <div className="p-5 md:p-8 overflow-y-auto flex-1">
-          {tab === 'info' &&
-            (isOwner ? (
-              <ProfileInfo isOwner={isOwner} onDataChange={handleOverviewData} />
-            ) : (
-              <ProfileOverview data={overviewData} />
-            ))}
-          {tab === 'qr' && <ProfileQR />}
-          {tab === 'settings' && isOwner && <ProfileSettings />}
-          {tab === 'profile' && <ProfileOverview data={overviewData} />}
+          {mobileModalOpen && (
+            <div className="fixed inset-0 z-50">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setMobileModalOpen(false)} />
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b">
+                    <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                      {getTabIcon(tabMobile)}
+                      <span>
+                        {tabMobile === 'profile'
+                          ? 'Hồ sơ'
+                          : tabMobile === 'qr'
+                            ? 'Mã QR'
+                            : tabMobile === 'info'
+                              ? 'Thông tin'
+                              : 'Cài đặt'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setMobileModalOpen(false)}
+                      className="px-3 py-1 text-sm font-medium rounded-lg bg-gray-100 hover:bg-gray-200"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                  <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
+                    <ProfileContent
+                      tab={tabMobile}
+                      isOwner={!!isOwner}
+                      overviewData={overviewData}
+                      handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ==================== DESKTOP / TABLET LARGE (>= lg) ==================== */}
+      <div className="hidden md:flex max-w-7xl mx-auto  max-h-[90vh]">
+        <div className="flex-1 flex gap-6">
+          {/* CỘT TRÁI */}
+          <div className=" w-full max-w-md bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-auto custom-scrollbar border border-white/60">
+            <ProfileHeader
+              isOwner={!!isOwner}
+              background={background ?? null}
+              avatar={avatar ?? null}
+              handleUpload={handleUpload}
+              isUploadingAvatar={isUploadingAvatar}
+              isUploadingBackground={isUploadingBackground}
+            />
+
+            <div className="px-8 pt-20 pb-8 text-center bg-gradient-to-b from-white to-gray-50">
+              <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                {displayName}
+              </h1>
+              {departmentLabel && (
+                <p className="mt-3 text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {departmentLabel}
+                </p>
+              )}
+              {displayTitle && <p className="mt-2 text-base text-gray-600 font-medium">{displayTitle}</p>}
+            </div>
+
+            {/* Tabs trái (chỉ owner) */}
+            {isOwner && (
+              <ProfileTabs
+                tabs={tabsLeft}
+                tab={tabLeft}
+                setTab={(item) => setTabLeft(item as 'profile' | 'qr')}
+                icon={getTabIcon}
+              />
+            )}
+
+            {/* Nội dung trái */}
+            {isOwner && (
+              <div className="h-auto overflow-y-auto bg-gradient-to-br from-gray-50 to-white">
+                <ProfileContent
+                  tab={tabLeft}
+                  isOwner={true}
+                  overviewData={overviewData}
+                  handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* CỘT PHẢI */}
+          <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-auto border border-white/60 custom-scrollbar">
+            <ProfileTabs
+              tabs={tabsRight}
+              tab={tabRight}
+              setTab={(item) => setTabRight(item as 'info' | 'settings' | 'qr')}
+              icon={getTabIcon}
+            />
+
+            <div className="h-full  bg-gradient-to-b from-gray-50/30 to-white">
+              <ProfileContent
+                tab={tabRight}
+                isOwner={!!isOwner}
+                overviewData={overviewData}
+                handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

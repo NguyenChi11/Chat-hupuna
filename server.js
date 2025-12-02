@@ -1,7 +1,7 @@
 // server.js
 import { Server } from 'socket.io';
 
-const io = new Server(process.env.PORT || 3001, {
+const io = new Server(Number(process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || process.env.NEXT_PUBLIC_SERVER_PORT || 3002), {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
@@ -154,6 +154,4 @@ io.on('connection', (socket) => {
     const next = { online: true, lastSeen: Date.now() };
     presence.set(connectedUserId, next);
   });
-
 });
-

@@ -17,7 +17,9 @@ interface PollDetailModalProps {
   onRefresh?: () => void;
 }
 
-const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
+const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined) ;
+const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined) ;
+const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
 
 export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: PollDetailModalProps) {
   const { selectedChat, currentUser, isGroup } = useChatContext();
@@ -496,7 +498,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
                       </div>
 
                       {showVoters && (
-        <div>
+        <div className='flex gap-1'>
           {arr.length === 0 ? (
             <p>Chưa có ai bình chọn</p>
           ) : (

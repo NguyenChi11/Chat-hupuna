@@ -46,7 +46,9 @@ const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408201.png',
 ];
 
-const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
+const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined);
+const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined) ;
+const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
 const SCROLL_BUMP_PX = 80;
 
 interface ChatWindowProps {
@@ -261,7 +263,8 @@ export default function ChatWindow({
             latestAt = srvAt;
           }
         } catch {}
-        const repeat = (latest as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
+        const repeat =
+          (latest as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
         const now2 = Date.now();
         if (latestAt > now2) {
           const newDelay = Math.max(0, latestAt - now2);
@@ -277,7 +280,9 @@ export default function ChatWindow({
               return;
             }
             const latestAt2 = (latest2 as Message & { reminderAt?: number }).reminderAt || latest2.timestamp;
-            const repeat2 = (latest2 as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
+            const repeat2 =
+              (latest2 as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat ||
+              'none';
             const timeStr2 = new Date(latestAt2).toLocaleString('vi-VN');
             try {
               let nextAt2: number | null = null;
@@ -298,7 +303,10 @@ export default function ChatWindow({
               });
               const json2 = await res2.json();
               if (json2?.success) {
-                await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`, String(latest2._id));
+                await sendNotifyMessage(
+                  `Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`,
+                  String(latest2._id),
+                );
                 if (nextAt2) {
                   socketRef.current?.emit('edit_message', {
                     _id: latest2._id,
@@ -904,14 +912,29 @@ export default function ChatWindow({
           if (el) {
             el.scrollTop = el.scrollHeight;
           }
-        }, 0);  
+        }, 0);
       }
     });
 
     // 🔥 LISTENER CHO edit_message
     socketRef.current.on(
       'edit_message',
-      (data: { _id: string; roomId: string; content?: string; editedAt: number; originalContent?: string; reminderAt?: number; reminderNote?: string; pollQuestion?: string; pollOptions?: string[]; pollVotes?: Record<string, string[]>; isPollLocked?: boolean; pollLockedAt?: number; timestamp?: number; isPinned?: boolean }) => {
+      (data: {
+        _id: string;
+        roomId: string;
+        content?: string;
+        editedAt: number;
+        originalContent?: string;
+        reminderAt?: number;
+        reminderNote?: string;
+        pollQuestion?: string;
+        pollOptions?: string[];
+        pollVotes?: Record<string, string[]>;
+        isPollLocked?: boolean;
+        pollLockedAt?: number;
+        timestamp?: number;
+        isPinned?: boolean;
+      }) => {
         if (String(data.roomId) === String(roomId)) {
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
@@ -1024,11 +1047,19 @@ export default function ChatWindow({
                     const res2 = await fetch('/api/messages', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'update', field: '_id', value: latest2._id, data: { reminderFired: true } }),
+                      body: JSON.stringify({
+                        action: 'update',
+                        field: '_id',
+                        value: latest2._id,
+                        data: { reminderFired: true },
+                      }),
                     });
                     const json2 = await res2.json();
                     if (json2?.success) {
-                      await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`, String(latest2._id));
+                      await sendNotifyMessage(
+                        `Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`,
+                        String(latest2._id),
+                      );
                     }
                   } catch {}
                   reminderScheduledIdsRef.current.delete(idStr);
@@ -1042,11 +1073,19 @@ export default function ChatWindow({
                 const res = await fetch('/api/messages', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ action: 'update', field: '_id', value: latest._id, data: { reminderFired: true } }),
+                  body: JSON.stringify({
+                    action: 'update',
+                    field: '_id',
+                    value: latest._id,
+                    data: { reminderFired: true },
+                  }),
                 });
                 const json = await res.json();
                 if (json?.success) {
-                  await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`, String(latest._id));
+                  await sendNotifyMessage(
+                    `Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`,
+                    String(latest._id),
+                  );
                 }
               } catch {}
               reminderScheduledIdsRef.current.delete(idStr);
@@ -1062,14 +1101,22 @@ export default function ChatWindow({
 
     socketRef.current.on(
       'edit_message',
-      (data: { _id: string; roomId: string; newContent?: string; content?: string; editedAt: number; originalContent?: string; timestamp?: number }) => {
+      (data: {
+        _id: string;
+        roomId: string;
+        newContent?: string;
+        content?: string;
+        editedAt: number;
+        originalContent?: string;
+        timestamp?: number;
+      }) => {
         if (String(data.roomId) === String(roomId)) {
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
               String(msg._id) === String(data._id)
                 ? {
                     ...msg,
-                    content: (data.newContent ?? data.content) ?? msg.content,
+                    content: data.newContent ?? data.content ?? msg.content,
                     editedAt: data.editedAt,
                     originalContent: data.originalContent || msg.originalContent || msg.content,
                     timestamp: typeof data.timestamp === 'number' ? data.timestamp : msg.timestamp,
@@ -1092,7 +1139,9 @@ export default function ChatWindow({
 
     socketRef.current.on('message_recalled', (data: { _id: string; roomId: string }) => {
       if (data.roomId === roomId) {
-        setMessages((prevMessages) => prevMessages.map((msg) => (msg._id === data._id ? { ...msg, isRecalled: true } : msg)));
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => (msg._id === data._id ? { ...msg, isRecalled: true } : msg)),
+        );
         const idStr = String(data._id);
         const t = reminderTimersByIdRef.current.get(idStr);
         if (t) {
@@ -1477,6 +1526,7 @@ export default function ChatWindow({
               highlightedMsgId={highlightedMsgId}
               isGroup={isGroup}
               onContextMenu={handleContextMenu}
+              onReplyMessage={handleReplyTo}
               onJumpToMessage={handleJumpToMessage}
               getSenderInfo={getSenderInfo}
               renderMessageContent={renderMessageContent}

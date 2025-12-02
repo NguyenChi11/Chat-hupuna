@@ -54,13 +54,13 @@ export default function EmojiStickerPicker({
           Emoji
         </button>
 
-        <button
+        {/* <button
           className={`flex-1 p-2 sm:p-3 cursor-pointer text-xs sm:text-sm font-medium ${pickerTab === 'sticker' ? 'bg-gray-100 text-blue-600' : 'hover:bg-gray-50'}`}
           onClick={() => setPickerTab('sticker')}
         >
           <Image width={14} height={14} src={IconSticker.src} alt="Sticker" className="inline mr-1 w-[14px] h-[14px]" />
           Sticker
-        </button>
+        </button> */}
       </div>
 
       {/* Emoji / Sticker Content */}

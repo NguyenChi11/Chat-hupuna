@@ -26,6 +26,7 @@ interface MessageListProps {
   highlightedMsgId: string | null;
   isGroup: boolean;
   onContextMenu: (e: React.MouseEvent, msg: Message) => void;
+  onReplyMessage?: (msg: Message) => void;
   onJumpToMessage: (id: string) => void;
   getSenderInfo: (sender: User | string) => SenderInfo;
   renderMessageContent: (content: string, mentionedUserIds?: string[], isMe?: boolean) => React.ReactNode;
@@ -35,7 +36,7 @@ interface MessageListProps {
   editContent?: string;
   setEditContent?: (content: string) => void;
   onSaveEdit?: (id: string, content: string) => void;
-  onRefresh?: () => Promise<void>
+  onRefresh?: () => Promise<void>;
   onPinMessage?: (msg: Message) => void;
 }
 
@@ -48,6 +49,7 @@ export default function MessageList({
   highlightedMsgId,
   isGroup,
   onContextMenu,
+  onReplyMessage,
   onJumpToMessage,
   getSenderInfo,
   renderMessageContent,
@@ -58,7 +60,7 @@ export default function MessageList({
   setEditContent,
   onSaveEdit,
   onRefresh,
-  onPinMessage
+  onPinMessage,
 }: MessageListProps) {
   const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
   const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export default function MessageList({
         <React.Fragment key={dateKey}>
           {/* Date row */}
           <div className="flex justify-center my-4 sticky top-1 z-10">
-            <span className="px-4 py-1 text-xs font-medium text-gray-600 bg-white/90 rounded-full shadow">
+            <span className="px-4 py-1 text-xs font-medium text-gray-600 bg-gray-50/90 rounded-full shadow">
               {dateKey}
             </span>
           </div>
@@ -123,7 +125,9 @@ export default function MessageList({
               }
               const pillNode = (
                 <div key={`pill-${msg._id}`} id={`msg-${msg._id}`} className="flex justify-center my-3">
-                  <div className={`px-4 py-1.5 rounded-full max-w-[80vw] sm:max-w-[28rem] overflow-hidden ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}>
+                  <div
+                    className={`px-4 py-1.5 rounded-full max-w-[80vw] sm:max-w-[28rem] overflow-hidden ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}
+                  >
                     <p className="text-xs text-gray-500 truncate">{display}</p>
                   </div>
                 </div>
@@ -147,10 +151,15 @@ export default function MessageList({
                         <span className="text-sm">{new Date(at).toLocaleString('vi-VN')}</span>
                       </div>
                       {(related as Message & { reminderNote?: string }).reminderNote ? (
-                        <p className="text-sm text-gray-700 truncate">{(related as Message & { reminderNote?: string }).reminderNote as string}</p>
+                        <p className="text-sm text-gray-700 truncate">
+                          {(related as Message & { reminderNote?: string }).reminderNote as string}
+                        </p>
                       ) : null}
                       <div className="pt-1">
-                        <button onClick={() => setDetailMsg(related)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
+                        <button
+                          onClick={() => setDetailMsg(related)}
+                          className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm"
+                        >
                           Xem chi tiết
                         </button>
                       </div>
@@ -158,34 +167,34 @@ export default function MessageList({
                   </div>
                 );
                 return (
-                  <>
+                  <React.Fragment key={`notify-${msg._id}-due`}>
                     {pillNode}
                     {cardNode}
-                  </>
+                  </React.Fragment>
                 );
               }
               if (related?.type === 'reminder' && (isCreate || isEdit || isDelete)) {
                 return (
-                  <>
+                  <React.Fragment key={`notify-${msg._id}-reminder`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
                       <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline">
                         Xem thêm
                       </button>
                     </div>
-                  </>
+                  </React.Fragment>
                 );
               }
               if (related?.type === 'poll') {
                 return (
-                  <>
+                  <React.Fragment key={`notify-${msg._id}-poll`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
                       <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline">
                         Xem
                       </button>
                     </div>
-                  </>
+                  </React.Fragment>
                 );
               }
               return pillNode;
@@ -198,29 +207,36 @@ export default function MessageList({
               }
               return (
                 <div key={msg._id} id={`msg-${msg._id}`} className="flex justify-center my-3">
-                  <div className={`px-4 py-1.5 rounded-full ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}>
-                     <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
-                       <div className="flex items-center gap-2 min-w-0 text-red-500">
-                         <HiOutlineClock className="w-5 h-5" />
-                         <span className="font-semibold truncate">{msg.content || ''}</span>
-                       </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <HiOutlineClock className="w-4 h-4" />
-                          <span className="text-sm">
-                            {new Date((msg as Message & { reminderAt?: number }).reminderAt || msg.timestamp).toLocaleString('vi-VN')}
-                          </span>
-                        </div>
-                        {(msg as Message & { reminderNote?: string }).reminderNote ? (
-                          <p className="text-sm text-gray-700 truncate">
-                            {(msg as Message & { reminderNote?: string }).reminderNote as string}
-                          </p>
-                        ) : null}
-                        <div className="pt-1">
-                          <button onClick={() => setDetailMsg(msg)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
-                            Xem chi tiết
-                          </button>
-                        </div>
+                  <div
+                    className={`px-4 py-1.5 rounded-full ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}
+                  >
+                    <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                      <div className="flex items-center gap-2 min-w-0 text-red-500">
+                        <HiOutlineClock className="w-5 h-5" />
+                        <span className="font-semibold truncate">{msg.content || ''}</span>
                       </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <HiOutlineClock className="w-4 h-4" />
+                        <span className="text-sm">
+                          {new Date(
+                            (msg as Message & { reminderAt?: number }).reminderAt || msg.timestamp,
+                          ).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                      {(msg as Message & { reminderNote?: string }).reminderNote ? (
+                        <p className="text-sm text-gray-700 truncate">
+                          {(msg as Message & { reminderNote?: string }).reminderNote as string}
+                        </p>
+                      ) : null}
+                      <div className="pt-1">
+                        <button
+                          onClick={() => setDetailMsg(msg)}
+                          className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm"
+                        >
+                          Xem chi tiết
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -233,32 +249,37 @@ export default function MessageList({
               const locked = !!msg.isPollLocked;
               return (
                 <div key={msg._id} id={`msg-${msg._id}`} className="flex justify-center my-3">
-                  <div className={`w-full max-w-[22rem] p-4 rounded-2xl border shadow-sm ${highlightedMsgId === msg._id ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-200'}`} onClick={() => setDetailMsg(msg)}>
-                    <div className='flex items-center justify-between'>
+                  <div
+                    className={`w-full max-w-[22rem] p-4 rounded-2xl border shadow-sm ${highlightedMsgId === msg._id ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-200'}`}
+                    onClick={() => setDetailMsg(msg)}
+                  >
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                       
-                        <p className="text-base font-semibold text-gray-900 break-words truncate">{msg.content || msg.pollQuestion || 'Bình chọn'}</p>
+                        <p className="text-base font-semibold text-gray-900 break-words truncate">
+                          {msg.content || msg.pollQuestion || 'Bình chọn'}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         {/* {typeof msg.isPinned === 'boolean' && onPinMessage && ( */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onPinMessage?.(msg);
-                            }}
-                            className="px-2 py-1 text-xs font-semibold rounded-lg 
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPinMessage?.(msg);
+                          }}
+                          className="px-2 py-1 text-xs font-semibold rounded-lg 
                              border-blue-200 text-blue-600 hover:bg-blue-50 hover:cursor-pointer"
-                             
-                          >
-                            {msg.isPinned ? 'Bỏ ghim' : 'Ghim'}
-                          </button>
+                        >
+                          {msg.isPinned ? 'Bỏ ghim' : 'Ghim'}
+                        </button>
                         {/* )} */}
                       </div>
-                      
                     </div>
                     {locked && (
-                        <p className="text-xs text-gray-500 mt-2">Kết thúc lúc {new Date(msg.pollLockedAt || msg.editedAt || msg.timestamp).toLocaleString('vi-VN')}</p>
-                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        Kết thúc lúc{' '}
+                        {new Date(msg.pollLockedAt || msg.editedAt || msg.timestamp).toLocaleString('vi-VN')}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">Chọn nhiều phương án</p>
                     <button onClick={() => setDetailMsg(msg)} className="text-xs text-blue-600 hover:underline mt-1">
                       {(() => {
@@ -280,9 +301,14 @@ export default function MessageList({
                         return (
                           <button
                             key={`${String(msg._id)}-${idx}`}
-                            onClick={(e) => { e.stopPropagation(); setDetailMsg(msg); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDetailMsg(msg);
+                            }}
                             className={`w-full cursor-pointer px-4 py-3 rounded-xl border text-left transition-colors ${
-                              voted ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50 text-gray-800'
+                              voted
+                                ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                : 'border-gray-200 hover:bg-gray-50 text-gray-800'
                             }`}
                           >
                             <div className="flex items-center justify-between">
@@ -294,17 +320,20 @@ export default function MessageList({
                       })}
                     </div>
                     <div className="pt-2">
-                      <button onClick={() => setDetailMsg(msg)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
+                      <button
+                        onClick={() => setDetailMsg(msg)}
+                        className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm"
+                      >
                         {locked ? 'Xem lựa chọn' : 'Đổi lựa chọn'}
                       </button>
                     </div>
-                    
+
                     {/* Chỉ cho phép bình chọn trong modal: bỏ thêm lựa chọn inline */}
                   </div>
                 </div>
               );
             }
-                         
+
             const avatarChar = senderInfo.name?.charAt(0).toUpperCase() || '?';
             const senderName = allUsersMap.get(senderInfo._id) || senderInfo.name;
 
@@ -314,6 +343,7 @@ export default function MessageList({
                 id={`msg-${msg._id}`}
                 onContextMenu={(e) => {
                   e.preventDefault();
+                  onReplyMessage?.(msg);
                 }}
                 className={`
                   w-full px-3 sm:max-w-[22rem]
@@ -545,16 +575,12 @@ export default function MessageList({
           })}
         </React.Fragment>
       ))}
-      <ReminderDetailModal
-       isOpen={!!detailMsg}
-        message={detailMsg}
-         onClose={() => setDetailMsg(null)}
-      />
-      <PollDetailModal 
+      <ReminderDetailModal isOpen={!!detailMsg} message={detailMsg} onClose={() => setDetailMsg(null)} />
+      <PollDetailModal
         isOpen={!!detailMsg && detailMsg.type === 'poll'}
-         message={detailMsg && detailMsg.type === 'poll' ? detailMsg : null}
+        message={detailMsg && detailMsg.type === 'poll' ? detailMsg : null}
         onClose={() => setDetailMsg(null)}
-         onRefresh={onRefresh}
+        onRefresh={onRefresh}
       />
     </>
   );

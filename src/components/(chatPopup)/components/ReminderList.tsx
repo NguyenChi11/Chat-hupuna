@@ -17,6 +17,9 @@ interface ReminderListProps {
 }
 
 export default function ReminderList({ onClose }: ReminderListProps) {
+  const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined) ;
+  const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined);
+  const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -33,10 +36,10 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await readMessagesApi(roomId, { 
-        limit: 200, 
-        sortOrder: 'desc', 
-        extraFilters: { type: 'reminder', isRecalled: { $ne: true } } 
+      const res = await readMessagesApi(roomId, {
+        limit: 200,
+        sortOrder: 'desc',
+        extraFilters: { type: 'reminder', isRecalled: { $ne: true } },
       });
       const data = Array.isArray(res.data) ? (res.data as Message[]) : [];
       setItems(data);
@@ -55,7 +58,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!openMenuId) return;
-      
+
       const menuElement = menuRefs.current.get(openMenuId);
       if (menuElement && !menuElement.contains(event.target as Node)) {
         setOpenMenuId(null);
@@ -67,7 +70,6 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   }, [openMenuId]);
 
   useEffect(() => {
-    const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
     const socket = io(SOCKET_URL);
     socket.emit('join_room', roomId);
 
@@ -80,51 +82,55 @@ export default function ReminderList({ onClose }: ReminderListProps) {
       });
     });
 
-    socket.on('message_edited', (data: { 
-      _id: string; 
-      roomId: string; 
-      content: string; 
-      editedAt: number; 
-      originalContent?: string; 
-      reminderAt?: number; 
-      reminderNote?: string 
-    }) => {
-      if (data.roomId !== roomId) return;
-      setItems((prev) => prev.map((m) => 
-        String(m._id) === String(data._id) 
-          ? { 
-              ...m, 
-              content: data.content, 
-              editedAt: data.editedAt, 
-              originalContent: data.originalContent || m.originalContent || m.content, 
-              reminderAt: data.reminderAt ?? m.reminderAt, 
-              reminderNote: data.reminderNote ?? m.reminderNote 
-            } 
-          : m
-      ));
-      void load();
-    });
+    socket.on(
+      'message_edited',
+      (data: {
+        _id: string;
+        roomId: string;
+        content: string;
+        editedAt: number;
+        originalContent?: string;
+        reminderAt?: number;
+        reminderNote?: string;
+      }) => {
+        if (data.roomId !== roomId) return;
+        setItems((prev) =>
+          prev.map((m) =>
+            String(m._id) === String(data._id)
+              ? {
+                  ...m,
+                  content: data.content,
+                  editedAt: data.editedAt,
+                  originalContent: data.originalContent || m.originalContent || m.content,
+                  reminderAt: data.reminderAt ?? m.reminderAt,
+                  reminderNote: data.reminderNote ?? m.reminderNote,
+                }
+              : m,
+          ),
+        );
+        void load();
+      },
+    );
 
-    socket.on('edit_message', (data: { 
-      _id: string; 
-      roomId: string; 
-      newContent: string; 
-      editedAt: number; 
-      originalContent?: string 
-    }) => {
-      if (data.roomId !== roomId) return;
-      setItems((prev) => prev.map((m) => 
-        String(m._id) === String(data._id) 
-          ? { 
-              ...m, 
-              content: data.newContent, 
-              editedAt: data.editedAt, 
-              originalContent: data.originalContent || m.originalContent || m.content 
-            } 
-          : m
-      ));
-      void load();
-    });
+    socket.on(
+      'edit_message',
+      (data: { _id: string; roomId: string; newContent: string; editedAt: number; originalContent?: string }) => {
+        if (data.roomId !== roomId) return;
+        setItems((prev) =>
+          prev.map((m) =>
+            String(m._id) === String(data._id)
+              ? {
+                  ...m,
+                  content: data.newContent,
+                  editedAt: data.editedAt,
+                  originalContent: data.originalContent || m.originalContent || m.content,
+                }
+              : m,
+          ),
+        );
+        void load();
+      },
+    );
 
     socket.on('message_recalled', (data: { _id: string; roomId: string }) => {
       if (data.roomId !== roomId) return;
@@ -143,7 +149,17 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     };
   }, [roomId, load]);
 
-  const handleCreate = async ({ content, dateTime, note, repeat }: { content: string; dateTime: string; note?: string; repeat?: 'none' | 'daily' | 'weekly' | 'monthly' }) => {
+  const handleCreate = async ({
+    content,
+    dateTime,
+    note,
+    repeat,
+  }: {
+    content: string;
+    dateTime: string;
+    note?: string;
+    repeat?: 'none' | 'daily' | 'weekly' | 'monthly';
+  }) => {
     const dt = Date.parse(dateTime);
     if (!content.trim() || Number.isNaN(dt)) {
       alert('Vui lòng nhập đầy đủ thông tin hợp lệ');
@@ -151,20 +167,19 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     }
 
     try {
-    const createRes = await createMessageApi({
-      roomId,
-      sender: String(currentUser._id),
-      type: 'reminder',
-      content: content.trim(),
-      timestamp: Date.now(),
-      reminderAt: dt,
-      reminderNote: note?.trim() || '',
-      reminderFired: false,
-      reminderRepeat: repeat || 'none',
-    });
+      const createRes = await createMessageApi({
+        roomId,
+        sender: String(currentUser._id),
+        type: 'reminder',
+        content: content.trim(),
+        timestamp: Date.now(),
+        reminderAt: dt,
+        reminderNote: note?.trim() || '',
+        reminderFired: false,
+        reminderRepeat: repeat || 'none',
+      });
 
       if (createRes?.success) {
-        const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
         const socket = io(SOCKET_URL);
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -178,17 +193,17 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         };
 
         if (typeof createRes._id === 'string') {
-        socket.emit('send_message', {
-          ...sockBase,
-          _id: createRes._id,
-          type: 'reminder',
-          content: content.trim(),
-          timestamp: Date.now(),
-          reminderAt: dt,
-          reminderNote: note?.trim() || '',
-          reminderFired: false,
-          reminderRepeat: repeat || 'none',
-        });
+          socket.emit('send_message', {
+            ...sockBase,
+            _id: createRes._id,
+            type: 'reminder',
+            content: content.trim(),
+            timestamp: Date.now(),
+            reminderAt: dt,
+            reminderNote: note?.trim() || '',
+            reminderFired: false,
+            reminderRepeat: repeat || 'none',
+          });
         }
 
         const timeStr = new Date(dt).toLocaleString('vi-VN');
@@ -229,7 +244,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
 
     try {
       await deleteMessageApi(String(item._id));
-      const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.PORT || '3001'}`;
+      const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.NEXT_PUBLIC_PORT}`;
       const socket = io(SOCKET_URL);
       socket.emit('message_deleted', { _id: item._id, roomId });
       socket.disconnect();
@@ -268,7 +283,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
-          <div className='space-y-5 p-5 pb-24'>
+          <div className="space-y-5 p-5 pb-24">
             {loading ? (
               <div className="text-center text-gray-500 py-10">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
@@ -300,13 +315,22 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                 const timeStr = new Date(at).toLocaleString('vi-VN');
                 const sender = it.sender as User | string;
                 const senderName = typeof sender === 'object' && sender ? sender.name || '' : '';
-                const repeat = (it as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
-                const repeatLabel = repeat === 'daily' ? 'Hàng ngày' : repeat === 'weekly' ? 'Hàng tuần' : repeat === 'monthly' ? 'Hàng tháng' : 'Không lặp lại';
+                const repeat =
+                  (it as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat ||
+                  'none';
+                const repeatLabel =
+                  repeat === 'daily'
+                    ? 'Hàng ngày'
+                    : repeat === 'weekly'
+                      ? 'Hàng tuần'
+                      : repeat === 'monthly'
+                        ? 'Hàng tháng'
+                        : 'Không lặp lại';
                 const isMenuOpen = openMenuId === itemId;
 
                 return (
-                  <div 
-                    key={itemId} 
+                  <div
+                    key={itemId}
                     className="relative p-4 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -321,16 +345,17 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                             {String(it.reminderNote)}
                           </p>
                         ) : null}
-                        {senderName ? ( 
-                          <p className="text-xs text-gray-400 mt-2">Tạo bởi {senderName}</p>
-                        ) : null}
+                        {senderName ? <p className="text-xs text-gray-400 mt-2">Tạo bởi {senderName}</p> : null}
                       </div>
 
                       {/* 🔥 MENU BUTTON */}
-                      <div className="relative" ref={(el) => {
-                        if (el) menuRefs.current.set(itemId, el);
-                        else menuRefs.current.delete(itemId);
-                      }}>
+                      <div
+                        className="relative"
+                        ref={(el) => {
+                          if (el) menuRefs.current.set(itemId, el);
+                          else menuRefs.current.delete(itemId);
+                        }}
+                      >
                         <button
                           onClick={() => setOpenMenuId(isMenuOpen ? null : itemId)}
                           className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
@@ -348,7 +373,12 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                               className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
                               </svg>
                               Xem chi tiết
                             </button>
@@ -357,7 +387,12 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                               className="w-full px-4 py-2.5 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
                               </svg>
                               Chỉnh sửa
                             </button>
@@ -366,7 +401,12 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                               className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
                               </svg>
                               Xóa
                             </button>
@@ -382,11 +422,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         </div>
       </div>
 
-      <CreateReminderModal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        onCreate={handleCreate}
-      />
+      <CreateReminderModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreate={handleCreate} />
 
       <ReminderDetailModal
         isOpen={!!detailMsg}

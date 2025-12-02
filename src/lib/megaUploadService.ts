@@ -2,9 +2,9 @@
 
 import { Storage } from 'megajs';
 
-const MEGA_EMAIL = process.env.MEGA_EMAIL || 'tuonghue2303@gmail.com';
-const MEGA_PASSWORD = process.env.MEGA_PASSWORD || 'vanhue102';
-const MASTER_FOLDER_NAME = 'Hupuna_chat';
+const MEGA_EMAIL = process.env.MEGA_EMAIL as string;
+const MEGA_PASSWORD = process.env.MEGA_PASSWORD as string;
+const MASTER_FOLDER_NAME = process.env.MASTER_FOLDER_NAME as string;
 
 export async function uploadToMega(
   fileBuffer: Buffer, // 👈 Quay lại dùng Buffer cho ổn định
