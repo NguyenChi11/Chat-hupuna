@@ -25,6 +25,7 @@ interface MessageListProps {
   highlightedMsgId: string | null;
   isGroup: boolean;
   onContextMenu: (e: React.MouseEvent, msg: Message) => void;
+  onReplyMessage?: (msg: Message) => void;
   onJumpToMessage: (id: string) => void;
   getSenderInfo: (sender: User | string) => SenderInfo;
   renderMessageContent: (content: string, mentionedUserIds?: string[], isMe?: boolean) => React.ReactNode;
@@ -45,6 +46,7 @@ export default function MessageList({
   highlightedMsgId,
   isGroup,
   onContextMenu,
+  onReplyMessage,
   onJumpToMessage,
   getSenderInfo,
   renderMessageContent,
@@ -228,9 +230,7 @@ export default function MessageList({
                 id={`msg-${msg._id}`}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-                    onContextMenu(e, msg);
-                  }
+                  onReplyMessage?.(msg);
                 }}
                 className={`
                   w-full px-3 sm:max-w-[22rem]

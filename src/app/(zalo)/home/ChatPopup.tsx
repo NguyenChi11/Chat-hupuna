@@ -1457,6 +1457,7 @@ export default function ChatWindow({
               highlightedMsgId={highlightedMsgId}
               isGroup={isGroup}
               onContextMenu={handleContextMenu}
+              onReplyMessage={handleReplyTo}
               onJumpToMessage={handleJumpToMessage}
               getSenderInfo={getSenderInfo}
               renderMessageContent={renderMessageContent}
