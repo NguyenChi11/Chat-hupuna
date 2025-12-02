@@ -15,6 +15,7 @@ interface PinnedMessagesSectionProps {
   onClosePinnedList: () => void;
   onJumpToMessage: (messageId: string) => void;
   getSenderName: (sender: User | string) => string;
+  onUnpinMessage: (msg: Message) => void;
 }
 
 export default function PinnedMessagesSection({
@@ -24,6 +25,7 @@ export default function PinnedMessagesSection({
   onClosePinnedList,
   onJumpToMessage,
   getSenderName,
+  onUnpinMessage,
 }: PinnedMessagesSectionProps) {
   if (allPinnedMessages.length === 0 && !showPinnedList) return null;
 
@@ -71,6 +73,7 @@ export default function PinnedMessagesSection({
             if (msg.type === 'sticker') return 'Sticker';
             return msg.content || '[Tin nhắn]';
           }}
+          onUnpinMessage={onUnpinMessage}
         />
       )}
     </>

@@ -12,6 +12,7 @@ interface Props {
   onJumpToMessage: (messageId: string) => void;
   onGetSenderName: (sender: string | Message['sender']) => string;
   onGetContentDisplay: (msg: Message) => string;
+  onUnpinMessage: (msg: Message) => void;
 }
 
 export default function PinnedMessageListModal({
@@ -20,6 +21,7 @@ export default function PinnedMessageListModal({
   onJumpToMessage,
   onGetSenderName,
   onGetContentDisplay,
+  onUnpinMessage,
 }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -68,13 +70,24 @@ export default function PinnedMessageListModal({
                   {msg.type === 'poll' ? 'Bình chọn' : msg.type === 'reminder' ? 'Lịch hẹn' : msg.type === 'image' ? 'Ảnh' : msg.type === 'file' ? 'File' : msg.type === 'sticker' ? 'Sticker' : 'Tin nhắn'}
                 </span>
               </div>
-              <span className="text-xs text-gray-500">
-                {new Date(msg.timestamp).toLocaleDateString('vi-VN', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  {new Date(msg.timestamp).toLocaleDateString('vi-VN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnpinMessage(msg);
+                  }}
+                  className="px-2 py-1 text-[12px] rounded-lg border border-red-300 text-red-700 hover:bg-red-50 cursor-pointer"
+                >
+                  Bỏ ghim
+                </button>
+              </div>
             </div>
 
                 {/* Nội dung */}

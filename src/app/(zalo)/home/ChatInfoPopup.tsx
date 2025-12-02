@@ -34,6 +34,7 @@ interface ChatInfoPopupProps {
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroup: boolean) => void;
   reLoad?: () => void;
   onLeftGroup?: () => void;
+  onRefresh?: () => void
 }
 
 export default function ChatInfoPopup({
@@ -47,6 +48,7 @@ export default function ChatInfoPopup({
   onChatAction,
   reLoad,
   onLeftGroup,
+  onRefresh
 }: ChatInfoPopupProps) {
   const { messages, currentUser, allUsers, chatName, isGroup, selectedChat } = useChatContext();
   const [openMember, setOpenMember] = useState(false);
@@ -221,7 +223,7 @@ export default function ChatInfoPopup({
     {isReminderOpen ? (
       <ReminderList onClose={() => setIsReminderOpen(false)} />
     ) : isPollOpen ? (
-      <PollList onClose={() => setIsPollOpen(false)} />
+      <PollList onClose={() => setIsPollOpen(false)} onRefresh={onRefresh}/>
     ) :
       <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
         {/* Header cố định */}

@@ -536,6 +536,14 @@ export default function ChatWindow({
           return newPinnedStatus ? [updatedMsg, ...withoutDup] : withoutDup;
         });
 
+        // 2.2. Bắn socket ngay để cập nhật realtime cho tất cả client
+        socketRef.current?.emit('message_edited', {
+          _id: message._id,
+          roomId,
+          isPinned: newPinnedStatus,
+          editedAt: Date.now(),
+        });
+
         // 🔥 BƯỚC MỚI: GỬI THÔNG BÁO VÀO NHÓM
         const action = newPinnedStatus ? 'đã ghim' : 'đã bỏ ghim';
         const senderName = currentUser.name || 'Một thành viên';
@@ -1444,6 +1452,7 @@ export default function ChatWindow({
             onClosePinnedList={() => setShowPinnedList(false)}
             onJumpToMessage={handleJumpToMessage}
             getSenderName={getSenderName}
+            onUnpinMessage={handlePinMessage}
           />
           {/* Messages Area */}
           <div
@@ -1555,6 +1564,7 @@ export default function ChatWindow({
               onChatAction={onChatAction}
               reLoad={reLoad}
               onLeftGroup={onBackFromChat}
+              onRefresh={fetchMessages}
             />
           </div>
         )}

@@ -13,9 +13,10 @@ import PollDetailModal from './PollDetailModal';
 
 interface PollListProps {
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-export default function PollList({ onClose }: PollListProps) {
+export default function PollList({ onClose,onRefresh }: PollListProps) {
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -257,6 +258,10 @@ export default function PollList({ onClose }: PollListProps) {
           });
         }
       }
+
+      if(onRefresh){
+        await onRefresh()
+      }
       socket.disconnect();
     } catch {}
   };
@@ -365,7 +370,8 @@ export default function PollList({ onClose }: PollListProps) {
                           <div className="relative flex items-center gap-2">
                             <button
                               onClick={() => handleTogglePin(it)}
-                              className="px-2 py-1 text-[12px] rounded-lg border border-yellow-300 text-yellow-700 hover:bg-yellow-100 cursor-pointer"
+                              className="px-2 py-1 text-[12px] rounded-lg
+                               border border-yellow-300 text-yellow-700 hover:bg-yellow-100 cursor-pointer"
                             >
                               {it.isPinned ? 'Bỏ ghim' : 'Ghim'}
                             </button>
