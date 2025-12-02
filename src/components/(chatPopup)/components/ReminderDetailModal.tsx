@@ -44,7 +44,11 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
 
   if (!isOpen || !message) return null;
 
-  const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.PORT}`;
+  const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT ) as string;
+  const SOCKET_HOST =
+    (process.env.NEXT_PUBLIC_DOMAIN as string | undefined) 
+    // ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+  const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
 
   const handleSave = async () => {
     const dt = Date.parse(dateTime);
