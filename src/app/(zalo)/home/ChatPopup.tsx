@@ -300,7 +300,7 @@ export default function ChatWindow({
               if (json2?.success) {
                 await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`, String(latest2._id));
                 if (nextAt2) {
-                  socketRef.current?.emit('message_edited', {
+                  socketRef.current?.emit('edit_message', {
                     _id: latest2._id,
                     roomId,
                     content: latest2.content,
@@ -343,7 +343,7 @@ export default function ChatWindow({
           if (json?.success) {
             await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`, String(latest._id));
             if (nextAt) {
-              socketRef.current?.emit('message_edited', {
+              socketRef.current?.emit('edit_message', {
                 _id: latest._id,
                 roomId,
                 content: latest.content,
@@ -537,7 +537,7 @@ export default function ChatWindow({
         });
 
         // 2.2. Bắn socket ngay để cập nhật realtime cho tất cả client
-        socketRef.current?.emit('message_edited', {
+        socketRef.current?.emit('edit_message', {
           _id: message._id,
           roomId,
           isPinned: newPinnedStatus,
@@ -877,7 +877,7 @@ export default function ChatWindow({
     socketRef.current.emit('join_room', roomId);
 
     socketRef.current.on('receive_message', (data: Message) => {
-      if (data.roomId !== roomId) return;
+      if (String(data.roomId) !== String(roomId)) return;
       setMessages((prev) => {
         const id = String(data._id);
         const exists = prev.some((m) => String(m._id) === id);
@@ -904,18 +904,18 @@ export default function ChatWindow({
           if (el) {
             el.scrollTop = el.scrollHeight;
           }
-        }, 0);
+        }, 0);  
       }
     });
 
-    // 🔥 LISTENER CHO MESSAGE_EDITED
+    // 🔥 LISTENER CHO edit_message
     socketRef.current.on(
-      'message_edited',
+      'edit_message',
       (data: { _id: string; roomId: string; content?: string; editedAt: number; originalContent?: string; reminderAt?: number; reminderNote?: string; pollQuestion?: string; pollOptions?: string[]; pollVotes?: Record<string, string[]>; isPollLocked?: boolean; pollLockedAt?: number; timestamp?: number; isPinned?: boolean }) => {
-        if (data.roomId === roomId) {
+        if (String(data.roomId) === String(roomId)) {
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
-              msg._id === data._id
+              String(msg._id) === String(data._id)
                 ? {
                     ...msg,
                     content: data.content ?? msg.content,
@@ -1062,16 +1062,17 @@ export default function ChatWindow({
 
     socketRef.current.on(
       'edit_message',
-      (data: { _id: string; roomId: string; newContent: string; editedAt: number; originalContent?: string }) => {
-        if (data.roomId === roomId) {
+      (data: { _id: string; roomId: string; newContent?: string; content?: string; editedAt: number; originalContent?: string; timestamp?: number }) => {
+        if (String(data.roomId) === String(roomId)) {
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
-              msg._id === data._id
+              String(msg._id) === String(data._id)
                 ? {
                     ...msg,
-                    content: data.newContent,
+                    content: (data.newContent ?? data.content) ?? msg.content,
                     editedAt: data.editedAt,
                     originalContent: data.originalContent || msg.originalContent || msg.content,
+                    timestamp: typeof data.timestamp === 'number' ? data.timestamp : msg.timestamp,
                   }
                 : msg,
             );

@@ -111,18 +111,28 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         timestamp: now,
       });
       const socket = io(SOCKET_URL);
-      socket.emit('message_edited', {
-        _id: message._id,
-        roomId,
-        content: question.trim(),
-        pollQuestion: question.trim(),
-        pollOptions: cleanOptions,
-        pollVotes: nextVotes,
-        editedAt: now,
-        timestamp: now,
-        originalContent: message.content,
+      socket.once('connect', () => {
+        socket.emit('join_room', roomId);
+        const receiver = isGroup ? null : String((selectedChat as User)._id);
+        const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
+        socket.emit('edit_message', {
+          _id: message._id,
+          roomId,
+          newContent: question.trim(),
+          pollQuestion: question.trim(),
+          pollOptions: cleanOptions,
+          pollVotes: nextVotes,
+          editedAt: now,
+          timestamp: now,
+          originalContent: message.content,
+          sender: String(currentUser._id),
+          senderName: currentUser.name,
+          isGroup,
+          members,
+          receiver,
+        });
+        setTimeout(() => socket.disconnect(), 300);
       });
-      socket.disconnect();
       if (onRefresh) {
         await onRefresh();
       }
@@ -170,45 +180,48 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
       
       // 🔥 EMIT SOCKET EVENT ĐỂ CẬP NHẬT REALTIME
       const socket = io(SOCKET_URL);
-      socket.emit('message_edited', {
-        _id: message._id,
-        roomId,
-        pollVotes: nextVotes,
-        editedAt: now,
-        timestamp: now,
-      });
-      
-      const receiver = isGroup ? null : String((selectedChat as User)._id);
-      const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
-      const who = currentUser.name || 'Ai đó';
-      const opted = selected.join(', ');
-      const notifyText = `${who} đã bình chọn: ${opted} trong bình chọn: "${question}"`;
-      const notifyRes = await createMessageApi({ 
-        roomId, 
-        sender: myId, 
-        type: 'notify', 
-        content: notifyText, 
-        timestamp: now, 
-        replyToMessageId: String(message._id) 
-      });
-      
-      if (notifyRes?.success) {
-        socket.emit('send_message', {
+      socket.once('connect', async () => {
+        socket.emit('join_room', roomId);
+        socket.emit('edit_message', {
+          _id: message._id,
+          roomId,
+          pollVotes: nextVotes,
+          editedAt: now,
+          timestamp: now,
+        });
+
+        const receiver = isGroup ? null : String((selectedChat as User)._id);
+        const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
+        const who = currentUser.name || 'Ai đó';
+        const opted = selected.join(', ');
+        const notifyText = `${who} đã bình chọn: ${opted} trong bình chọn: "${question}"`;
+        const notifyRes = await createMessageApi({
           roomId,
           sender: myId,
-          senderName: currentUser.name,
-          isGroup,
-          receiver,
-          members,
-          _id: notifyRes._id,
           type: 'notify',
           content: notifyText,
           timestamp: now,
           replyToMessageId: String(message._id),
         });
-      }
-      
-      socket.disconnect();
+
+        if (notifyRes?.success) {
+          socket.emit('send_message', {
+            roomId,
+            sender: myId,
+            senderName: currentUser.name,
+            isGroup,
+            receiver,
+            members,
+            _id: notifyRes._id,
+            type: 'notify',
+            content: notifyText,
+            timestamp: now,
+            replyToMessageId: String(message._id),
+          });
+        }
+        setTimeout(() => socket.disconnect(), 300);
+      });
+
 
        if (onRefresh) {
         await onRefresh();
@@ -235,8 +248,11 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
       const now = Date.now();
       await updateMessageApi(String(message._id), { pollOptions: nextOptions, editedAt: now, timestamp: now });
       const socket = io(SOCKET_URL);
-      socket.emit('message_edited', { _id: message._id, roomId, pollOptions: nextOptions, editedAt: now, timestamp: now });
-      socket.disconnect();
+      socket.once('connect', () => {
+        socket.emit('join_room', roomId);
+        socket.emit('edit_message', { _id: message._id, roomId, pollOptions: nextOptions, editedAt: now, timestamp: now });
+        setTimeout(() => socket.disconnect(), 300);
+      });
        if (onRefresh) {
         await onRefresh();
       }
@@ -259,7 +275,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         : { isPollLocked: false, editedAt: now, timestamp: now };
       await updateMessageApi(String(message._id), updateData);
       const socket = io(SOCKET_URL);
-      socket.emit('message_edited', { _id: message._id, roomId, ...updateData });
+      socket.emit('edit_message', { _id: message._id, roomId, ...updateData });
       if (next) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -326,52 +342,52 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
     }
   };
 
-  const handleTogglePin = async () => {
-    if (!message) return;
-    const next = !message.isPinned;
-    setSaving(true);
-    try {
-      const now = Date.now();
-      await updateMessageApi(String(message._id), { isPinned: next, editedAt: now });
-      const socket = io(SOCKET_URL);
-      socket.emit('message_edited', { _id: message._id, roomId, isPinned: next, editedAt: now });
+  // const handleTogglePin = async () => {
+  //   if (!message) return;
+  //   const next = !message.isPinned;
+  //   setSaving(true);
+  //   try {
+  //     const now = Date.now();
+  //     await updateMessageApi(String(message._id), { isPinned: next, editedAt: now });
+  //     const socket = io(SOCKET_URL);
+  //     socket.emit('edit_message', { _id: message._id, roomId, isPinned: next, editedAt: now });
 
-      const receiver = isGroup ? null : String((selectedChat as User)._id);
-      const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
-      const who = currentUser.name || 'Ai đó';
-      const action = next ? 'đã ghim' : 'đã bỏ ghim';
-      const notifyText = `${who} ${action} một bình chọn: "${String(message.content || message.pollQuestion || '')}"`;
-      const notifyRes = await createMessageApi({
-        roomId,
-        sender: String(currentUser._id),
-        type: 'notify',
-        content: notifyText,
-        timestamp: now,
-        replyToMessageId: String(message._id),
-      });
-      if (notifyRes?.success) {
-        socket.emit('send_message', {
-          roomId,
-          sender: String(currentUser._id),
-          senderName: currentUser.name,
-          isGroup,
-          receiver,
-          members: members2,
-          _id: notifyRes._id,
-          type: 'notify',
-          content: notifyText,
-          timestamp: now,
-          replyToMessageId: String(message._id),
-        });
-      }
-      socket.disconnect();
-      if (onRefresh) {
-        await onRefresh();
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
+  //     const receiver = isGroup ? null : String((selectedChat as User)._id);
+  //     const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
+  //     const who = currentUser.name || 'Ai đó';
+  //     const action = next ? 'đã ghim' : 'đã bỏ ghim';
+  //     const notifyText = `${who} ${action} một bình chọn: "${String(message.content || message.pollQuestion || '')}"`;
+  //     const notifyRes = await createMessageApi({
+  //       roomId,
+  //       sender: String(currentUser._id),
+  //       type: 'notify',
+  //       content: notifyText,
+  //       timestamp: now,
+  //       replyToMessageId: String(message._id),
+  //     });
+  //     if (notifyRes?.success) {
+  //       socket.emit('send_message', {
+  //         roomId,
+  //         sender: String(currentUser._id),
+  //         senderName: currentUser.name,
+  //         isGroup,
+  //         receiver,
+  //         members: members2,
+  //         _id: notifyRes._id,
+  //         type: 'notify',
+  //         content: notifyText,
+  //         timestamp: now,
+  //         replyToMessageId: String(message._id),
+  //       });
+  //     }
+  //     socket.disconnect();
+  //     if (onRefresh) {
+  //       await onRefresh();
+  //     }
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   if (!isOpen || !message) return null;
   

@@ -67,14 +67,14 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
     const socket = io(SOCKET_URL);
     socket.emit('join_room', roomId);
     socket.on('receive_message', (data: Message) => {
-      if (data.roomId !== roomId || data.type !== 'poll') return;
+      if (String(data.roomId) !== String(roomId) || data.type !== 'poll') return;
       setItems((prev) => {
         const map = new Map<string, Message>();
         [...prev, data].forEach((m) => map.set(String(m._id), m));
         return Array.from(map.values()).sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
       });
     });
-  socket.on(
+    socket.on(
       'message_edited',
       (data: {
         _id: string;
@@ -89,7 +89,7 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
         timestamp?: number;
         isPinned?: boolean;
       }) => {
-        if (data.roomId !== roomId) return;
+        if (String(data.roomId) !== String(roomId)) return;
         setItems((prev) => {
           const updated = prev.map((m) =>
             String(m._id) === String(data._id)
@@ -112,7 +112,7 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
       },
     );
     socket.on('edit_message', (data: { _id: string; roomId: string; newContent: string; editedAt: number }) => {
-      if (data.roomId !== roomId) return;
+      if (String(data.roomId) !== String(roomId)) return;
       setItems((prev) =>
         prev.map((m) =>
           String(m._id) === String(data._id)
@@ -122,7 +122,7 @@ export default function PollList({ onClose,onRefresh }: PollListProps) {
       );
     });
     socket.on('message_deleted', (data: { _id: string; roomId: string }) => {
-      if (data.roomId !== roomId) return;
+      if (String(data.roomId) !== String(roomId)) return;
       setItems((prev) => prev.filter((m) => String(m._id) !== String(data._id)));
     });
     return () => {

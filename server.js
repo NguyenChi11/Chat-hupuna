@@ -14,11 +14,13 @@ io.on('connection', (socket) => {
   let connectedUserId = null;
 
   socket.on('join_room', (room) => {
-    socket.join(room);
+    const roomId = String(room);
+    socket.join(roomId);
   });
 
   socket.on('send_message', (data) => {
-    socket.to(data.roomId).emit('receive_message', data);
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('receive_message', data);
 
     const isTextLike = data.type === 'text' || data.type === 'notify';
     const lastMessage = `${data.senderName}: ${isTextLike ? (data.content ?? '') : `[${data.type ?? 'Unknown'}]`}`;
@@ -26,27 +28,26 @@ io.on('connection', (socket) => {
 
     if (data.isGroup && data.members) {
       data.members.forEach((memberId) => {
-        const idStr = typeof memberId === 'object' ? memberId._id : memberId;
-        io.to(idStr).emit('update_sidebar', sidebarData);
+        const idRaw = typeof memberId === 'object' ? memberId._id : memberId;
+        io.to(String(idRaw)).emit('update_sidebar', sidebarData);
       });
     } else if (data.receiver) {
-      io.to(data.receiver).emit('update_sidebar', sidebarData);
+      io.to(String(data.receiver)).emit('update_sidebar', sidebarData);
     }
     if (data.sender) {
-      io.to(data.sender).emit('update_sidebar', sidebarData);
+      io.to(String(data.sender)).emit('update_sidebar', sidebarData);
     }
   });
 
   // 🔥 THÊM SOCKET EVENT CHO EDIT MESSAGE
   socket.on('edit_message', (data) => {
-    // Broadcast cho người khác trong room (KHÔNG bao gồm người gửi)
-    socket.to(data.roomId).emit('message_edited', {
+    const payload = {
       _id: data._id,
       roomId: data.roomId,
       content: data.newContent,
       editedAt: data.editedAt,
       originalContent: data.originalContent,
-     pollQuestion: data.pollQuestion,
+      pollQuestion: data.pollQuestion,
       pollOptions: data.pollOptions,
       pollVotes: data.pollVotes,
       isPollLocked: data.isPollLocked,
@@ -58,34 +59,41 @@ io.on('connection', (socket) => {
       reminderFired: data.reminderFired,
       // Timestamp
       timestamp: data.timestamp,
-    });
-
-    // Update Sidebar
-    const sidebarData = {
-      _id: data._id,
-      roomId: data.roomId,
-      sender: data.sender,
-      senderName: data.senderName,
-      content: data.newContent, // ✅ Field đúng
-      lastMessage: `${data.senderName}: ${data.newContent}`,
-      type: 'text',
-      timestamp: data.editedAt || Date.now(),
-      editedAt: data.editedAt,
-      isGroup: data.isGroup,
-      members: data.members,
-      receiver: data.receiver,
+      // other flags
+      isPinned: data.isPinned,
     };
 
-    if (data.isGroup && data.members) {
-      data.members.forEach((memberId) => {
-        const idStr = typeof memberId === 'object' ? memberId._id : memberId;
-        io.to(idStr).emit('update_sidebar', sidebarData);
-      });
-    } else if (data.receiver) {
-      io.to(data.receiver).emit('update_sidebar', sidebarData);
-    }
-    if (data.sender) {
-      io.to(data.sender).emit('update_sidebar', sidebarData);
+    io.in(String(data.roomId)).emit('edit_message', payload);
+    io.in(String(data.roomId)).emit('message_edited', payload);
+
+    // Update Sidebar
+    if (typeof data.newContent === 'string') {
+      const sidebarData = {
+        _id: data._id,
+        roomId: data.roomId,
+        sender: data.sender,
+        senderName: data.senderName,
+        content: data.newContent,
+        lastMessage: `${data.senderName}: ${data.newContent}`,
+        type: 'text',
+        timestamp: data.editedAt || Date.now(),
+        editedAt: data.editedAt,
+        isGroup: data.isGroup,
+        members: data.members,
+        receiver: data.receiver,
+      };
+
+      if (data.isGroup && data.members) {
+        data.members.forEach((memberId) => {
+          const idRaw = typeof memberId === 'object' ? memberId._id : memberId;
+          io.to(String(idRaw)).emit('update_sidebar', sidebarData);
+        });
+      } else if (data.receiver) {
+        io.to(String(data.receiver)).emit('update_sidebar', sidebarData);
+      }
+      if (data.sender) {
+        io.to(String(data.sender)).emit('update_sidebar', sidebarData);
+      }
     }
   });
 

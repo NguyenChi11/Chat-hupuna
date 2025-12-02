@@ -7,7 +7,7 @@ import type { User } from '@/types/User';
 import { isVideoFile, getProxyUrl } from '@/utils/utils';
 
 // Icons
-import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical, HiOutlineClock, HiMapPin } from 'react-icons/hi2';
+import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical, HiOutlineClock } from 'react-icons/hi2';
 import ReminderDetailModal from './components/ReminderDetailModal';
 import PollDetailModal from './components/PollDetailModal';
 
