@@ -111,7 +111,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         timestamp: now,
       });
       const socket = io(SOCKET_URL);
-      socket.once('connect', () => {
+      socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -131,6 +131,31 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
           members,
           receiver,
         });
+        const who = currentUser.name || 'Ai đó';
+        const notifyText = `${who} đã chỉnh sửa bình chọn: "${question.trim()}"`;
+        const notifyRes = await createMessageApi({
+          roomId,
+          sender: String(currentUser._id),
+          type: 'notify',
+          content: notifyText,
+          timestamp: now,
+          replyToMessageId: String(message._id),
+        });
+        if (notifyRes?.success) {
+          socket.emit('send_message', {
+            roomId,
+            sender: String(currentUser._id),
+            senderName: currentUser.name,
+            isGroup,
+            receiver,
+            members,
+            _id: notifyRes._id,
+            type: 'notify',
+            content: notifyText,
+            timestamp: now,
+            replyToMessageId: String(message._id),
+          });
+        }
         setTimeout(() => socket.disconnect(), 300);
       });
       if (onRefresh) {
@@ -248,9 +273,36 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
       const now = Date.now();
       await updateMessageApi(String(message._id), { pollOptions: nextOptions, editedAt: now, timestamp: now });
       const socket = io(SOCKET_URL);
-      socket.once('connect', () => {
+      socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         socket.emit('edit_message', { _id: message._id, roomId, pollOptions: nextOptions, editedAt: now, timestamp: now });
+        const receiver = isGroup ? null : String((selectedChat as User)._id);
+        const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
+        const who = currentUser.name || 'Ai đó';
+        const notifyText = `${who} đã thêm lựa chọn "${text}" trong bình chọn: "${question}"`;
+        const notifyRes = await createMessageApi({
+          roomId,
+          sender: String(currentUser._id),
+          type: 'notify',
+          content: notifyText,
+          timestamp: now,
+          replyToMessageId: String(message._id),
+        });
+        if (notifyRes?.success) {
+          socket.emit('send_message', {
+            roomId,
+            sender: String(currentUser._id),
+            senderName: currentUser.name,
+            isGroup,
+            receiver,
+            members,
+            _id: notifyRes._id,
+            type: 'notify',
+            content: notifyText,
+            timestamp: now,
+            replyToMessageId: String(message._id),
+          });
+        }
         setTimeout(() => socket.disconnect(), 300);
       });
        if (onRefresh) {
