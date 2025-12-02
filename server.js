@@ -1,7 +1,7 @@
 // server.js
 import { Server } from 'socket.io';
 
-const io = new Server(process.env.PORT || 3002, {
+const io = new Server(process.env.NEXT_PUBLIC_SERVER_PORT || 3002, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],

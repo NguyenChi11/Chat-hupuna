@@ -17,6 +17,11 @@ interface ReminderListProps {
 }
 
 export default function ReminderList({ onClose }: ReminderListProps) {
+  const SOCKET_PORT = process.env.NEXT_PUBLIC_SOCKET_PORT as string;
+  const SOCKET_HOST = process.env.NEXT_PUBLIC_DOMAIN as string | undefined;
+  // ??
+  // (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+  const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -67,7 +72,6 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   }, [openMenuId]);
 
   useEffect(() => {
-    const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.NEXT_PUBLIC_SOCKET_PORT}`;
     const socket = io(SOCKET_URL);
     socket.emit('join_room', roomId);
 
@@ -178,7 +182,6 @@ export default function ReminderList({ onClose }: ReminderListProps) {
       });
 
       if (createRes?.success) {
-        const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.NEXT_PUBLIC_SOCKET_PORT}`;
         const socket = io(SOCKET_URL);
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -243,7 +246,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
 
     try {
       await deleteMessageApi(String(item._id));
-      const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.PORT}`;
+      const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.NEXT_PUBLIC_PORT}`;
       const socket = io(SOCKET_URL);
       socket.emit('message_deleted', { _id: item._id, roomId });
       socket.disconnect();
