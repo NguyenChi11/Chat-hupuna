@@ -80,7 +80,7 @@ export default function MessageList({
         <React.Fragment key={dateKey}>
           {/* Date row */}
           <div className="flex justify-center my-4 sticky top-1 z-10">
-            <span className="px-4 py-1 text-xs font-medium text-gray-600 bg-white/90 rounded-full shadow">
+            <span className="px-4 py-1 text-xs font-medium text-gray-600 bg-gray-50/90 rounded-full shadow">
               {dateKey}
             </span>
           </div>
@@ -142,10 +142,15 @@ export default function MessageList({
                         <span className="text-sm">{new Date(at).toLocaleString('vi-VN')}</span>
                       </div>
                       {(related as Message & { reminderNote?: string }).reminderNote ? (
-                        <p className="text-sm text-gray-700 truncate">{(related as Message & { reminderNote?: string }).reminderNote as string}</p>
+                        <p className="text-sm text-gray-700 truncate">
+                          {(related as Message & { reminderNote?: string }).reminderNote as string}
+                        </p>
                       ) : null}
                       <div className="pt-1">
-                        <button onClick={() => setDetailMsg(related)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
+                        <button
+                          onClick={() => setDetailMsg(related)}
+                          className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm"
+                        >
                           Xem chi tiết
                         </button>
                       </div>
@@ -153,22 +158,22 @@ export default function MessageList({
                   </div>
                 );
                 return (
-                  <>
+                  <React.Fragment key={`notify-${msg._id}-due`}>
                     {pillNode}
                     {cardNode}
-                  </>
+                  </React.Fragment>
                 );
               }
               if (related?.type === 'reminder' && (isCreate || isEdit || isDelete)) {
                 return (
-                  <>
+                  <React.Fragment key={`notify-${msg._id}-reminder`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
                       <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline">
                         Xem thêm
                       </button>
                     </div>
-                  </>
+                  </React.Fragment>
                 );
               }
               return pillNode;
@@ -182,33 +187,38 @@ export default function MessageList({
               return (
                 <div key={msg._id} className="flex justify-center my-3">
                   <div className="px-4 py-1.5 bg-gray-100 rounded-full">
-                     <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
-                       <div className="flex items-center gap-2 min-w-0 text-red-500">
-                         <HiOutlineClock className="w-5 h-5" />
-                         <span className="font-semibold truncate">{msg.content || ''}</span>
-                       </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <HiOutlineClock className="w-4 h-4" />
-                          <span className="text-sm">
-                            {new Date((msg as Message & { reminderAt?: number }).reminderAt || msg.timestamp).toLocaleString('vi-VN')}
-                          </span>
-                        </div>
-                        {(msg as Message & { reminderNote?: string }).reminderNote ? (
-                          <p className="text-sm text-gray-700 truncate">
-                            {(msg as Message & { reminderNote?: string }).reminderNote as string}
-                          </p>
-                        ) : null}
-                        <div className="pt-1">
-                          <button onClick={() => setDetailMsg(msg)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
-                            Xem chi tiết
-                          </button>
-                        </div>
+                    <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                      <div className="flex items-center gap-2 min-w-0 text-red-500">
+                        <HiOutlineClock className="w-5 h-5" />
+                        <span className="font-semibold truncate">{msg.content || ''}</span>
                       </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <HiOutlineClock className="w-4 h-4" />
+                        <span className="text-sm">
+                          {new Date(
+                            (msg as Message & { reminderAt?: number }).reminderAt || msg.timestamp,
+                          ).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                      {(msg as Message & { reminderNote?: string }).reminderNote ? (
+                        <p className="text-sm text-gray-700 truncate">
+                          {(msg as Message & { reminderNote?: string }).reminderNote as string}
+                        </p>
+                      ) : null}
+                      <div className="pt-1">
+                        <button
+                          onClick={() => setDetailMsg(msg)}
+                          className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm"
+                        >
+                          Xem chi tiết
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
             }
-                         
+
             const avatarChar = senderInfo.name?.charAt(0).toUpperCase() || '?';
             const senderName = allUsersMap.get(senderInfo._id) || senderInfo.name;
 
@@ -449,11 +459,7 @@ export default function MessageList({
           })}
         </React.Fragment>
       ))}
-      <ReminderDetailModal
-       isOpen={!!detailMsg}
-        message={detailMsg}
-         onClose={() => setDetailMsg(null)}
-      />
+      <ReminderDetailModal isOpen={!!detailMsg} message={detailMsg} onClose={() => setDetailMsg(null)} />
     </>
   );
 }
