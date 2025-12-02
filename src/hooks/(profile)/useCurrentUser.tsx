@@ -13,7 +13,7 @@ export function useCurrentUser() {
   }, []);
 
   const currentId = useMemo(() => {
-    return String((currentUser?.['username'] as string) || currentUser?.['_id'] || '');
+    return String(currentUser?.['_id'] || (currentUser?.['username'] as string) || '');
   }, [currentUser]);
 
   return { currentUser, currentId };

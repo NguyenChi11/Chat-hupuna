@@ -21,7 +21,7 @@ export function useViewingUser(viewingId: string, isOwner: boolean, currentUser:
 
   const fillFrom = useCallback((u: Record<string, unknown> | null) => {
     if (!u) return;
-    setDisplayName(String(u['name'] || ''));
+    setDisplayName(String(u['name'] || u['username'] || ''));
     setDisplayDept(String(u['department'] || ''));
     setDisplayTitle(String(u['title'] || ''));
     setAvatar(typeof u['avatar'] === 'string' ? (u['avatar'] as string) : undefined);

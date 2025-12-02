@@ -320,6 +320,12 @@ export async function POST(req: NextRequest) {
             role: found.role,
             department: found.department,
             status: found.status,
+            phone: found['phone'],
+            gender: found['gender'],
+            birthday: found['birthday'],
+            email: found['email'],
+            address: found['address'],
+            title: found['title'],
           },
         });
 

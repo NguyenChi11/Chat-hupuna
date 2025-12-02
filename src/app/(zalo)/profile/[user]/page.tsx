@@ -1,3 +1,4 @@
+// components/(profile)/ProfileInfo.tsx
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -5,9 +6,12 @@ import { useParams } from 'next/navigation';
 import { useViewingUser } from '@/hooks/(profile)/useViewingUser';
 import { useUploadImage } from '@/hooks/(profile)/useUploadImage';
 import { useCurrentUser } from '@/hooks/(profile)/useCurrentUser';
+
 import ProfileHeader from '@/components/(profile)/ProfileHeader';
 import ProfileTabs from '@/components/(profile)/ProfileTabs';
 import ProfileContent from '@/components/(profile)/ProfileContent';
+
+import { HiUserCircle, HiQrCode, HiCog6Tooth, HiInformationCircle } from 'react-icons/hi2';
 
 export default function ProfileByIdPage() {
   const params = useParams();
@@ -42,6 +46,8 @@ export default function ProfileByIdPage() {
   const [tabLeft, setTabLeft] = useState<'profile' | 'qr'>('profile');
   const [tabRight, setTabRight] = useState<'info' | 'settings' | 'qr'>('info');
   const [tabMobile, setTabMobile] = useState<'profile' | 'qr' | 'info' | 'settings'>('profile');
+  const [mobileModalOpen, setMobileModalOpen] = useState(false);
+
   const tabsLeft = isOwner ? ['profile', 'qr'] : [];
   const tabsRight = isOwner ? ['info', 'settings'] : ['info', 'qr'];
   const tabsMobile = isOwner ? ['profile', 'qr', 'info', 'settings'] : ['profile', 'qr'];
@@ -58,11 +64,27 @@ export default function ProfileByIdPage() {
     return opts.find((o) => o.value === val)?.label || val || 'Chưa xác định';
   }, [displayDept, overviewData.department]);
 
+  const getTabIcon = (tab: string) => {
+    switch (tab) {
+      case 'profile':
+        return <HiUserCircle className="w-5 h-5" />;
+      case 'qr':
+        return <HiQrCode className="w-5 h-5" />;
+      case 'info':
+        return <HiInformationCircle className="w-5 h-5" />;
+      case 'settings':
+        return <HiCog6Tooth className="w-5 h-5" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      {/* Mobile layout: one combined navigation with 4 tabs (owner) or 3 tabs (non-owner) */}
-      <div className="md:hidden w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[80vh] mb-[2rem] sm:mb-0 md:h-[95dvh] md:max-h-[56.25rem]">
-        <div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
+      {/* ==================== MOBILE (<= md) & TABLET SMALL (<= lg) ==================== */}
+      <div className="max-w-lg mx-auto md:hidden">
+        <div className="h-[80vh] bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/50">
+          {/* Header */}
           <ProfileHeader
             isOwner={!!isOwner}
             background={background ?? null}
@@ -71,127 +93,149 @@ export default function ProfileByIdPage() {
             isUploadingAvatar={isUploadingAvatar}
             isUploadingBackground={isUploadingBackground}
           />
-        </div>
 
-        <div className="px-8 pt-20 pb-6 text-center bg-white border-b border-gray-100">
-          <h2 className="text-3xl font-black text-gray-900">{displayName || 'Hồ sơ'}</h2>
-          {departmentLabel && <p className="text-lg font-medium text-indigo-600 mt-2">{departmentLabel}</p>}
-          {displayTitle && <p className="text-sm text-gray-500 mt-1">{displayTitle}</p>}
-        </div>
+          {/* Info */}
+          <div className="px-6 pt-16 pb-6 text-center">
+            <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              {displayName || 'Hồ sơ'}
+            </h1>
+            {departmentLabel && (
+              <p className="mt-2 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+                {departmentLabel}
+              </p>
+            )}
+            {displayTitle && <p className="mt-1.5 text-sm text-gray-600 font-medium">{displayTitle}</p>}
+          </div>
 
-        <ProfileTabs
-          tabs={tabsMobile}
-          tab={tabMobile}
-          setTab={(item: string) => setTabMobile(item as 'profile' | 'qr' | 'info' | 'settings')}
-        />
-
-        <div className="flex-1 h-[24rem] overflow-auto bg-gray-50/50 ">
-          <ProfileContent
+          {/* Tabs Mobile → mở nội dung trong popup */}
+          <ProfileTabs
+            tabs={tabsMobile}
             tab={tabMobile}
-            isOwner={!!isOwner}
-            overviewData={overviewData}
-            handleOverviewData={(data) =>
-              setOverviewData(
-                data as {
-                  phone: string;
-                  gender: string;
-                  birthday: string;
-                  email: string;
-                  address: string;
-                  department: string;
-                  title: string;
-                },
-              )
-            }
+            setTab={(item) => {
+              setTabMobile(item as 'profile' | 'qr' | 'info' | 'settings');
+              setMobileModalOpen(true);
+            }}
+            icon={getTabIcon}
           />
+
+          {/* Ẩn hoàn toàn phần nội dung bên dưới trên mobile; chỉ hiển thị qua popup */}
+          {false && (
+            <div className="h-96 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white">
+              <ProfileContent
+                tab={tabMobile}
+                isOwner={!!isOwner}
+                overviewData={overviewData}
+                handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+              />
+            </div>
+          )}
+
+          {mobileModalOpen && (
+            <div className="fixed inset-0 z-50">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setMobileModalOpen(false)} />
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b">
+                    <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                      {getTabIcon(tabMobile)}
+                      <span>
+                        {tabMobile === 'profile'
+                          ? 'Hồ sơ'
+                          : tabMobile === 'qr'
+                            ? 'Mã QR'
+                            : tabMobile === 'info'
+                              ? 'Thông tin'
+                              : 'Cài đặt'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setMobileModalOpen(false)}
+                      className="px-3 py-1 text-sm font-medium rounded-lg bg-gray-100 hover:bg-gray-200"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                  <div className="max-h-[70vh] overflow-y-auto">
+                    <ProfileContent
+                      tab={tabMobile}
+                      isOwner={!!isOwner}
+                      overviewData={overviewData}
+                      handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Desktop/tablet layout: split into two columns */}
-      <div className="hidden md:flex md:flex-row w-full  bg-white rounded-3xl shadow-2xl overflow-hidden h-[95dvh] max-h-[56.25rem]">
-        <div className="md:w-1/2">
-          <ProfileHeader
-            isOwner={!!isOwner}
-            background={background ?? null}
-            avatar={avatar ?? null}
-            handleUpload={handleUpload}
-            isUploadingAvatar={isUploadingAvatar}
-            isUploadingBackground={isUploadingBackground}
-          />
-
-          {/* Info Section (only owner) */}
-          {isOwner && (
-            <div className="px-8 pt-20 pb-6 text-center bg-white border-b border-gray-100">
-              <h2 className="text-3xl font-black text-gray-900">{displayName || 'Hồ sơ'}</h2>
-              {departmentLabel && <p className="text-lg font-medium text-indigo-600 mt-2">{departmentLabel}</p>}
-              {displayTitle && <p className="text-sm text-gray-500 mt-1">{displayTitle}</p>}
-            </div>
-          )}
-
-          {/* Tabs for Hồ sơ & QR (only owner) */}
-          {isOwner && (
-            <ProfileTabs
-              tabs={tabsLeft}
-              tab={tabLeft}
-              setTab={(item: string) => setTabLeft(item as 'qr' | 'profile')}
+      {/* ==================== DESKTOP / TABLET LARGE (>= lg) ==================== */}
+      <div className="hidden md:flex max-w-7xl mx-auto  max-h-[90vh]">
+        <div className="flex-1 flex gap-6">
+          {/* CỘT TRÁI */}
+          <div className=" w-full max-w-md bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-auto custom-scrollbar border border-white/60">
+            <ProfileHeader
+              isOwner={!!isOwner}
+              background={background ?? null}
+              avatar={avatar ?? null}
+              handleUpload={handleUpload}
+              isUploadingAvatar={isUploadingAvatar}
+              isUploadingBackground={isUploadingBackground}
             />
-          )}
 
-          {/* Content: show only Hồ sơ & QR here (only owner) */}
-          {isOwner && (
-            <div className="flex-1 h-[24rem] overflow-auto bg-gray-50/50">
-              {(tabLeft === 'profile' || tabLeft === 'qr') && (
+            <div className="px-8 pt-20 pb-8 text-center bg-gradient-to-b from-white to-gray-50">
+              <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                {displayName}
+              </h1>
+              {departmentLabel && (
+                <p className="mt-3 text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {departmentLabel}
+                </p>
+              )}
+              {displayTitle && <p className="mt-2 text-base text-gray-600 font-medium">{displayTitle}</p>}
+            </div>
+
+            {/* Tabs trái (chỉ owner) */}
+            {isOwner && (
+              <ProfileTabs
+                tabs={tabsLeft}
+                tab={tabLeft}
+                setTab={(item) => setTabLeft(item as 'profile' | 'qr')}
+                icon={getTabIcon}
+              />
+            )}
+
+            {/* Nội dung trái */}
+            {isOwner && (
+              <div className="h-auto overflow-y-auto bg-gradient-to-br from-gray-50 to-white">
                 <ProfileContent
                   tab={tabLeft}
-                  isOwner={!!isOwner}
+                  isOwner={true}
                   overviewData={overviewData}
-                  handleOverviewData={(data) =>
-                    setOverviewData(
-                      data as {
-                        phone: string;
-                        gender: string;
-                        birthday: string;
-                        email: string;
-                        address: string;
-                        department: string;
-                        title: string;
-                      },
-                    )
-                  }
+                  handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
                 />
-              )}
-            </div>
-          )}
-        </div>
-        <div className="md:w-1/2">
-          <ProfileTabs
-            tabs={tabsRight}
-            tab={tabRight}
-            setTab={(item: string) => setTabRight(item as 'info' | 'settings' | 'qr')}
-          />
+              </div>
+            )}
+          </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto bg-gray-50/50">
-            {(tabRight === 'info' || tabRight === 'settings' || tabRight === 'qr') && (
+          {/* CỘT PHẢI */}
+          <div className="flex-1 bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-auto border border-white/60 custom-scrollbar">
+            <ProfileTabs
+              tabs={tabsRight}
+              tab={tabRight}
+              setTab={(item) => setTabRight(item as 'info' | 'settings' | 'qr')}
+              icon={getTabIcon}
+            />
+
+            <div className="h-full  bg-gradient-to-b from-gray-50/30 to-white">
               <ProfileContent
                 tab={tabRight}
                 isOwner={!!isOwner}
                 overviewData={overviewData}
-                handleOverviewData={(data) =>
-                  setOverviewData(
-                    data as {
-                      phone: string;
-                      gender: string;
-                      birthday: string;
-                      email: string;
-                      address: string;
-                      department: string;
-                      title: string;
-                    },
-                  )
-                }
+                handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
               />
-            )}
+            </div>
           </div>
         </div>
       </div>
