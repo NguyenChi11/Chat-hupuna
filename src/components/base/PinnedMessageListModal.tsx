@@ -61,17 +61,21 @@ export default function PinnedMessageListModal({
                 }}
                 className="group p-4 bg-gradient-to-r from-yellow-50 to-white rounded-xl border border-yellow-200 hover:border-yellow-400 hover:shadow-md cursor-pointer transition-all duration-200"
               >
-                {/* Người gửi + ngày */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-yellow-800 text-sm">{onGetSenderName(msg.sender)}</span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(msg.timestamp).toLocaleDateString('vi-VN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-yellow-800 text-sm">{onGetSenderName(msg.sender)}</span>
+                <span className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${msg.type === 'poll' ? 'bg-yellow-100 text-yellow-800' : msg.type === 'reminder' ? 'bg-blue-100 text-blue-800' : msg.type === 'image' ? 'bg-pink-100 text-pink-800' : msg.type === 'file' ? 'bg-gray-100 text-gray-800' : msg.type === 'sticker' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-700'}`}>
+                  {msg.type === 'poll' ? 'Bình chọn' : msg.type === 'reminder' ? 'Lịch hẹn' : msg.type === 'image' ? 'Ảnh' : msg.type === 'file' ? 'File' : msg.type === 'sticker' ? 'Sticker' : 'Tin nhắn'}
+                </span>
+              </div>
+              <span className="text-xs text-gray-500">
+                {new Date(msg.timestamp).toLocaleDateString('vi-VN', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </span>
+            </div>
 
                 {/* Nội dung */}
                 <p className="text-sm text-gray-700 line-clamp-3 leading-relaxed">

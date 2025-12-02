@@ -282,6 +282,16 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                 <p className="text-center text-sm text-gray-500">
                   Chưa có lịch hẹn nào được chia sẻ trong cuộc hội thoại này
                 </p>
+                <div className='flex items-center justify-center'
+                >
+                   <button
+                      onClick={() => setShowCreate(true)}
+                      className="px-3 py-2 cursor-pointer hover:bg-blue-400 transition-all duration-200 flex items-center gap-2 bg-blue-300 rounded-lg "
+                    >
+                      <FaRegClock /> Tạo lịch hẹn mới
+                    </button>
+                </div>
+            
               </>
             ) : (
               items.map((it) => {

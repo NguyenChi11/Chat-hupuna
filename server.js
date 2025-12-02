@@ -46,6 +46,18 @@ io.on('connection', (socket) => {
       content: data.newContent,
       editedAt: data.editedAt,
       originalContent: data.originalContent,
+     pollQuestion: data.pollQuestion,
+      pollOptions: data.pollOptions,
+      pollVotes: data.pollVotes,
+      isPollLocked: data.isPollLocked,
+      pollLockedAt: data.pollLockedAt,
+      // Reminder fields
+      reminderAt: data.reminderAt,
+      reminderNote: data.reminderNote,
+      reminderRepeat: data.reminderRepeat,
+      reminderFired: data.reminderFired,
+      // Timestamp
+      timestamp: data.timestamp,
     });
 
     // Update Sidebar

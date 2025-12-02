@@ -2,24 +2,26 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { HiX } from 'react-icons/hi';
-import ModalMembers from '../../../components/base/ModalMembers';
-import { GroupConversation, MemberInfo, GroupRole } from '../../../types/Group';
-import { User } from '../../../types/User';
+import ModalMembers from '@/components/base/ModalMembers';
+import { GroupConversation, MemberInfo, GroupRole } from '@/types/Group';
+import { User } from '@/types/User';
 import { useChatInfoPopup } from '@/hooks/useChatInfoPopup';
 import MediaPreviewModal from '@/components/(chatPopup)/MediaPreviewModal';
-import GroupAvatarSection from '../../../components/(chatPopup)/components/GroupAvatarSection';
-import UserAvatarSection from '../../../components/(chatPopup)/components/UserAvatarSection';
-import ChatQuickActions from '../../../components/(chatPopup)/components/ChatQuickActions';
-import GroupDangerZone from '../../../components/(chatPopup)/components/GroupDangerZone';
-import GroupMembersSection from '../../../components/(chatPopup)/components/GroupMembersSection';
-import ReminderSection from '../../../components/(chatPopup)/components/ReminderSection';
-import MediaSection from '../../../components/(chatPopup)/components/MediaSection';
-import FileSection from '../../../components/(chatPopup)/components/FileSection';
-import LinkSection from '../../../components/(chatPopup)/components/LinkSection';
-import RenameGroupModal from '../../../components/(chatPopup)/components/RenameGroupModal';
-import ConfirmGroupActionModal from '../../../components/(chatPopup)/components/ConfirmGroupActionModal';
+import GroupAvatarSection from '@/components/(chatPopup)/components/GroupAvatarSection';
+import UserAvatarSection from '@/components/(chatPopup)/components/UserAvatarSection';
+import ChatQuickActions from '@/components/(chatPopup)/components/ChatQuickActions';
+import GroupDangerZone from '@/components/(chatPopup)/components/GroupDangerZone';
+import GroupMembersSection from '@/components/(chatPopup)/components/GroupMembersSection';
+import ReminderSection from '@/components/(chatPopup)/components/ReminderSection';
+import PollSection from '@/components/(chatPopup)/components/PollSection';
+import MediaSection from '@/components/(chatPopup)/components/MediaSection';
+import FileSection from '@/components/(chatPopup)/components/FileSection';
+import LinkSection from '@/components/(chatPopup)/components/LinkSection';
+import RenameGroupModal from '@/components/(chatPopup)/components/RenameGroupModal';
+import ConfirmGroupActionModal from '@/components/(chatPopup)/components/ConfirmGroupActionModal';
 import { useChatContext } from '@/context/ChatContext';
 import ReminderList from '@/components/(chatPopup)/components/ReminderList';
+import PollList from '@/components/(chatPopup)/components/PollList';
 
 interface ChatInfoPopupProps {
   onClose: () => void;
@@ -58,6 +60,7 @@ export default function ChatInfoPopup({
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const [confirmAction, setConfirmAction] = useState<'leave' | 'disband' | null>(null);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
+  const [isPollOpen, setIsPollOpen] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const myId = String(currentUser._id || (currentUser as { id?: string })?.id || '');
@@ -217,6 +220,8 @@ export default function ChatInfoPopup({
     <>
     {isReminderOpen ? (
       <ReminderList onClose={() => setIsReminderOpen(false)} />
+    ) : isPollOpen ? (
+      <PollList onClose={() => setIsPollOpen(false)} />
     ) :
       <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
         {/* Header cố định */}
@@ -273,6 +278,7 @@ export default function ChatInfoPopup({
             )}
 
             <ReminderSection onOpen={() => setIsReminderOpen(true)} />
+            {isGroup && <PollSection onOpen={() => setIsPollOpen(true)} />}
 
             <MediaSection
               isOpen={openItems['Ảnh/Video']}

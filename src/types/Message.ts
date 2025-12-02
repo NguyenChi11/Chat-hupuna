@@ -2,7 +2,7 @@ import { User } from '@/types/User';
 
 export const MESSAGES_COLLECTION_NAME = 'Messages';
 
-export type MessageType = 'text' | 'image' | 'file' | 'notify' | 'sticker' | 'video' | 'reminder';
+export type MessageType = 'text' | 'image' | 'file' | 'notify' | 'sticker' | 'video' | 'reminder' | 'poll';
 
 export interface Message {
   [key: string]: unknown;
@@ -27,6 +27,11 @@ export interface Message {
   reminderNote?: string;
   reminderFired?: boolean;
   reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly';
+  pollQuestion?: string;
+  pollOptions?: string[];
+  pollVotes?: Record<string, string[]>;
+  isPollLocked?: boolean;
+  pollLockedAt?: number;
 }
 export interface MessageCreate {
   [key: string]: unknown;
@@ -48,4 +53,9 @@ export interface MessageCreate {
   reminderNote?: string;
   reminderFired?: boolean;
   reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly';
+  pollQuestion?: string;
+  pollOptions?: string[];
+  pollVotes?: Record<string, string[]>;
+  isPollLocked?: boolean;
+  pollLockedAt?: number;
 }

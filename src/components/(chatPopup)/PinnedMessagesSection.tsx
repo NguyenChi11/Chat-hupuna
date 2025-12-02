@@ -63,7 +63,14 @@ export default function PinnedMessagesSection({
           onClose={onClosePinnedList}
           onJumpToMessage={onJumpToMessage}
           onGetSenderName={getSenderName}
-          onGetContentDisplay={(msg) => msg.content || msg.fileName || '[Media]'}
+          onGetContentDisplay={(msg) => {
+            if (msg.type === 'poll') return `Bình chọn: ${msg.pollQuestion || msg.content || ''}`;
+            if (msg.type === 'reminder') return `Lịch hẹn: ${msg.content || ''}`;
+            if (msg.type === 'image') return 'Ảnh';
+            if (msg.type === 'file') return `File: ${msg.fileName || 'File'}`;
+            if (msg.type === 'sticker') return 'Sticker';
+            return msg.content || '[Tin nhắn]';
+          }}
         />
       )}
     </>

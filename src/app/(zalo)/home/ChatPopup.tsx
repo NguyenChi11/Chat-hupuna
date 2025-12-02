@@ -530,8 +530,11 @@ export default function ChatWindow({
       if (res.ok) {
         // 2. Cập nhật danh sách messages và pinnedMessage
         setMessages((prev) => prev.map((m) => (m._id === message._id ? { ...m, isPinned: newPinnedStatus } : m)));
-
-        await fetchPinnedMessages();
+        setAllPinnedMessages((prev) => {
+          const updatedMsg = { ...message, isPinned: newPinnedStatus, editedAt: Date.now() } as Message;
+          const withoutDup = prev.filter((m) => String(m._id) !== String(message._id));
+          return newPinnedStatus ? [updatedMsg, ...withoutDup] : withoutDup;
+        });
 
         // 🔥 BƯỚC MỚI: GỬI THÔNG BÁO VÀO NHÓM
         const action = newPinnedStatus ? 'đã ghim' : 'đã bỏ ghim';
@@ -545,6 +548,8 @@ export default function ChatWindow({
           notificationText = `${senderName} ${action} một hình ảnh.`;
         } else if (message.type === 'file') {
           notificationText = `${senderName} ${action} tệp tin "${message.fileName || 'file'}" vào nhóm.`;
+        } else if (message.type === 'poll') {
+          notificationText = `${senderName} ${action} một bình chọn.`;
         } else {
           notificationText = `${senderName} ${action} một tin nhắn.`;
         }
@@ -898,23 +903,63 @@ export default function ChatWindow({
     // 🔥 LISTENER CHO MESSAGE_EDITED
     socketRef.current.on(
       'message_edited',
-      (data: { _id: string; roomId: string; content: string; editedAt: number; originalContent?: string; reminderAt?: number; reminderNote?: string }) => {
+      (data: { _id: string; roomId: string; content?: string; editedAt: number; originalContent?: string; reminderAt?: number; reminderNote?: string; pollQuestion?: string; pollOptions?: string[]; pollVotes?: Record<string, string[]>; isPollLocked?: boolean; pollLockedAt?: number; timestamp?: number; isPinned?: boolean }) => {
         if (data.roomId === roomId) {
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
               msg._id === data._id
                 ? {
                     ...msg,
-                    content: data.content,
+                    content: data.content ?? msg.content,
                     editedAt: data.editedAt,
                     originalContent: data.originalContent || msg.originalContent || msg.content,
                     reminderAt: data.reminderAt ?? msg.reminderAt,
                     reminderNote: data.reminderNote ?? msg.reminderNote,
+                    pollQuestion: data.pollQuestion ?? msg.pollQuestion,
+                    pollOptions: data.pollOptions ?? msg.pollOptions,
+                    pollVotes: data.pollVotes ?? msg.pollVotes,
+                    isPollLocked: data.isPollLocked ?? msg.isPollLocked,
+                    pollLockedAt: data.pollLockedAt ?? msg.pollLockedAt,
+                    timestamp: data.timestamp ?? msg.timestamp,
+                    isPinned: typeof data.isPinned === 'boolean' ? data.isPinned : msg.isPinned,
                   }
                 : msg,
             );
-            return updated;
+            const sorted = [...updated].sort(
+              (a: Message, b: Message) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+            );
+            return sorted;
           });
+          if (typeof data.isPinned === 'boolean') {
+            setAllPinnedMessages((prev) => {
+              const latest = messagesRef.current.find((m) => String(m._id) === String(data._id));
+              const updatedMsg = latest
+                ? ({
+                    ...latest,
+                    content: data.content ?? latest.content,
+                    pollQuestion: data.pollQuestion ?? latest.pollQuestion,
+                    pollOptions: data.pollOptions ?? latest.pollOptions,
+                    pollVotes: data.pollVotes ?? latest.pollVotes,
+                    isPollLocked: data.isPollLocked ?? latest.isPollLocked,
+                    pollLockedAt: data.pollLockedAt ?? latest.pollLockedAt,
+                    timestamp: data.timestamp ?? latest.timestamp,
+                    editedAt: data.editedAt ?? latest.editedAt,
+                    isPinned: data.isPinned,
+                  } as Message)
+                : ({
+                    _id: data._id as unknown as string,
+                    roomId,
+                    sender: currentUser._id as unknown as string,
+                    content: data.content || '',
+                    type: 'text',
+                    timestamp: data.timestamp || Date.now(),
+                    editedAt: data.editedAt || Date.now(),
+                    isPinned: data.isPinned,
+                  } as Message);
+              const withoutDup = prev.filter((m) => String(m._id) !== String(data._id));
+              return data.isPinned ? [updatedMsg, ...withoutDup] : withoutDup;
+            });
+          }
           const idStr = String(data._id);
           const t = reminderTimersByIdRef.current.get(idStr);
           if (t) {
@@ -1002,7 +1047,7 @@ export default function ChatWindow({
             reminderTimersByIdRef.current.set(idStr, timerId);
             reminderScheduledIdsRef.current.add(idStr);
           }
-          void fetchMessages();
+          // Không re-fetch để tránh reload, cập nhật cục bộ qua socket
         }
       },
     );
@@ -1031,7 +1076,7 @@ export default function ChatWindow({
             reminderTimersByIdRef.current.delete(idStr);
             reminderScheduledIdsRef.current.delete(idStr);
           }
-          void fetchMessages();
+          // Không re-fetch để tránh reload, cập nhật cục bộ qua socket
         }
       },
     );
@@ -1046,7 +1091,7 @@ export default function ChatWindow({
           reminderTimersByIdRef.current.delete(idStr);
           reminderScheduledIdsRef.current.delete(idStr);
         }
-        void fetchMessages();
+        // Không re-fetch để tránh reload, cập nhật cục bộ qua socket
       }
     });
 
@@ -1431,6 +1476,8 @@ export default function ChatWindow({
               editContent={editContent}
               setEditContent={setEditContent}
               onSaveEdit={handleSaveEdit}
+              onRefresh={fetchMessages}
+              onPinMessage={handlePinMessage}
             />
             <div ref={messagesEndRef} />
           </div>
