@@ -7,7 +7,8 @@ import type { User } from '@/types/User';
 import { isVideoFile, getProxyUrl } from '@/utils/utils';
 
 // Icons
-import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical } from 'react-icons/hi2';
+import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical, HiOutlineClock } from 'react-icons/hi2';
+import ReminderDetailModal from './components/ReminderDetailModal';
 
 interface SenderInfo {
   _id: string;
@@ -57,6 +58,7 @@ export default function MessageList({
   const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
   const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
   const [activeMoreId, setActiveMoreId] = useState<string | null>(null);
+  const [detailMsg, setDetailMsg] = useState<Message | null>(null);
   const formatTimestamp = (ts: number) => {
     const d = new Date(ts);
     const now = new Date();
@@ -109,19 +111,104 @@ export default function MessageList({
 
             // Notify message
             if (msg.type === 'notify') {
+              const related = msg.replyToMessageId ? messages.find((m) => m._id === msg.replyToMessageId) : null;
+              let display = msg.content || '';
+              if (isMe && !display.trim().toLowerCase().startsWith('bạn')) {
+                display = `Bạn ${display}`;
+              }
+              const pillNode = (
+                <div key={`pill-${msg._id}`} className="flex justify-center my-3">
+                  <div className="px-4 py-1.5 bg-gray-100 rounded-full shadow max-w-[80vw] sm:max-w-[28rem] overflow-hidden">
+                    <p className="text-xs text-gray-500 truncate">{display}</p>
+                  </div>
+                </div>
+              );
+              const contentLower = (msg.content || '').toLowerCase();
+              const isCreate = contentLower.includes('đã tạo lịch hẹn');
+              const isDue = contentLower.includes('đến giờ lịch hẹn');
+              const isEdit = contentLower.includes('đã chỉnh sửa') || contentLower.includes('chỉnh sửa');
+              const isDelete = contentLower.includes('đã xóa') || contentLower.includes('xóa');
+              if (isDue && related?.type === 'reminder') {
+                const at = (related as Message & { reminderAt?: number }).reminderAt || related.timestamp;
+                const cardNode = (
+                  <div key={`card-${msg._id}`} className="flex justify-center my-2">
+                    <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                      <div className="flex items-center gap-2 min-w-0 text-red-500">
+                        <HiOutlineClock className="w-5 h-5" />
+                        <span className="font-semibold truncate">{related.content || ''}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <HiOutlineClock className="w-4 h-4" />
+                        <span className="text-sm">{new Date(at).toLocaleString('vi-VN')}</span>
+                      </div>
+                      {(related as Message & { reminderNote?: string }).reminderNote ? (
+                        <p className="text-sm text-gray-700 truncate">{(related as Message & { reminderNote?: string }).reminderNote as string}</p>
+                      ) : null}
+                      <div className="pt-1">
+                        <button onClick={() => setDetailMsg(related)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
+                          Xem chi tiết
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+                return (
+                  <>
+                    {pillNode}
+                    {cardNode}
+                  </>
+                );
+              }
+              if (related?.type === 'reminder' && (isCreate || isEdit || isDelete)) {
+                return (
+                  <>
+                    {pillNode}
+                    <div className="flex justify-center -mt-2">
+                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline">
+                        Xem thêm
+                      </button>
+                    </div>
+                  </>
+                );
+              }
+              return pillNode;
+            }
+
+            if (msg.type === 'reminder') {
               let display = msg.content;
               if (isMe && display?.startsWith(currentUser.name || '')) {
                 display = 'Bạn' + display.substring((currentUser.name || '').length);
               }
               return (
                 <div key={msg._id} className="flex justify-center my-3">
-                  <div className="px-4 py-1.5 bg-gray-100 rounded-full shadow">
-                    <p className="text-xs text-gray-500">{display}</p>
+                  <div className="px-4 py-1.5 bg-gray-100 rounded-full">
+                     <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
+                       <div className="flex items-center gap-2 min-w-0 text-red-500">
+                         <HiOutlineClock className="w-5 h-5" />
+                         <span className="font-semibold truncate">{msg.content || ''}</span>
+                       </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <HiOutlineClock className="w-4 h-4" />
+                          <span className="text-sm">
+                            {new Date((msg as Message & { reminderAt?: number }).reminderAt || msg.timestamp).toLocaleString('vi-VN')}
+                          </span>
+                        </div>
+                        {(msg as Message & { reminderNote?: string }).reminderNote ? (
+                          <p className="text-sm text-gray-700 truncate">
+                            {(msg as Message & { reminderNote?: string }).reminderNote as string}
+                          </p>
+                        ) : null}
+                        <div className="pt-1">
+                          <button onClick={() => setDetailMsg(msg)} className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm">
+                            Xem chi tiết
+                          </button>
+                        </div>
+                      </div>
                   </div>
                 </div>
               );
             }
-
+                         
             const avatarChar = senderInfo.name?.charAt(0).toUpperCase() || '?';
             const senderName = allUsersMap.get(senderInfo._id) || senderInfo.name;
 
@@ -362,6 +449,11 @@ export default function MessageList({
           })}
         </React.Fragment>
       ))}
+      <ReminderDetailModal
+       isOpen={!!detailMsg}
+        message={detailMsg}
+         onClose={() => setDetailMsg(null)}
+      />
     </>
   );
 }

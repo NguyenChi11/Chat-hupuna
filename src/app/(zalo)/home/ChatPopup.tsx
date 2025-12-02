@@ -126,6 +126,7 @@ export default function ChatWindow({
   const markedReadRef = useRef<string | null>(null);
   const initialScrolledRef = useRef(false);
   const jumpLoadingRef = useRef(false);
+  const isAtBottomRef = useRef(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pickerTab, setPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -142,6 +143,12 @@ export default function ChatWindow({
   const [loadingMore, setLoadingMore] = useState(false);
   const [oldestTs, setOldestTs] = useState<number | null>(null);
   const [initialLoading, setInitialLoading] = useState(false);
+  const reminderScheduledIdsRef = useRef<Set<string>>(new Set());
+  const reminderTimersByIdRef = useRef<Map<string, number>>(new Map());
+  const messagesRef = useRef<Message[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
     return [user1Id, user2Id].sort().join('_');
   };
@@ -175,6 +182,12 @@ export default function ChatWindow({
         if (json.success && typeof json._id === 'string') {
           const newId = json._id;
           setMessages((prev) => [...prev, { ...msgData, _id: newId } as Message]);
+          setTimeout(() => {
+            const el = messagesContainerRef.current;
+            if (el) {
+              el.scrollTop = el.scrollHeight;
+            }
+          }, 0);
           const socketData = {
             ...msgData,
             _id: newId,
@@ -196,18 +209,158 @@ export default function ChatWindow({
   );
 
   const sendNotifyMessage = useCallback(
-    async (text: string) => {
+    async (text: string, replyToMessageId?: string) => {
       const newMsg: MessageCreate = {
         roomId: roomId,
         sender: currentUser._id,
         content: text,
         type: 'notify',
         timestamp: Date.now(),
+        replyToMessageId,
       };
       await sendMessageProcess(newMsg);
     },
     [roomId, currentUser._id, sendMessageProcess],
   );
+
+  useEffect(() => {
+    const now = Date.now();
+    const pending = messages.filter((m) => {
+      const r = m as Message & { reminderAt?: number; reminderFired?: boolean };
+      return m.type === 'reminder' && typeof r.reminderAt === 'number' && r.reminderFired !== true;
+    });
+    const scheduledIdsRef = reminderScheduledIdsRef.current;
+    pending.forEach((m) => {
+      const at = (m as Message & { reminderAt?: number }).reminderAt as number;
+      const idStr = String(m._id);
+      if (scheduledIdsRef.has(idStr)) return;
+      scheduledIdsRef.add(idStr);
+      const delay = Math.max(0, at - now);
+      const timerId = window.setTimeout(async () => {
+        const latest = messagesRef.current.find((x) => String(x._id) === idStr);
+        if (!latest || latest.isRecalled) {
+          scheduledIdsRef.delete(idStr);
+          const t = reminderTimersByIdRef.current.get(idStr);
+          if (t) {
+            clearTimeout(t);
+            reminderTimersByIdRef.current.delete(idStr);
+          }
+          return;
+        }
+        let latestAt = (latest as Message & { reminderAt?: number }).reminderAt || latest.timestamp;
+        try {
+          const r = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getById', _id: latest._id }),
+          });
+          const j = await r.json();
+          const srv = (j && (j.row?.row || j.row)) as Message | undefined;
+          const srvAt = srv && (srv as Message & { reminderAt?: number }).reminderAt;
+          if (typeof srvAt === 'number') {
+            latestAt = srvAt;
+          }
+        } catch {}
+        const repeat = (latest as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
+        const now2 = Date.now();
+        if (latestAt > now2) {
+          const newDelay = Math.max(0, latestAt - now2);
+          const newTimer = window.setTimeout(async () => {
+            const latest2 = messagesRef.current.find((x) => String(x._id) === idStr);
+            if (!latest2 || latest2.isRecalled) {
+              reminderScheduledIdsRef.current.delete(idStr);
+              const t2 = reminderTimersByIdRef.current.get(idStr);
+              if (t2) {
+                clearTimeout(t2);
+                reminderTimersByIdRef.current.delete(idStr);
+              }
+              return;
+            }
+            const latestAt2 = (latest2 as Message & { reminderAt?: number }).reminderAt || latest2.timestamp;
+            const repeat2 = (latest2 as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
+            const timeStr2 = new Date(latestAt2).toLocaleString('vi-VN');
+            try {
+              let nextAt2: number | null = null;
+              if (repeat2 === 'daily') nextAt2 = latestAt2 + 24 * 60 * 60 * 1000;
+              else if (repeat2 === 'weekly') nextAt2 = latestAt2 + 7 * 24 * 60 * 60 * 1000;
+              else if (repeat2 === 'monthly') {
+                const d2 = new Date(latestAt2);
+                d2.setMonth(d2.getMonth() + 1);
+                nextAt2 = d2.getTime();
+              }
+              const updateData2 = nextAt2
+                ? { reminderAt: nextAt2, reminderFired: false, editedAt: Date.now() }
+                : { reminderFired: true };
+              const res2 = await fetch('/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update', field: '_id', value: latest2._id, data: updateData2 }),
+              });
+              const json2 = await res2.json();
+              if (json2?.success) {
+                await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`, String(latest2._id));
+                if (nextAt2) {
+                  socketRef.current?.emit('message_edited', {
+                    _id: latest2._id,
+                    roomId,
+                    content: latest2.content,
+                    editedAt: Date.now(),
+                    originalContent: latest2.originalContent || latest2.content,
+                    reminderAt: nextAt2,
+                    reminderNote: (latest2 as Message & { reminderNote?: string }).reminderNote,
+                  });
+                }
+              }
+            } catch {}
+            reminderScheduledIdsRef.current.delete(idStr);
+            reminderTimersByIdRef.current.delete(idStr);
+          }, newDelay);
+          reminderTimersByIdRef.current.set(idStr, newTimer);
+          return;
+        }
+        const timeStr = new Date(latestAt).toLocaleString('vi-VN');
+        try {
+          let nextAt: number | null = null;
+          if (repeat === 'daily') {
+            nextAt = latestAt + 24 * 60 * 60 * 1000;
+          } else if (repeat === 'weekly') {
+            nextAt = latestAt + 7 * 24 * 60 * 60 * 1000;
+          } else if (repeat === 'monthly') {
+            const d = new Date(latestAt);
+            d.setMonth(d.getMonth() + 1);
+            // Nếu tháng kế tiếp không có ngày tương ứng, JS sẽ tự điều chỉnh về cuối tháng
+            nextAt = d.getTime();
+          }
+          const updateData = nextAt
+            ? { reminderAt: nextAt, reminderFired: false, editedAt: Date.now() }
+            : { reminderFired: true };
+          const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update', field: '_id', value: latest._id, data: updateData }),
+          });
+          const json = await res.json();
+          if (json?.success) {
+            await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`, String(latest._id));
+            if (nextAt) {
+              socketRef.current?.emit('message_edited', {
+                _id: latest._id,
+                roomId,
+                content: latest.content,
+                editedAt: Date.now(),
+                originalContent: latest.originalContent || latest.content,
+                reminderAt: nextAt,
+                reminderNote: (latest as Message & { reminderNote?: string }).reminderNote,
+              });
+            }
+          }
+        } catch {}
+        scheduledIdsRef.delete(idStr);
+        reminderTimersByIdRef.current.delete(idStr);
+      }, delay);
+      reminderTimersByIdRef.current.set(idStr, timerId);
+    });
+  }, [messages, roomId, sendNotifyMessage]);
 
   const { uploadingFiles, handleUploadAndSend } = useChatUpload({
     roomId,
@@ -467,6 +620,8 @@ export default function ChatWindow({
       if (el.scrollTop <= 50 && !jumpLoadingRef.current) {
         void loadMoreMessages();
       }
+      const bottomGap = el.scrollHeight - el.scrollTop - el.clientHeight;
+      isAtBottomRef.current = bottomGap <= SCROLL_BUMP_PX;
     };
     el.addEventListener('scroll', handler);
     return () => el.removeEventListener('scroll', handler);
@@ -729,12 +884,21 @@ export default function ChatWindow({
         showMessageNotification(data);
         void markAsReadApi(roomId, String(currentUser._id));
       }
+      const shouldScroll = data.sender === currentUser._id || isAtBottomRef.current;
+      if (shouldScroll) {
+        setTimeout(() => {
+          const el = messagesContainerRef.current;
+          if (el) {
+            el.scrollTop = el.scrollHeight;
+          }
+        }, 0);
+      }
     });
 
     // 🔥 LISTENER CHO MESSAGE_EDITED
     socketRef.current.on(
       'message_edited',
-      (data: { _id: string; roomId: string; content: string; editedAt: number; originalContent?: string }) => {
+      (data: { _id: string; roomId: string; content: string; editedAt: number; originalContent?: string; reminderAt?: number; reminderNote?: string }) => {
         if (data.roomId === roomId) {
           setMessages((prevMessages) => {
             const updated = prevMessages.map((msg) =>
@@ -744,20 +908,159 @@ export default function ChatWindow({
                     content: data.content,
                     editedAt: data.editedAt,
                     originalContent: data.originalContent || msg.originalContent || msg.content,
+                    reminderAt: data.reminderAt ?? msg.reminderAt,
+                    reminderNote: data.reminderNote ?? msg.reminderNote,
                   }
                 : msg,
             );
             return updated;
           });
+          const idStr = String(data._id);
+          const t = reminderTimersByIdRef.current.get(idStr);
+          if (t) {
+            clearTimeout(t);
+            reminderTimersByIdRef.current.delete(idStr);
+            reminderScheduledIdsRef.current.delete(idStr);
+          }
+          const now = Date.now();
+          const at = typeof data.reminderAt === 'number' ? (data.reminderAt as number) : undefined;
+          if (typeof at === 'number') {
+            const delay = Math.max(0, at - now);
+            const timerId = window.setTimeout(async () => {
+              const latest = messagesRef.current.find((x) => String(x._id) === idStr);
+              if (!latest || latest.isRecalled) {
+                reminderScheduledIdsRef.current.delete(idStr);
+                const old = reminderTimersByIdRef.current.get(idStr);
+                if (old) {
+                  clearTimeout(old);
+                  reminderTimersByIdRef.current.delete(idStr);
+                }
+                return;
+              }
+              let latestAt = (latest as Message & { reminderAt?: number }).reminderAt || latest.timestamp;
+              try {
+                const r = await fetch('/api/messages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'getById', _id: latest._id }),
+                });
+                const j = await r.json();
+                const srv = (j && (j.row?.row || j.row)) as Message | undefined;
+                const srvAt = srv && (srv as Message & { reminderAt?: number }).reminderAt;
+                if (typeof srvAt === 'number') {
+                  latestAt = srvAt;
+                }
+              } catch {}
+              const now3 = Date.now();
+              if (latestAt > now3) {
+                const newDelay = Math.max(0, latestAt - now3);
+                const newTimer = window.setTimeout(async () => {
+                  const latest2 = messagesRef.current.find((x) => String(x._id) === idStr);
+                  if (!latest2 || latest2.isRecalled) {
+                    reminderScheduledIdsRef.current.delete(idStr);
+                    const t2 = reminderTimersByIdRef.current.get(idStr);
+                    if (t2) {
+                      clearTimeout(t2);
+                      reminderTimersByIdRef.current.delete(idStr);
+                    }
+                    return;
+                  }
+                  const latestAt2 = (latest2 as Message & { reminderAt?: number }).reminderAt || latest2.timestamp;
+                  const timeStr2 = new Date(latestAt2).toLocaleString('vi-VN');
+                  try {
+                    const res2 = await fetch('/api/messages', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'update', field: '_id', value: latest2._id, data: { reminderFired: true } }),
+                    });
+                    const json2 = await res2.json();
+                    if (json2?.success) {
+                      await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`, String(latest2._id));
+                    }
+                  } catch {}
+                  reminderScheduledIdsRef.current.delete(idStr);
+                  reminderTimersByIdRef.current.delete(idStr);
+                }, newDelay);
+                reminderTimersByIdRef.current.set(idStr, newTimer);
+                return;
+              }
+              const timeStr = new Date(latestAt).toLocaleString('vi-VN');
+              try {
+                const res = await fetch('/api/messages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'update', field: '_id', value: latest._id, data: { reminderFired: true } }),
+                });
+                const json = await res.json();
+                if (json?.success) {
+                  await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`, String(latest._id));
+                }
+              } catch {}
+              reminderScheduledIdsRef.current.delete(idStr);
+              reminderTimersByIdRef.current.delete(idStr);
+            }, delay);
+            reminderTimersByIdRef.current.set(idStr, timerId);
+            reminderScheduledIdsRef.current.add(idStr);
+          }
+          void fetchMessages();
+        }
+      },
+    );
+
+    socketRef.current.on(
+      'edit_message',
+      (data: { _id: string; roomId: string; newContent: string; editedAt: number; originalContent?: string }) => {
+        if (data.roomId === roomId) {
+          setMessages((prevMessages) => {
+            const updated = prevMessages.map((msg) =>
+              msg._id === data._id
+                ? {
+                    ...msg,
+                    content: data.newContent,
+                    editedAt: data.editedAt,
+                    originalContent: data.originalContent || msg.originalContent || msg.content,
+                  }
+                : msg,
+            );
+            return updated;
+          });
+          const idStr = String(data._id);
+          const t = reminderTimersByIdRef.current.get(idStr);
+          if (t) {
+            clearTimeout(t);
+            reminderTimersByIdRef.current.delete(idStr);
+            reminderScheduledIdsRef.current.delete(idStr);
+          }
+          void fetchMessages();
         }
       },
     );
 
     socketRef.current.on('message_recalled', (data: { _id: string; roomId: string }) => {
       if (data.roomId === roomId) {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) => (msg._id === data._id ? { ...msg, isRecalled: true } : msg)),
-        );
+        setMessages((prevMessages) => prevMessages.map((msg) => (msg._id === data._id ? { ...msg, isRecalled: true } : msg)));
+        const idStr = String(data._id);
+        const t = reminderTimersByIdRef.current.get(idStr);
+        if (t) {
+          clearTimeout(t);
+          reminderTimersByIdRef.current.delete(idStr);
+          reminderScheduledIdsRef.current.delete(idStr);
+        }
+        void fetchMessages();
+      }
+    });
+
+    socketRef.current.on('message_deleted', (data: { _id: string; roomId: string }) => {
+      if (data.roomId === roomId) {
+        setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
+        const idStr = String(data._id);
+        const t = reminderTimersByIdRef.current.get(idStr);
+        if (t) {
+          clearTimeout(t);
+          reminderTimersByIdRef.current.delete(idStr);
+        }
+        reminderScheduledIdsRef.current.delete(idStr);
+        void fetchMessages();
       }
     });
 

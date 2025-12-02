@@ -19,6 +19,7 @@ import LinkSection from '../../../components/(chatPopup)/components/LinkSection'
 import RenameGroupModal from '../../../components/(chatPopup)/components/RenameGroupModal';
 import ConfirmGroupActionModal from '../../../components/(chatPopup)/components/ConfirmGroupActionModal';
 import { useChatContext } from '@/context/ChatContext';
+import ReminderList from '@/components/(chatPopup)/components/ReminderList';
 
 interface ChatInfoPopupProps {
   onClose: () => void;
@@ -56,6 +57,7 @@ export default function ChatInfoPopup({
   const [renameInput, setRenameInput] = useState('');
   const [previewMedia, setPreviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const [confirmAction, setConfirmAction] = useState<'leave' | 'disband' | null>(null);
+  const [isReminderOpen, setIsReminderOpen] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const myId = String(currentUser._id || (currentUser as { id?: string })?.id || '');
@@ -213,6 +215,9 @@ export default function ChatInfoPopup({
 
   return (
     <>
+    {isReminderOpen ? (
+      <ReminderList onClose={() => setIsReminderOpen(false)} />
+    ) :
       <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
         {/* Header cố định */}
         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between shadow-lg">
@@ -267,7 +272,7 @@ export default function ChatInfoPopup({
               />
             )}
 
-            <ReminderSection />
+            <ReminderSection onOpen={() => setIsReminderOpen(true)} />
 
             <MediaSection
               isOpen={openItems['Ảnh/Video']}
@@ -312,7 +317,7 @@ export default function ChatInfoPopup({
           </div>
         </div>
       </div>
-
+      }
       {/* Modals */}
       {openMember && isGroup && (
         <ModalMembers
