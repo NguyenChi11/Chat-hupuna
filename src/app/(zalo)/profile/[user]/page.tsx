@@ -82,7 +82,7 @@ export default function ProfileByIdPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       {/* ==================== MOBILE (<= md) & TABLET SMALL (<= lg) ==================== */}
-      <div className="max-w-lg mx-auto md:hidden">
+      <div className=" mx-auto md:hidden">
         <div className="h-[80vh] bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/50">
           {/* Header */}
           <ProfileHeader
@@ -155,7 +155,7 @@ export default function ProfileByIdPage() {
                       Đóng
                     </button>
                   </div>
-                  <div className="max-h-[70vh] overflow-y-auto">
+                  <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
                     <ProfileContent
                       tab={tabMobile}
                       isOwner={!!isOwner}
