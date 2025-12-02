@@ -7,6 +7,8 @@ import type { User } from '@/types/User';
 import { updateMessageApi, createMessageApi } from '@/fetch/messages';
 import { useChatContext } from '@/context/ChatContext';
 import { io } from 'socket.io-client';
+import { getProxyUrl } from '@/utils/utils';
+import Image from 'next/image';
 
 interface PollDetailModalProps {
   isOpen: boolean;
@@ -494,21 +496,30 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
                       </div>
 
                       {showVoters && (
-                        <div>
-                          {arr.length === 0 ? (
-                            <span className="text-xs text-gray-500">Chưa có ai bình chọn</span>
-                          ) : (
-                            arr.map((uid) => {
-                              const info = memberMap.get(String(uid));
-                              return (
-                                <span key={uid} className="text-xs px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-700">
-                                  {info?.name || String(uid)}
-                                </span>
-                              );
-                            })
-                          )}
-                          </div>
-                      )}
+        <div>
+          {arr.length === 0 ? (
+            <p>Chưa có ai bình chọn</p>
+          ) : (
+            arr.map((uid) => {
+              const info = memberMap.get(String(uid));
+              return (
+                <div key={uid} className='flex bg-gray-200 rounded-xl p-1 gap-1 w-fit'>
+                  {info?.avatar ? (
+                    <Image width={10}
+                            height={10} src={getProxyUrl(info.avatar)} alt={info?.name || String(uid)}
+                            className='rounded-full' />
+                  ) : (
+                    <div className="avatar-placeholder">
+                      {info?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <span className='text-[8px]'>{info?.name || String(uid)}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}        
                       
                     </button>
                   );
