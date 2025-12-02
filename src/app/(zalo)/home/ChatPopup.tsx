@@ -47,7 +47,9 @@ const STICKERS = [
 ];
 
 const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT || '3002') as string;
-const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${SOCKET_PORT}`;
+const SOCKET_HOST = process.env.NEXT_PUBLIC_DOMAIN as string | undefined;
+// ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
 const SCROLL_BUMP_PX = 80;
 
 interface ChatWindowProps {

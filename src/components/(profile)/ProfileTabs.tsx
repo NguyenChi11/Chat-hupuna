@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import React from 'react';
 import { HiUserCircle, HiInformationCircle, HiCog6Tooth, HiQrCode } from 'react-icons/hi2';
 
 export default function ProfileTabs({
@@ -14,6 +15,10 @@ export default function ProfileTabs({
   setTab: (item: string) => void;
   icon?: (tab: string) => ReactNode;
 }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   const labels: Record<string, string> = {
     info: 'Thông tin',
     profile: 'Hồ sơ',
@@ -37,6 +42,7 @@ export default function ProfileTabs({
     }
   };
 
+  if (!mounted) return null;
   return (
     <div className="flex bg-white border-b border-gray-200/80 sticky top-0 z-10">
       {tabs.map((item) => (

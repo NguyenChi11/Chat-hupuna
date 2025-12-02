@@ -29,6 +29,11 @@ export function ProfileInfo({
   });
   const [isSaving, setIsSaving] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const currentUser = useMemo(() => {
     try {
       const raw = typeof window !== 'undefined' ? localStorage.getItem('info_user') : null;
@@ -86,6 +91,8 @@ export function ProfileInfo({
       setIsSaving(false);
     }
   };
+
+  if (!mounted) return null;
 
   return isOwner ? (
     <ProfileInfoEdit form={form} setForm={setForm} isSaving={isSaving} onSave={handleSave} />

@@ -228,6 +228,9 @@ export default function MessageList({
                 id={`msg-${msg._id}`}
                 onContextMenu={(e) => {
                   e.preventDefault();
+                  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                    onContextMenu(e, msg);
+                  }
                 }}
                 className={`
                   w-full px-3 sm:max-w-[22rem]

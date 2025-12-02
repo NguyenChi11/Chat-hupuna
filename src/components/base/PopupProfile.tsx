@@ -85,7 +85,8 @@ export default function PopupProfile({ isOpen, onClose, user, onAvatarUpdated, o
           }}
           isUploadingBackground={isUploadingBackground}
           onSelectBackgroundFile={async (e: React.ChangeEvent<HTMLInputElement>) => {
-            const f = e.target.files?.[0];
+            const inputEl = e.currentTarget;
+            const f = inputEl.files?.[0];
             if (!f) return;
             try {
               setIsUploadingBackground(true);
@@ -137,7 +138,7 @@ export default function PopupProfile({ isOpen, onClose, user, onAvatarUpdated, o
               toast({ type: 'success', message: 'Cập nhật nền thành công!' });
             } finally {
               setIsUploadingBackground(false);
-              e.currentTarget.value = '';
+              if (inputEl) inputEl.value = '';
             }
           }}
         />

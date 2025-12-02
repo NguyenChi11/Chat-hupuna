@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { HiCamera } from 'react-icons/hi2';
 import { getProxyUrl } from '@/utils/utils';
+import React from 'react';
 
 export default function ProfileHeader({
   isOwner,
@@ -19,6 +20,10 @@ export default function ProfileHeader({
   isUploadingAvatar: boolean;
   isUploadingBackground: boolean;
 }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
     <div className="relative h-50 md:h-60 z-10 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600">
       {/* Background Image */}
@@ -38,7 +43,7 @@ export default function ProfileHeader({
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
       {/* Nút đổi ảnh bìa - Glassmorphism cực đẹp */}
-      {isOwner && (
+      {mounted && isOwner && (
         <label className="absolute top-5 right-5 z-10 cursor-pointer group">
           <div className="px-6 py-3.5 bg-white/15 backdrop-blur-xl rounded-2xl border border-white/30 shadow-2xl hover:bg-white/25 transition-all duration-300 flex items-center gap-3 active:scale-95">
             <HiCamera className="w-6 h-6 text-white" />
@@ -76,7 +81,7 @@ export default function ProfileHeader({
           </div>
 
           {/* Overlay đổi avatar */}
-          {isOwner && (
+          {mounted && isOwner && (
             <div className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
               {isUploadingAvatar ? (
                 <div className="w-14 h-14 border-4 border-white/30 border-t-white rounded-full animate-spin" />

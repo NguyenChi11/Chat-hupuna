@@ -27,7 +27,11 @@ interface GlobalSearchMessageApi {
   displayRoomName?: string;
 }
 
-const SOCKET_URL = `http://${process.env.DOMAIN || 'localhost'}:${process.env.NEXT_PUBLIC_SOCKET_PORT || '3002'}`;
+const SOCKET_PORT = process.env.NEXT_PUBLIC_SOCKET_PORT as string;
+const SOCKET_HOST = process.env.NEXT_PUBLIC_DOMAIN as string | undefined;
+
+// ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
 
 export function useHomePage() {
   const router = useRouter();
