@@ -46,7 +46,7 @@ const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408201.png',
 ];
 
-const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT || '3002') as string;
+const SOCKET_PORT = process.env.NEXT_PUBLIC_SOCKET_PORT as string;
 const SOCKET_HOST = process.env.NEXT_PUBLIC_DOMAIN as string | undefined;
 // ?? (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
 const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
