@@ -178,7 +178,14 @@ export default function ReminderList({ onClose }: ReminderListProps) {
       });
 
       if (createRes?.success) {
-        const socket = io(SOCKET_URL);
+        const socket = io(
+          typeof window !== 'undefined'
+            ? SOCKET_URL?.includes('localhost')
+              ? SOCKET_URL.replace('localhost', window.location.hostname)
+              : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+            : SOCKET_URL || '',
+          { transports: ['websocket'], withCredentials: false },
+        );
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const sockBase = {
@@ -243,7 +250,13 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     try {
       await deleteMessageApi(String(item._id));
       const SOCKET_URL = `http://${process.env.NEXT_PUBLIC_DOMAIN}:${process.env.NEXT_PUBLIC_PORT}`;
-      const socket = io(SOCKET_URL);
+      const socket = io(
+        typeof window !== 'undefined'
+          ? SOCKET_URL?.includes('localhost')
+            ? SOCKET_URL.replace('localhost', window.location.hostname)
+            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+          : SOCKET_URL || '',
+      );
       socket.emit('message_deleted', { _id: item._id, roomId });
       socket.disconnect();
       setOpenMenuId(null); // 🔥 Đóng menu sau khi xóa

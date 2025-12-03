@@ -879,7 +879,14 @@ export default function ChatWindow({
   useEffect(() => {
     if (!roomId) return;
 
-    socketRef.current = io(SOCKET_URL);
+    socketRef.current = io(
+      typeof window !== 'undefined'
+        ? SOCKET_URL?.includes('localhost')
+          ? SOCKET_URL.replace('localhost', window.location.hostname)
+          : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+        : SOCKET_URL || '',
+      { transports: ['websocket'], withCredentials: false },
+    );
     socketRef.current.emit('join_room', roomId);
 
     socketRef.current.on('receive_message', (data: Message) => {

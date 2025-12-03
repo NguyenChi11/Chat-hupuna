@@ -59,7 +59,14 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
         reminderRepeat: repeat,
       });
 
-      const socket = io(SOCKET_URL);
+      const socket = io(
+        typeof window !== 'undefined'
+          ? SOCKET_URL?.includes('localhost')
+            ? SOCKET_URL.replace('localhost', window.location.hostname)
+            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+          : SOCKET_URL || '',
+        { transports: ['websocket'], withCredentials: false },
+      );
       const receiver = isGroup ? null : String((selectedChat as User)._id);
       const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
       socket.emit('edit_message', {
@@ -122,7 +129,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
     setSaving(true);
     try {
       await deleteMessageApi(String(message._id));
-      const socket = io(SOCKET_URL);
+      const socket = io(typeof window !== 'undefined' ? (SOCKET_URL?.includes('localhost') ? SOCKET_URL.replace('localhost', window.location.hostname) : (SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`)) : (SOCKET_URL || ''));
       const receiver = isGroup ? null : String((selectedChat as User)._id);
       const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
       socket.emit('message_deleted', {
