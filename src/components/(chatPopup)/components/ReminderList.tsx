@@ -212,6 +212,11 @@ export default function ReminderList({ onClose }: ReminderListProps) {
           type: 'notify',
           content: `${myName} đã tạo lịch hẹn: "${content.trim()}" lúc ${timeStr}`,
           timestamp: Date.now(),
+          replyToMessageId: typeof createRes._id === 'string' ? String(createRes._id) : undefined,
+          reminderAt: dt,
+          reminderNote: note?.trim() || '',
+          reminderRepeat: repeat || 'none',
+          reminderContent: content.trim(),
         });
 
         if (notifyRes?.success && typeof notifyRes._id === 'string') {
@@ -221,6 +226,11 @@ export default function ReminderList({ onClose }: ReminderListProps) {
             type: 'notify',
             content: `${myName} đã tạo lịch hẹn: "${content.trim()}" lúc ${timeStr}`,
             timestamp: Date.now(),
+            replyToMessageId: typeof createRes._id === 'string' ? String(createRes._id) : undefined,
+            reminderAt: dt,
+            reminderNote: note?.trim() || '',
+            reminderRepeat: repeat || 'none',
+            reminderContent: content.trim(),
           });
         }
         socket.disconnect();

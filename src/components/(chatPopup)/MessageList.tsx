@@ -137,39 +137,42 @@ export default function MessageList({
               const isDue = contentLower.includes('đến giờ lịch hẹn');
               const isEdit = contentLower.includes('đã chỉnh sửa') || contentLower.includes('chỉnh sửa');
               const isDelete = contentLower.includes('đã xóa') || contentLower.includes('xóa');
-              if (isDue && related?.type === 'reminder') {
-                const at = (related as Message & { reminderAt?: number }).reminderAt || related.timestamp;
-                const cardNode = (
-                  <div key={`card-${msg._id}`} className="flex justify-center my-2">
-                    <div className="w-full max-w-[22rem] p-4 bg-white rounded-2xl border border-gray-200 shadow-sm space-y-2">
-                      <div className="flex items-center gap-2 min-w-0 text-red-500">
-                        <HiOutlineClock className="w-5 h-5" />
-                        <span className="font-semibold truncate">{related.content || ''}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <HiOutlineClock className="w-4 h-4" />
-                        <span className="text-sm">{new Date(at).toLocaleString('vi-VN')}</span>
-                      </div>
-                      {(related as Message & { reminderNote?: string }).reminderNote ? (
-                        <p className="text-sm text-gray-700 truncate">
-                          {(related as Message & { reminderNote?: string }).reminderNote as string}
-                        </p>
-                      ) : null}
-                      <div className="pt-1">
-                        <button
-                          onClick={() => setDetailMsg(related)}
-                          className="w-full cursor-pointer px-4 py-2 text-blue-600 border border-blue-300 rounded-xl hover:bg-blue-50 font-semibold text-sm"
-                        >
-                          Xem chi tiết
+              if (isDue) {
+                if (related?.type === 'reminder') {
+                  return (
+                    <React.Fragment key={`notify-${msg._id}-due`}>
+                      {pillNode}
+                      <div className="flex justify-center -mt-2 ">
+                        <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                          Xem thêm
                         </button>
                       </div>
-                    </div>
-                  </div>
-                );
+                    </React.Fragment>
+                  );
+                }
+                const inlineAt = (msg as Message & { reminderAt?: number }).reminderAt;
+                const inlineContent = (msg as Message & { reminderContent?: string }).reminderContent || msg.content || '';
+                const inlineNote = (msg as Message & { reminderNote?: string }).reminderNote;
+                const stub: Message = {
+                  _id: (msg.replyToMessageId as unknown as string) || String(msg._id),
+                  roomId: String(msg.roomId || ''),
+                  sender: msg.sender,
+                  content: inlineContent,
+                  type: 'reminder',
+                  timestamp: Number(msg.timestamp) || Date.now(),
+                  reminderAt: typeof inlineAt === 'number' ? inlineAt : undefined,
+                  reminderNote: inlineNote,
+                  reminderRepeat: (msg as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' })
+                    .reminderRepeat,
+                } as Message;
                 return (
-                  <React.Fragment key={`notify-${msg._id}-due`}>
+                  <React.Fragment key={`notify-${msg._id}-due-inline`}>
                     {pillNode}
-                    {cardNode}
+                    <div className="flex justify-center -mt-2">
+                      <button onClick={() => setDetailMsg(stub)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                        Xem thêm
+                      </button>
+                    </div>
                   </React.Fragment>
                 );
               }
@@ -178,19 +181,48 @@ export default function MessageList({
                   <React.Fragment key={`notify-${msg._id}-reminder`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
-                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline">
+                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
                         Xem thêm
                       </button>
                     </div>
                   </React.Fragment>
                 );
               }
+              if ((isCreate || isEdit || isDelete)) {
+                const inlineAt = (msg as Message & { reminderAt?: number }).reminderAt;
+                const inlineContent = (msg as Message & { reminderContent?: string }).reminderContent || '';
+                const inlineNote = (msg as Message & { reminderNote?: string }).reminderNote;
+                if (typeof inlineAt === 'number' && inlineContent) {
+                  const stub: Message = {
+                    _id: (msg.replyToMessageId as unknown as string) || String(msg._id),
+                    roomId: String(msg.roomId || ''),
+                    sender: msg.sender,
+                    content: inlineContent,
+                    type: 'reminder',
+                    timestamp: Number(msg.timestamp) || Date.now(),
+                    reminderAt: inlineAt,
+                    reminderNote: inlineNote,
+                    reminderRepeat: (msg as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' })
+                      .reminderRepeat,
+                  } as Message;
+                  return (
+                    <React.Fragment key={`notify-${msg._id}-reminder-inline`}>
+                      {pillNode}
+                      <div className="flex justify-center -mt-2">
+                        <button onClick={() => setDetailMsg(stub)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                          Xem thêm
+                        </button>
+                      </div>
+                    </React.Fragment>
+                  );
+                }
+              }
               if (related?.type === 'poll') {
                 return (
                   <React.Fragment key={`notify-${msg._id}-poll`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
-                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline">
+                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
                         Xem
                       </button>
                     </div>
