@@ -289,7 +289,11 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
       const now = Date.now();
       await updateMessageApi(String(item._id), { isPinned: next, editedAt: now });
       const socket = io(SOCKET_URL);
-      socket.emit('message_edited', { _id: item._id, roomId, isPinned: next, editedAt: now });
+      socket.once('connect', () => {
+        socket.emit('join_room', roomId);
+        socket.emit('pin_message', { _id: item._id, roomId, isPinned: next, editedAt: now });
+        setTimeout(() => socket.disconnect(), 300);
+      });
 
       const receiver = isGroup ? null : String((selectedChat as User)._id);
       const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
