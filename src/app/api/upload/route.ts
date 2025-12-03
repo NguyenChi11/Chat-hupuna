@@ -3,13 +3,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToMega } from '@/lib/megaUploadService';
 import { MessageCreate, MessageType } from '@/types/Message';
-import { setProgress, clearProgress } from '@/lib/uploadStore';
+import { setProgress, clearProgress, getProgress } from '@/lib/uploadStore';
+
+export async function GET(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get('uploadId');
+  if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+  const raw = getProgress(id);
+  const percent = raw === -1 ? 0 : raw;
+  return NextResponse.json({ id, percent, formattedPercent: `${Math.round(percent)}%` });
+}
 
 export async function POST(req: NextRequest) {
   // 1. Lấy ID để tracking
   const uploadId = req.nextUrl.searchParams.get('uploadId') || 'unknown';
 
   try {
+    setProgress(uploadId, 0);
     const form = await req.formData();
     const file = form.get('file') as unknown as File;
 
@@ -22,12 +31,35 @@ export async function POST(req: NextRequest) {
 
     const finalFolderName = customFolderName || `Chat_${roomId}`;
 
-    if (!file) return NextResponse.json({ success: false }, { status: 400 });
+    if (!file) return NextResponse.json({ success: false, message: 'Thiếu tệp để upload' }, { status: 400 });
+
+    const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES || 200 * 1024 * 1024);
+    const fileSizeClient = (file as unknown as { size?: number }).size ?? undefined;
+    if (typeof fileSizeClient === 'number' && fileSizeClient > MAX_UPLOAD_BYTES) {
+      setProgress(uploadId, -1);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Kích thước tệp vượt quá giới hạn ${(MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(0)}MB`,
+        },
+        { status: 413 },
+      );
+    }
 
     // 2. Chuyển về Buffer (Load vào RAM Server)
     // Lưu ý: Cách này giới hạn file < 200MB (do giới hạn RAM của Serverless Function)
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    if (buffer.length > MAX_UPLOAD_BYTES) {
+      setProgress(uploadId, -1);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Kích thước tệp vượt quá giới hạn ${(MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(0)}MB`,
+        },
+        { status: 413 },
+      );
+    }
 
     // 3. Upload với callback update Store
 
@@ -35,7 +67,6 @@ export async function POST(req: NextRequest) {
       // 🔥 Cập nhật tiến trình vào Store khi Mega báo về
       setProgress(uploadId, percent);
     });
-
 
     // Kết thúc: 100%
     setProgress(uploadId, 100);

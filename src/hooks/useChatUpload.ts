@@ -83,12 +83,14 @@ export function useChatUpload({
           const data = JSON.parse(event.data);
           const serverRawPercent = data.percent;
 
+          if (serverRawPercent < 0 || data.done === true) {
+            eventSource.close();
+            return;
+          }
           if (serverRawPercent >= 0) {
-            const unifiedPercent = 50 + serverRawPercent / 2;
-
             setUploadingFiles((prev) => {
               const current = prev[tempId] || 0;
-              return { ...prev, [tempId]: Math.max(current, unifiedPercent) };
+              return { ...prev, [tempId]: Math.max(current, serverRawPercent) };
             });
 
             if (serverRawPercent >= 100) {
@@ -102,8 +104,8 @@ export function useChatUpload({
 
       try {
         const res = (await uploadFileWithProgress(`/api/upload?uploadId=${uploadId}`, formData, (clientRawPercent) => {
-          const unifiedPercent = clientRawPercent / 2;
-          setUploadingFiles((prev) => ({ ...prev, [tempId]: unifiedPercent }));
+          const displayed = Math.min(clientRawPercent, 95);
+          setUploadingFiles((prev) => ({ ...prev, [tempId]: displayed }));
         })) as UploadResponse;
 
         if (res.success) {
@@ -126,12 +128,25 @@ export function useChatUpload({
 
           await sendMessageProcess(socketData);
         } else {
-          alert('Lỗi server: ' + res.message);
+          const notify: MessageCreate = {
+            roomId,
+            sender: currentUser._id,
+            content: `Tải lên thất bại: ${file.name}. Lý do: ${res.message || 'Không xác định'}`,
+            type: 'notify',
+            timestamp: Date.now(),
+          };
+          await sendMessageProcess(notify);
           setMessages((prev) => prev.filter((m) => m._id !== tempId));
         }
-      } catch (error) {
-        console.error('Upload failed:', error);
-        alert('Gửi file thất bại!');
+      } catch {
+        const notify: MessageCreate = {
+          roomId,
+          sender: currentUser._id,
+          content: `Tải lên thất bại: ${file.name}. Vui lòng thử lại`,
+          type: 'notify',
+          timestamp: Date.now(),
+        };
+        await sendMessageProcess(notify);
         setMessages((prev) => prev.filter((m) => m._id !== tempId));
       } finally {
         eventSource.close();

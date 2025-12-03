@@ -2,16 +2,8 @@
 
 import { MongoClient, Db } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || ''; // Full URI
-const MONGODB_DB = process.env.MONGODB_DB || ''; // Database name
-
-if (!MONGODB_URI) {
-  throw new Error('⚠️ Please add your Mongo URI to .env.local');
-}
-
-if (!MONGODB_DB) {
-  throw new Error('⚠️ Please add your Database name to .env.local');
-}
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/';
+const MONGODB_DB = process.env.MONGODB_DB || 'hupuna-price';
 
 // Cache client khi hot-reload (Next.js dev mode)
 let cachedClient: MongoClient | null = null;

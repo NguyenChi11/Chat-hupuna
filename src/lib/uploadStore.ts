@@ -15,7 +15,9 @@ export const setProgress = (id: string, percent: number) => {
 };
 
 export const getProgress = (id: string) => {
-  return globalThis.uploadProgressMap?.get(id) || 0;
+  const map = globalThis.uploadProgressMap;
+  if (!map) return -1;
+  return map.has(id) ? (map.get(id) ?? 0) : -1;
 };
 
 export const clearProgress = (id: string) => {

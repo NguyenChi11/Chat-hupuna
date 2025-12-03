@@ -65,10 +65,13 @@ function nodeToWebStream(nodeStream: NodeJS.ReadableStream, abortSignal?: AbortS
         }
       };
 
-      const onError = (err: unknown) => {
+      const onError = () => {
         if (!isClosedOrErrored) {
           isClosedOrErrored = true;
-          controller.error(err instanceof Error ? err : new Error(String(err)));
+          // Tránh 500 do pipe error: đóng stream nhẹ nhàng thay vì controller.error
+          try {
+            controller.close();
+          } catch {}
         }
       };
 

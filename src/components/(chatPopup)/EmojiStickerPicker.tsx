@@ -3,7 +3,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import EmojiFB from '@/components/(chatPopup)/EmojiFB';
 import { FB_EMOJIS } from '@/data/fbEmojis';
-import IconSticker from '@/public/icons/sticker.svg';
 import Image from 'next/image';
 
 interface EmojiStickerPickerProps {

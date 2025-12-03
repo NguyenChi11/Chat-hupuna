@@ -17,9 +17,7 @@ interface ReminderListProps {
 }
 
 export default function ReminderList({ onClose }: ReminderListProps) {
-  const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined) ;
-  const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined);
-  const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -147,7 +145,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     return () => {
       socket.disconnect();
     };
-  }, [roomId, load]);
+  }, [roomId, load, SOCKET_URL]);
 
   const handleCreate = async ({
     content,
@@ -297,16 +295,14 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                 <p className="text-center text-sm text-gray-500">
                   Chưa có lịch hẹn nào được chia sẻ trong cuộc hội thoại này
                 </p>
-                <div className='flex items-center justify-center'
-                >
-                   <button
-                      onClick={() => setShowCreate(true)}
-                      className="px-3 py-2 cursor-pointer hover:bg-blue-400 transition-all duration-200 flex items-center gap-2 bg-blue-300 rounded-lg "
-                    >
-                      <FaRegClock /> Tạo lịch hẹn mới
-                    </button>
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="px-3 py-2 cursor-pointer hover:bg-blue-400 transition-all duration-200 flex items-center gap-2 bg-blue-300 rounded-lg "
+                  >
+                    <FaRegClock /> Tạo lịch hẹn mới
+                  </button>
                 </div>
-            
               </>
             ) : (
               items.map((it) => {
