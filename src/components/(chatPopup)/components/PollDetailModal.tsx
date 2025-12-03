@@ -115,7 +115,14 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
         editedAt: now,
         timestamp: now,
       });
-      const socket = io(SOCKET_URL);
+  const socket = io(
+    typeof window !== 'undefined'
+      ? SOCKET_URL?.includes('localhost')
+        ? SOCKET_URL.replace('localhost', window.location.hostname)
+        : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+      : SOCKET_URL || '',
+    { transports: ['websocket'], withCredentials: false },
+  );
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         const receiver = isGroup ? null : String((selectedChat as User)._id);
@@ -208,7 +215,14 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
       await updateMessageApi(String(message._id), { pollVotes: nextVotes, editedAt: now, timestamp: now });
 
       // 🔥 EMIT SOCKET EVENT ĐỂ CẬP NHẬT REALTIME
-      const socket = io(SOCKET_URL);
+      const socket = io(
+        typeof window !== 'undefined'
+          ? SOCKET_URL?.includes('localhost')
+            ? SOCKET_URL.replace('localhost', window.location.hostname)
+            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+          : SOCKET_URL || '',
+        { transports: ['websocket'], withCredentials: false },
+      );
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         socket.emit('edit_message', {
@@ -275,7 +289,14 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
     try {
       const now = Date.now();
       await updateMessageApi(String(message._id), { pollOptions: nextOptions, editedAt: now, timestamp: now });
-      const socket = io(SOCKET_URL);
+      const socket = io(
+        typeof window !== 'undefined'
+          ? SOCKET_URL?.includes('localhost')
+            ? SOCKET_URL.replace('localhost', window.location.hostname)
+            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+          : SOCKET_URL || '',
+        { transports: ['websocket'], withCredentials: false },
+      );
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         socket.emit('edit_message', {
@@ -335,7 +356,14 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
         ? { isPollLocked: true, pollLockedAt: now, editedAt: now, timestamp: now }
         : { isPollLocked: false, editedAt: now, timestamp: now };
       await updateMessageApi(String(message._id), updateData);
-      const socket = io(SOCKET_URL);
+      const socket = io(
+        typeof window !== 'undefined'
+          ? SOCKET_URL?.includes('localhost')
+            ? SOCKET_URL.replace('localhost', window.location.hostname)
+            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+          : SOCKET_URL || '',
+        { transports: ['websocket'], withCredentials: false },
+      );
       socket.emit('edit_message', { _id: message._id, roomId, ...updateData });
       if (next) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);

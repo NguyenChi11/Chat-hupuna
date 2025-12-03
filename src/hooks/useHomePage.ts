@@ -29,6 +29,20 @@ interface GlobalSearchMessageApi {
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
 
+function resolveSocketUrl(): string {
+  const envUrl = SOCKET_URL || '';
+  if (typeof window === 'undefined') return envUrl;
+  const host = window.location.hostname;
+  const protocol = window.location.protocol;
+  if (!envUrl) {
+    return `${protocol}//${host}:3002`;
+  }
+  if (envUrl.includes('localhost')) {
+    return envUrl.replace('localhost', host);
+  }
+  return envUrl;
+}
+
 export function useHomePage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -328,7 +342,8 @@ export function useHomePage() {
   // 4. Kết nối Socket & Xử lý Realtime Sidebar
   useEffect(() => {
     if (!currentUser) return;
-    socketRef.current = io(SOCKET_URL);
+    const endpoint = resolveSocketUrl();
+    socketRef.current = io(endpoint, { transports: ['websocket'], withCredentials: false });
     socketRef.current.emit('join_room', currentUser._id);
     socketRef.current.emit('user_online', { userId: currentUser._id });
     const HEARTBEAT_MS = 60000; // 1 phút
