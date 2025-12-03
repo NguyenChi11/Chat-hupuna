@@ -2,8 +2,8 @@
 
 import { MongoClient, Db } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
-const MONGODB_DB = process.env.MONGODB_DB || 'zalo_demo';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/';
+const MONGODB_DB = process.env.MONGODB_DB || 'hupuna-price';
 
 // Cache client khi hot-reload (Next.js dev mode)
 let cachedClient: MongoClient | null = null;

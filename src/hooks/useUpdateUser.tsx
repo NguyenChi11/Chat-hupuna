@@ -74,7 +74,7 @@ export function useUpdateUser(userId: string, onUpdated?: (data: Record<string, 
         onUpdated?.(data);
         toast({ type: 'success', message: 'Cập nhật thành công!' });
       }
-    } catch (err) {
+    } catch {
       toast({ type: 'error', message: 'Lỗi hệ thống' });
     } finally {
       setLoading(false);

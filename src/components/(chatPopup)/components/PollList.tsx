@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HiX } from 'react-icons/hi';
-import { HiEllipsisVertical, HiLockClosed, HiLockOpen, HiMapPin } from 'react-icons/hi2';
+import { HiEllipsisVertical, HiLockClosed, HiLockOpen } from 'react-icons/hi2';
 import { useChatContext } from '@/context/ChatContext';
 import type { Message } from '@/types/Message';
 import type { GroupConversation } from '@/types/Group';
@@ -16,9 +16,7 @@ interface PollListProps {
 }
 
 export default function PollList({ onClose, onRefresh }: PollListProps) {
-  const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined);
-  const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined) ;
-  const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -134,7 +132,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
     return () => {
       socket.disconnect();
     };
-  }, [roomId, load]);
+  }, [roomId, load, SOCKET_URL]);
 
   const handleCreate = async ({ question, options }: { question: string; options: string[] }) => {
     const cleanOptions = options.map((o) => o.trim()).filter((o) => o);

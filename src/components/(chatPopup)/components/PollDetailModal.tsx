@@ -17,11 +17,9 @@ interface PollDetailModalProps {
   onRefresh?: () => void;
 }
 
-const SOCKET_HOST = (process.env.NEXT_PUBLIC_SOCKET_HOST as string | undefined) || (process.env.NEXT_PUBLIC_DOMAIN as string | undefined) ;
-const SOCKET_PORT = (process.env.NEXT_PUBLIC_SOCKET_PORT as string | undefined) || (process.env.NEXT_PUBLIC_PORT as string | undefined) ;
-const SOCKET_URL = `http://${SOCKET_HOST}:${SOCKET_PORT}`;
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
 
-export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: PollDetailModalProps) {
+export default function PollDetailModal({ isOpen, message, onClose, onRefresh }: PollDetailModalProps) {
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = (() => {
     const me = String(currentUser._id);
@@ -52,7 +50,10 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
     const senderId = typeof sender === 'object' && sender ? String(sender._id) : String(sender);
     return isGroup ? senderId === String(currentUser._id) : false;
   }, [message, isGroup, currentUser._id]);
-  const members = useMemo(() => (isGroup ? ((selectedChat as GroupConversation).members || []) : []), [isGroup, selectedChat]);
+  const members = useMemo(
+    () => (isGroup ? (selectedChat as GroupConversation).members || [] : []),
+    [isGroup, selectedChat],
+  );
   const memberMap = useMemo(() => {
     const map = new Map<string, { name?: string; avatar?: string }>();
     (members as Array<{ _id?: string; id?: string; name?: string; avatar?: string }>).forEach((m) => {
@@ -166,7 +167,6 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         await onRefresh();
       }
       onClose();
-
     } finally {
       setSaving(false);
     }
@@ -206,7 +206,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
     try {
       const now = Date.now();
       await updateMessageApi(String(message._id), { pollVotes: nextVotes, editedAt: now, timestamp: now });
-      
+
       // 🔥 EMIT SOCKET EVENT ĐỂ CẬP NHẬT REALTIME
       const socket = io(SOCKET_URL);
       socket.once('connect', async () => {
@@ -251,8 +251,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         setTimeout(() => socket.disconnect(), 300);
       });
 
-
-       if (onRefresh) {
+      if (onRefresh) {
         await onRefresh();
       }
       onClose();
@@ -279,7 +278,13 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
       const socket = io(SOCKET_URL);
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
-        socket.emit('edit_message', { _id: message._id, roomId, pollOptions: nextOptions, editedAt: now, timestamp: now });
+        socket.emit('edit_message', {
+          _id: message._id,
+          roomId,
+          pollOptions: nextOptions,
+          editedAt: now,
+          timestamp: now,
+        });
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const who = currentUser.name || 'Ai đó';
@@ -309,7 +314,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         }
         setTimeout(() => socket.disconnect(), 300);
       });
-       if (onRefresh) {
+      if (onRefresh) {
         await onRefresh();
       }
       setOptions(nextOptions);
@@ -337,13 +342,13 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const endStr = new Date(now).toLocaleString('vi-VN');
         const notifyText = `Đã khóa bình chọn: "${String(message.content || message.pollQuestion || '')}" (kết thúc lúc ${endStr})`;
-        const notifyRes = await createMessageApi({ 
-          roomId, 
-          sender: String(currentUser._id), 
-          type: 'notify', 
-          content: notifyText, 
-          timestamp: now, 
-          replyToMessageId: String(message._id) 
+        const notifyRes = await createMessageApi({
+          roomId,
+          sender: String(currentUser._id),
+          type: 'notify',
+          content: notifyText,
+          timestamp: now,
+          replyToMessageId: String(message._id),
         });
         if (notifyRes?.success) {
           socket.emit('send_message', {
@@ -389,7 +394,7 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
         }
       }
       socket.disconnect();
-       if (onRefresh) {
+      if (onRefresh) {
         await onRefresh();
       }
       onClose();
@@ -446,12 +451,16 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
   // };
 
   if (!isOpen || !message) return null;
-  
+
   return (
     <div className="fixed inset-0 z-[9999]  flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
         <div className="relative px-6 pt-6 pb-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex-shrink-0">
-          <button onClick={onClose} disabled={saving} className="absolute cursor-pointer top-3 right-3 p-2 rounded-full bg-white/20 hover:bg-white/30">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="absolute cursor-pointer top-3 right-3 p-2 rounded-full bg-white/20 hover:bg-white/30"
+          >
             <HiX className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
@@ -463,7 +472,10 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
             <>
               <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{question}</p>
               {message.isPollLocked && (
-                <p className="text-xs text-gray-500 mt-1">Kết thúc lúc {new Date(message.pollLockedAt || message.editedAt || message.timestamp).toLocaleString('vi-VN')}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Kết thúc lúc{' '}
+                  {new Date(message.pollLockedAt || message.editedAt || message.timestamp).toLocaleString('vi-VN')}
+                </p>
               )}
               <p className="text-xs text-gray-500 mt-2">Chọn nhiều phương án</p>
               <button onClick={() => setShowVoters((v) => !v)} className="text-xs text-blue-600 hover:underline mt-2">
@@ -480,16 +492,20 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
               </button>
               <div className="space-y-2 mt-2">
                 {options.map((opt, idx) => {
-                  const votedCount = Array.isArray(previewVotesMap[opt]) ? (previewVotesMap[opt] as string[]).length : 0;
+                  const votedCount = Array.isArray(previewVotesMap[opt])
+                    ? (previewVotesMap[opt] as string[]).length
+                    : 0;
                   const active = selected.includes(opt);
-                     const arr = Array.isArray(previewVotesMap[opt]) ? (previewVotesMap[opt] as string[]) : [];
+                  const arr = Array.isArray(previewVotesMap[opt]) ? (previewVotesMap[opt] as string[]) : [];
                   return (
                     <button
                       key={idx}
                       onClick={() => toggleSelect(opt)}
                       disabled={message.isPollLocked}
                       className={`w-full cursor-pointer px-4 py-3 rounded-xl border text-left transition-colors ${
-                        active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50 text-gray-800'
+                        active
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:bg-gray-50 text-gray-800'
                       } ${message.isPollLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <div className="flex items-center justify-between">
@@ -498,43 +514,47 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
                       </div>
 
                       {showVoters && (
-        <div className='flex gap-1'>
-          {arr.length === 0 ? (
-            <p>Chưa có ai bình chọn</p>
-          ) : (
-            arr.map((uid) => {
-              const info = memberMap.get(String(uid));
-              return (
-                <div key={uid} className='flex bg-gray-200 rounded-xl p-1 gap-1 w-fit'>
-                  {info?.avatar ? (
-                    <Image width={10}
-                            height={10} src={getProxyUrl(info.avatar)} alt={info?.name || String(uid)}
-                            className='rounded-full' />
-                  ) : (
-                    <div className="avatar-placeholder">
-                      {info?.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  )}
-                  <span className='text-[8px]'>{info?.name || String(uid)}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}        
-                      
+                        <div className="flex gap-1">
+                          {arr.length === 0 ? (
+                            <p>Chưa có ai bình chọn</p>
+                          ) : (
+                            arr.map((uid) => {
+                              const info = memberMap.get(String(uid));
+                              return (
+                                <div key={uid} className="flex bg-gray-200 rounded-xl p-1 gap-1 w-fit">
+                                  {info?.avatar ? (
+                                    <Image
+                                      width={10}
+                                      height={10}
+                                      src={getProxyUrl(info.avatar)}
+                                      alt={info?.name || String(uid)}
+                                      className="rounded-full"
+                                    />
+                                  ) : (
+                                    <div className="avatar-placeholder">
+                                      {info?.name?.charAt(0).toUpperCase() || 'U'}
+                                    </div>
+                                  )}
+                                  <span className="text-[8px]">{info?.name || String(uid)}</span>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
               </div>
               <div className="mt-3">
                 {!adding ? (
-                  <button onClick={handleAddOption} 
-                  className="cursor-pointer px-4 py-2 text-indigo-600 border border-indigo-300 rounded-xl hover:bg-indigo-50 font-semibold text-sm"
-                  disabled={message.isPollLocked}
+                  <button
+                    onClick={handleAddOption}
+                    className="cursor-pointer px-4 py-2 text-indigo-600 border border-indigo-300 rounded-xl hover:bg-indigo-50 font-semibold text-sm"
+                    disabled={message.isPollLocked}
                   >
                     Thêm lựa chọn
-                    </button>
+                  </button>
                 ) : (
                   <div className="flex gap-2">
                     <input
@@ -549,8 +569,22 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
                       className="flex-1 px-3 py-2 bg-gray-50 border-2 border-gray-200 rounded-2xl"
                       placeholder="Nhập lựa chọn"
                     />
-                    <button onClick={handleAddOptionConfirm} disabled={message.isPollLocked} className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed">Thêm</button>
-                  <button onClick={() => { setAdding(false); setNewOption(''); }} className="px-4 py-2 cursor-pointer bg-gray-100 text-gray-700 rounded-2xl">Hủy</button>
+                    <button
+                      onClick={handleAddOptionConfirm}
+                      disabled={message.isPollLocked}
+                      className="px-4 py-2 cursor-pointer bg-blue-600 text-white rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Thêm
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAdding(false);
+                        setNewOption('');
+                      }}
+                      className="px-4 py-2 cursor-pointer bg-gray-100 text-gray-700 rounded-2xl"
+                    >
+                      Hủy
+                    </button>
                   </div>
                 )}
               </div>
@@ -558,12 +592,22 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
           ) : (
             <>
               <label className="block text-sm font-medium text-gray-700 mb-2">Câu hỏi *</label>
-              <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white" />
+              <textarea
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                rows={3}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
               <label className="block text-sm font-medium text-gray-700 mb-2">Tùy chọn *</label>
               <div className="space-y-2">
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <input type="text" value={opt} onChange={(e) => handleChangeOption(idx, e.target.value)} className="flex-1 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white" />
+                    <input
+                      type="text"
+                      value={opt}
+                      onChange={(e) => handleChangeOption(idx, e.target.value)}
+                      className="flex-1 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white"
+                    />
                     <button
                       onClick={() => handleRemoveOptionEditing(idx)}
                       disabled={message.isPollLocked}
@@ -574,25 +618,43 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
                   </div>
                 ))}
               </div>
-              <button onClick={handleAddOptionEditing} disabled={message.isPollLocked} className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed">Thêm option</button>
+              <button
+                onClick={handleAddOptionEditing}
+                disabled={message.isPollLocked}
+                className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Thêm option
+              </button>
             </>
           )}
         </div>
         <div className="flex gap-3 px-6 pb-6 flex-shrink-0">
           {!editing ? (
             <>
-              <button onClick={() => setEditing(true)} disabled={saving || message.isPollLocked} className="flex-1 cursor-pointer py-3.5 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed">
+              <button
+                onClick={() => setEditing(true)}
+                disabled={saving || message.isPollLocked}
+                className="flex-1 cursor-pointer py-3.5 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <span className="inline-flex items-center gap-2">
                   <HiOutlinePencil /> Chỉnh sửa
                 </span>
               </button>
-              <button onClick={handleConfirmVote} disabled={saving || message.isPollLocked} className="flex-1 cursor-pointer py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed">
+              <button
+                onClick={handleConfirmVote}
+                disabled={saving || message.isPollLocked}
+                className="flex-1 cursor-pointer py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <span className="inline-flex items-center justify-center gap-2">
                   <HiCheck className="w-5 h-5" /> {saving ? 'Đang lưu...' : 'Xác nhận'}
                 </span>
               </button>
               {canLock && (
-                <button onClick={handleToggleLock} disabled={saving} className="flex-1 cursor-pointer py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl">
+                <button
+                  onClick={handleToggleLock}
+                  disabled={saving}
+                  className="flex-1 cursor-pointer py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl"
+                >
                   <span className="inline-flex items-center justify-center gap-2">
                     {message.isPollLocked ? 'Mở khóa' : 'Khóa'}
                   </span>
@@ -616,7 +678,11 @@ export default function PollDetailModal({ isOpen, message, onClose,onRefresh }: 
               >
                 Hủy
               </button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 cursor-pointer py-3.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-2xl">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 cursor-pointer py-3.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-2xl"
+              >
                 <span className="inline-flex items-center justify-center gap-2">
                   <HiCheck className="w-5 h-5" /> {saving ? 'Đang lưu...' : 'Lưu'}
                 </span>

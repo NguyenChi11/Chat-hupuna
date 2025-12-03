@@ -12,17 +12,16 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       const interval = setInterval(() => {
-        const percent = getProgress(id);
-
-        // Gửi dữ liệu về client
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ percent })}\n\n`));
-
-        // Nếu xong hoặc lỗi thì dừng
-        if (percent >= 100 || percent < 0) {
+        const raw = getProgress(id);
+        const percent = raw;
+        const done = percent >= 100 || percent < 0 || percent === -1;
+        const payload = { id, percent, formattedPercent: `${Math.round(Math.max(0, percent))}%`, done };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        if (done) {
           clearInterval(interval);
           controller.close();
         }
-      }, 200); // Cập nhật mỗi 200ms
+      }, 250);
 
       req.signal.addEventListener('abort', () => clearInterval(interval));
     },
