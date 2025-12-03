@@ -284,12 +284,11 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
     const next = !item.isPinned;
     setItems((prev) => prev.map((m) => (String(m._id) === String(item._id) ? { ...m, isPinned: next } : m)));
     try {
-      const now = Date.now();
-      await updateMessageApi(String(item._id), { isPinned: next, editedAt: now });
+      await updateMessageApi(String(item._id), { isPinned: next });
       const socket = io(SOCKET_URL);
       socket.once('connect', () => {
         socket.emit('join_room', roomId);
-        socket.emit('pin_message', { _id: item._id, roomId, isPinned: next, editedAt: now });
+        socket.emit('pin_message', { _id: item._id, roomId, isPinned: next });
         setTimeout(() => socket.disconnect(), 300);
       });
 
@@ -298,6 +297,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
       const who = currentUser.name || 'Ai đó';
       const action = next ? 'đã ghim' : 'đã bỏ ghim';
       const notifyText = `${who} ${action} một bình chọn: "${String(item.content || item.pollQuestion || '')}"`;
+      const now = Date.now();
       const notifyRes = await createMessageApi({
         roomId,
         sender: String(currentUser._id),

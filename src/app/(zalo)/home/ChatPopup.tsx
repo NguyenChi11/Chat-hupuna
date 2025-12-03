@@ -537,18 +537,23 @@ export default function ChatWindow({
         // 2. Cập nhật danh sách messages và pinnedMessage
         setMessages((prev) => prev.map((m) => (m._id === message._id ? { ...m, isPinned: newPinnedStatus } : m)));
         setAllPinnedMessages((prev) => {
-          const updatedMsg = { ...message, isPinned: newPinnedStatus, editedAt: Date.now() } as Message;
+          const updatedMsg = { ...message, isPinned: newPinnedStatus } as Message;
           const withoutDup = prev.filter((m) => String(m._id) !== String(message._id));
           return newPinnedStatus ? [updatedMsg, ...withoutDup] : withoutDup;
         });
 
         // 2.2. Bắn socket ngay để cập nhật realtime cho tất cả client
-        socketRef.current?.emit('edit_message', {
-          _id: message._id,
-          roomId,
-          isPinned: newPinnedStatus,
-          editedAt: Date.now(),
-        });
+        const payload = { _id: message._id, roomId, isPinned: newPinnedStatus };
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit('pin_message', payload);
+        } else {
+          const tempSocket = io(SOCKET_URL);
+          tempSocket.once('connect', () => {
+            tempSocket.emit('join_room', roomId);
+            tempSocket.emit('pin_message', payload);
+            setTimeout(() => tempSocket.disconnect(), 300);
+          });
+        }
 
         // 🔥 BƯỚC MỚI: GỬI THÔNG BÁO VÀO NHÓM
         const action = newPinnedStatus ? 'đã ghim' : 'đã bỏ ghim';
@@ -913,6 +918,22 @@ export default function ChatWindow({
         }, 0);
       }
     });
+
+    socketRef.current.on(
+      'message_pinned',
+      (data: { _id: string; roomId: string; isPinned: boolean }) => {
+        if (String(data.roomId) === String(roomId)) {
+          setMessages((prev) =>
+            prev.map((m) => (String(m._id) === String(data._id) ? { ...m, isPinned: data.isPinned } : m)),
+          );
+          (async () => {
+            const res = await readPinnedMessagesApi(roomId);
+            const arr = Array.isArray(res.data) ? (res.data as Message[]) : [];
+            setAllPinnedMessages(arr);
+          })();
+        }
+      },
+    );
 
     // 🔥 LISTENER CHO edit_message
     socketRef.current.on(

@@ -39,6 +39,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('pin_message', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('message_pinned', {
+      _id: data._id,
+      roomId: data.roomId,
+      isPinned: data.isPinned,
+    });
+  });
+
   // 🔥 THÊM SOCKET EVENT CHO EDIT MESSAGE
   socket.on('edit_message', (data) => {
     const payload = {
