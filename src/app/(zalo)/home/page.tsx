@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import HomeDesktop from '@/components/(home)/HomeDesktop';
 import HomeMobile from '@/components/(home)/HomeMobile';
 import HomeOverlays from '@/components/(home)/HomeOverlays';
 import { useHomePage } from '@/hooks/useHomePage';
 import type { GroupConversation } from '@/types/Group';
+import { subscribeNotification, addUserTags, loginOneSignal, ensureSubscribed, waitForOneSignalReady } from '@/lib/onesignal';
 
 export default function HomePage() {
   const {
@@ -33,6 +34,36 @@ export default function HomePage() {
     handleSelectChat,
     setSelectedChat,
   } = useHomePage();
+
+  useEffect(() => {
+    const run = async () => {
+      if (!currentUser || !currentUser._id) return;
+      await waitForOneSignalReady();
+      await subscribeNotification();
+      const subId = await ensureSubscribed();
+      await loginOneSignal(String(currentUser._id));
+      await addUserTags({ userId: String(currentUser._id) });
+      if (typeof window !== 'undefined') {
+        try {
+          console.log('OneSignal subscription id', subId);
+        } catch {}
+      }
+      if (subId) {
+        try {
+          await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'addOneSignalSub',
+              currentUserId: String(currentUser._id),
+              data: { subId: String(subId) },
+            }),
+          });
+        } catch {}
+      }
+    };
+    void run();
+  }, [currentUser]);
 
   if (isLoading || !currentUser) {
     return <div className="flex h-screen items-center justify-center bg-white">Loading...</div>;

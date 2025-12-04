@@ -1,6 +1,14 @@
 // src/app/api/messages/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { addRow, deleteByField, deleteById, getAllRows, getRowByIdOrCode, updateByField, updateMany } from '@/lib/mongoDBCRUD';
+import {
+  addRow,
+  deleteByField,
+  deleteById,
+  getAllRows,
+  getRowByIdOrCode,
+  updateByField,
+  updateMany,
+} from '@/lib/mongoDBCRUD';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { GroupConversation, GroupMemberSchema, MemberInfo } from '@/types/Group';
@@ -9,6 +17,129 @@ import { ObjectId } from 'mongodb';
 type MongoFilters = Record<string, unknown>;
 type MemberInput = string | GroupMemberSchema | MemberInfo | { id?: string; _id?: string };
 type GroupSummary = { _id: string; name: string; avatar?: string; isGroup: boolean; members: string[] };
+
+async function sendPushOnMessage(data: { roomId: string; senderId: string; content?: string }) {
+  const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || process.env.ONESIGNAL_APP_ID || '';
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY || '';
+  if (!appId || !apiKey) return;
+
+  const roomId = String(data.roomId);
+  const senderId = String(data.senderId);
+  let recipients: string[] = [];
+  let heading = 'Tin nhắn mới';
+  const body = data.content || 'Bạn có tin nhắn mới';
+
+  try {
+    const senderRes = await getAllRows<User>(USERS_COLLECTION_NAME, {
+      filters: { _id: ObjectId.isValid(senderId) ? new ObjectId(senderId) : senderId },
+      limit: 1,
+    });
+    const sender = senderRes.data?.[0];
+    if (sender && sender.name) heading = sender.name;
+  } catch {}
+
+  if (roomId.includes('_')) {
+    const parts = roomId.split('_');
+    const other = parts.find((p) => String(p) !== senderId) || parts[0];
+    recipients = [String(other)];
+  } else {
+    try {
+      const groupRes = await getAllRows<GroupConversation>('Groups', {
+        filters: { _id: ObjectId.isValid(roomId) ? new ObjectId(roomId) : roomId },
+        limit: 1,
+      });
+      const group = groupRes.data?.[0];
+      if (group) {
+        heading = group.name || heading;
+        const members: (GroupMemberSchema | MemberInfo | string)[] = Array.isArray(group.members) ? group.members : [];
+        const ids = members
+          .map((m) => {
+            if (typeof m === 'string') return String(m);
+            const obj = m as GroupMemberSchema | MemberInfo;
+            return obj._id ? String(obj._id) : (obj as MemberInfo).id ? String((obj as MemberInfo).id) : '';
+          })
+          .filter((id) => id && id !== senderId);
+        recipients = Array.from(new Set(ids));
+      }
+    } catch {}
+  }
+
+  const targets = Array.from(new Set([...recipients, senderId])).filter(Boolean);
+  if (targets.length === 0) return;
+
+  const url = 'https://api.onesignal.com/notifications';
+  let subscriptionIds: string[] = [];
+  try {
+    const usersRes = await getAllRows<User>(USERS_COLLECTION_NAME, {
+      filters: { _id: { $in: targets.map((t) => (ObjectId.isValid(t) ? new ObjectId(t) : t)) } },
+      limit: 9999,
+    });
+    subscriptionIds = Array.from(
+      new Set(
+        (usersRes.data || [])
+          .map((u) =>
+            Array.isArray((u as Record<string, unknown>)['onesignalSubs'])
+              ? ((u as Record<string, unknown>)['onesignalSubs'] as string[])
+              : [],
+          )
+          .flat()
+          .filter((x) => typeof x === 'string' && x.trim().length > 0),
+      ),
+    );
+  } catch {}
+
+  const useSubs = subscriptionIds.length > 0;
+  const payload = useSubs
+    ? {
+        app_id: appId,
+        include_subscription_ids: subscriptionIds,
+        target_channel: 'push',
+        contents: { en: body, vi: body },
+        headings: { en: heading, vi: heading },
+        isAnyWeb: true,
+      }
+    : {
+        app_id: appId,
+        include_aliases: { external_id: targets },
+        target_channel: 'push',
+        contents: { en: body, vi: body },
+        headings: { en: heading, vi: heading },
+        isAnyWeb: true,
+      };
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.warn('OneSignal push error', res.status, txt);
+      const filtersPayload = {
+        app_id: appId,
+        target_channel: 'push',
+        isAnyWeb: true,
+        filters: targets
+          .map((rid) => ({ field: 'tag', relation: '=', key: 'userId', value: rid }))
+          .flatMap((f, i) => (i === 0 ? [f] : [{ operator: 'OR' }, f])),
+        contents: { en: body, vi: body },
+        headings: { en: heading, vi: heading },
+      };
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Key ${apiKey}`,
+        },
+        body: JSON.stringify(filtersPayload),
+      });
+    }
+  } catch {}
+}
 
 export async function POST(req: NextRequest) {
   const {
@@ -44,6 +175,13 @@ export async function POST(req: NextRequest) {
         if (newData.id) delete newData.id;
 
         const newId = await addRow<Message>(collectionName, newData);
+        try {
+          await sendPushOnMessage({
+            roomId: String(newData.roomId),
+            senderId: String(newData.sender),
+            content: String(newData.content || ''),
+          });
+        } catch {}
         return NextResponse.json({ success: true, _id: newId });
       }
 
@@ -84,13 +222,17 @@ export async function POST(req: NextRequest) {
         // ... (phần lấy danh sách senderIds, query users, enrichedMessages)
 
         // Lấy danh sách senderId (hỗ trợ cả ObjectId, number, string)
-        const rawSenderIds = [...new Set(messages.map((m) => {
-          const s = (m as Message).sender as unknown;
-          if (s && typeof s === 'object' && s !== null && '_id' in (s as Record<string, unknown>)) {
-            return String((s as Record<string, unknown>)._id);
-          }
-          return String((m as Message).sender);
-        }))];
+        const rawSenderIds = [
+          ...new Set(
+            messages.map((m) => {
+              const s = (m as Message).sender as unknown;
+              if (s && typeof s === 'object' && s !== null && '_id' in (s as Record<string, unknown>)) {
+                return String((s as Record<string, unknown>)._id);
+              }
+              return String((m as Message).sender);
+            }),
+          ),
+        ];
 
         const senderIdValues = rawSenderIds.map((idStr) => {
           if (ObjectId.isValid(idStr)) return new ObjectId(idStr);
@@ -179,7 +321,8 @@ export async function POST(req: NextRequest) {
         if (!field || value === undefined)
           return NextResponse.json({ error: 'Missing field or value' }, { status: 400 });
         const key = String(field) as keyof Message;
-        const val: string | number = typeof value === 'string' || typeof value === 'number' ? (value as string | number) : String(value);
+        const val: string | number =
+          typeof value === 'string' || typeof value === 'number' ? (value as string | number) : String(value);
         const ok = await updateByField<Message>(collectionName, key, val, data as Partial<Message>);
         return NextResponse.json({ success: ok });
       }
@@ -203,7 +346,8 @@ export async function POST(req: NextRequest) {
           ok = await deleteById(collectionName, String(value));
         } else {
           const key = String(field) as keyof Message;
-          const val: string | number = typeof value === 'string' || typeof value === 'number' ? (value as string | number) : String(value);
+          const val: string | number =
+            typeof value === 'string' || typeof value === 'number' ? (value as string | number) : String(value);
           ok = await deleteByField<Message>(collectionName, key, val);
         }
         return NextResponse.json({ success: ok });
@@ -217,7 +361,6 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing userId or searchTerm' }, { status: 400 });
         }
 
-
         // ========== BƯỚC 1: LẤY DANH SÁCH GROUP MÀ USER LÀ THÀNH VIÊN ==========
         const groupRoomIds: string[] = [];
         const groupMap = new Map<string, GroupSummary>();
@@ -227,7 +370,6 @@ export async function POST(req: NextRequest) {
             filters: {},
             limit: 9999,
           });
-
 
           // 🔥 SỬA LẠI: Filter groups mà user là thành viên
           const getMemberId = (m: MemberInput): string | null => {
@@ -251,7 +393,6 @@ export async function POST(req: NextRequest) {
             return false;
           });
 
-
           userGroups.forEach((g) => {
             const gId = String(g._id);
             groupRoomIds.push(gId);
@@ -269,7 +410,6 @@ export async function POST(req: NextRequest) {
               members: membersList,
             });
           });
-        
         } catch (e) {
           console.error('❌ [API] Error fetching groups:', e);
         }
@@ -299,7 +439,6 @@ export async function POST(req: NextRequest) {
             const roomId = `${ids[0]}_${ids[1]}`;
             oneToOneRoomIds.push(roomId);
           });
-
         } catch (e) {
           console.error('❌ [API] Error generating 1-1 rooms:', e);
         }
@@ -328,7 +467,6 @@ export async function POST(req: NextRequest) {
 
         const foundMessages: Message[] = searchResults.data || [];
 
-       
         if (!foundMessages.length) {
           return NextResponse.json({ success: true, data: [], total: 0 });
         }
@@ -367,7 +505,6 @@ export async function POST(req: NextRequest) {
             chatInfo.roomName = group?.name || 'Nhóm';
             chatInfo.roomAvatar = group?.avatar || null;
             chatInfo.partnerId = null;
-
           } else {
             // Chat 1-1
             chatInfo.isGroupChat = false;
@@ -392,7 +529,6 @@ export async function POST(req: NextRequest) {
 
               const ids = [searchUserId, partnerId].sort();
               chatInfo.roomId = `${ids[0]}_${ids[1]}`;
-
             }
           }
 
@@ -451,8 +587,6 @@ export async function POST(req: NextRequest) {
           oneToOne: enrichedMessages.filter((m) => !m.isGroupChat),
           all: enrichedMessages,
         };
-
-       
 
         return NextResponse.json({
           success: true,
