@@ -22,7 +22,7 @@ export default function GenderSelector({ value, onChange }: GenderSelectorProps)
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-full px-5 py-4 rounded-2xl bg-white border-2 font-medium text-left
+          w-full px-5 py-2 rounded-2xl bg-white border-2 font-medium text-left
           flex items-center justify-between transition-all duration-200
           focus:outline-none focus:ring-4 focus:ring-indigo-100
           ${
@@ -59,7 +59,7 @@ export default function GenderSelector({ value, onChange }: GenderSelectorProps)
                   setIsOpen(false);
                 }}
                 className={`
-                  w-full px-5 py-4 text-left font-medium transition-all flex items-center justify-between
+                  w-full px-5 py-3 text-left font-medium transition-all flex items-center justify-between
                   hover:bg-indigo-50 active:bg-indigo-100
                   ${value === gender ? 'bg-indigo-50 text-indigo-700' : 'text-gray-800'}
                 `}

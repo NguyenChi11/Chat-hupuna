@@ -21,7 +21,7 @@ interface InfoRowProps {
 
 export default function InfoRow({ icon, label, value, badge }: InfoRowProps) {
   return (
-    <div className="flex items-center justify-between bg-white rounded-2xl px-6 py-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between bg-white rounded-2xl px-6 py-3 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-4">
         {icon ? iconMap[icon] : null}
         <span className="text-gray-600 font-medium text-base">{label}</span>

@@ -145,8 +145,6 @@ export default function ChatWindow({
   const [initialLoading, setInitialLoading] = useState(false);
   const reminderScheduledIdsRef = useRef<Set<string>>(new Set());
   const reminderTimersByIdRef = useRef<Map<string, number>>(new Map());
-  const duePollerRef = useRef<number | null>(null);
-  const dueNotifiedIdsRef = useRef<Set<string>>(new Set());
   const messagesRef = useRef<Message[]>([]);
   useEffect(() => {
     messagesRef.current = messages;
@@ -211,7 +209,7 @@ export default function ChatWindow({
   );
 
   const sendNotifyMessage = useCallback(
-    async (text: string, replyToMessageId?: string, extra?: Partial<MessageCreate>) => {
+    async (text: string, replyToMessageId?: string) => {
       const newMsg: MessageCreate = {
         roomId: roomId,
         sender: currentUser._id,
@@ -219,7 +217,6 @@ export default function ChatWindow({
         type: 'notify',
         timestamp: Date.now(),
         replyToMessageId,
-        ...(extra || {}),
       };
       await sendMessageProcess(newMsg);
     },
@@ -307,13 +304,6 @@ export default function ChatWindow({
                 await sendNotifyMessage(
                   `Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`,
                   String(latest2._id),
-                  {
-                    reminderAt: latestAt2,
-                    reminderNote: (latest2 as Message & { reminderNote?: string }).reminderNote,
-                    reminderRepeat: (latest2 as Message & { reminderRepeat?: MessageCreate['reminderRepeat'] })
-                      .reminderRepeat,
-                    reminderContent: latest2.content,
-                  },
                 );
                 if (nextAt2) {
                   socketRef.current?.emit('edit_message', {
@@ -357,17 +347,7 @@ export default function ChatWindow({
           });
           const json = await res.json();
           if (json?.success) {
-            await sendNotifyMessage(
-              `Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`,
-              String(latest._id),
-              {
-                reminderAt: latestAt,
-                reminderNote: (latest as Message & { reminderNote?: string }).reminderNote,
-                reminderRepeat: (latest as Message & { reminderRepeat?: MessageCreate['reminderRepeat'] })
-                  .reminderRepeat,
-                reminderContent: latest.content,
-              },
-            );
+            await sendNotifyMessage(`Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`, String(latest._id));
             if (nextAt) {
               socketRef.current?.emit('edit_message', {
                 _id: latest._id,
@@ -557,23 +537,18 @@ export default function ChatWindow({
         // 2. Cập nhật danh sách messages và pinnedMessage
         setMessages((prev) => prev.map((m) => (m._id === message._id ? { ...m, isPinned: newPinnedStatus } : m)));
         setAllPinnedMessages((prev) => {
-          const updatedMsg = { ...message, isPinned: newPinnedStatus } as Message;
+          const updatedMsg = { ...message, isPinned: newPinnedStatus, editedAt: Date.now() } as Message;
           const withoutDup = prev.filter((m) => String(m._id) !== String(message._id));
           return newPinnedStatus ? [updatedMsg, ...withoutDup] : withoutDup;
         });
 
         // 2.2. Bắn socket ngay để cập nhật realtime cho tất cả client
-        const payload = { _id: message._id, roomId, isPinned: newPinnedStatus };
-        if (socketRef.current && socketRef.current.connected) {
-          socketRef.current.emit('pin_message', payload);
-        } else {
-          const tempSocket = io(SOCKET_URL);
-          tempSocket.once('connect', () => {
-            tempSocket.emit('join_room', roomId);
-            tempSocket.emit('pin_message', payload);
-            setTimeout(() => tempSocket.disconnect(), 300);
-          });
-        }
+        socketRef.current?.emit('edit_message', {
+          _id: message._id,
+          roomId,
+          isPinned: newPinnedStatus,
+          editedAt: Date.now(),
+        });
 
         // 🔥 BƯỚC MỚI: GỬI THÔNG BÁO VÀO NHÓM
         const action = newPinnedStatus ? 'đã ghim' : 'đã bỏ ghim';
@@ -903,66 +878,6 @@ export default function ChatWindow({
 
   useEffect(() => {
     if (!roomId) return;
-    const poll = async () => {
-      try {
-        const now = Date.now();
-        const data = await readMessagesApi(roomId, {
-          limit: 1000,
-          sortOrder: 'asc',
-          extraFilters: {
-            type: 'reminder',
-            isRecalled: { $ne: true },
-            reminderFired: { $ne: true },
-            reminderAt: { $lte: now },
-          },
-        });
-        const arr = Array.isArray(data.data) ? (data.data as Message[]) : [];
-        for (const r of arr) {
-          const idStr = String(r._id);
-          if (dueNotifiedIdsRef.current.has(idStr)) continue;
-          const at = (r as Message & { reminderAt?: number }).reminderAt || r.timestamp;
-          const repeat =
-            (r as Message & { reminderRepeat?: 'none' | 'daily' | 'weekly' | 'monthly' }).reminderRepeat || 'none';
-          let nextAt: number | null = null;
-          if (repeat === 'daily') nextAt = at + 24 * 60 * 60 * 1000;
-          else if (repeat === 'weekly') nextAt = at + 7 * 24 * 60 * 60 * 1000;
-          else if (repeat === 'monthly') {
-            const d = new Date(at);
-            d.setMonth(d.getMonth() + 1);
-            nextAt = d.getTime();
-          }
-          const updateData = nextAt
-            ? { reminderAt: nextAt, reminderFired: false, editedAt: Date.now() }
-            : { reminderFired: true };
-          try {
-            await fetch('/api/messages', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'update', field: '_id', value: r._id, data: updateData }),
-            });
-          } catch {}
-          const timeStr = new Date(at).toLocaleString('vi-VN');
-          await sendNotifyMessage(`Đến giờ lịch hẹn: "${r.content || ''}" lúc ${timeStr}`, String(r._id), {
-            reminderAt: at,
-            reminderNote: (r as Message & { reminderNote?: string }).reminderNote,
-            reminderRepeat: (r as Message & { reminderRepeat?: MessageCreate['reminderRepeat'] }).reminderRepeat,
-            reminderContent: r.content,
-          });
-          dueNotifiedIdsRef.current.add(idStr);
-        }
-      } catch {}
-    };
-    void poll();
-    const id = window.setInterval(poll, 30000);
-    duePollerRef.current = id;
-    return () => {
-      if (duePollerRef.current) window.clearInterval(duePollerRef.current);
-      duePollerRef.current = null;
-      dueNotifiedIdsRef.current.clear();
-    };
-  }, [roomId, sendNotifyMessage]);
-  useEffect(() => {
-    if (!roomId) return;
 
     socketRef.current = io(
       typeof window !== 'undefined'
@@ -1005,22 +920,6 @@ export default function ChatWindow({
         }, 0);
       }
     });
-
-    socketRef.current.on(
-      'message_pinned',
-      (data: { _id: string; roomId: string; isPinned: boolean }) => {
-        if (String(data.roomId) === String(roomId)) {
-          setMessages((prev) =>
-            prev.map((m) => (String(m._id) === String(data._id) ? { ...m, isPinned: data.isPinned } : m)),
-          );
-          (async () => {
-            const res = await readPinnedMessagesApi(roomId);
-            const arr = Array.isArray(res.data) ? (res.data as Message[]) : [];
-            setAllPinnedMessages(arr);
-          })();
-        }
-      },
-    );
 
     // 🔥 LISTENER CHO edit_message
     socketRef.current.on(
@@ -1165,13 +1064,6 @@ export default function ChatWindow({
                       await sendNotifyMessage(
                         `Đến giờ lịch hẹn: "${latest2.content || ''}" lúc ${timeStr2}`,
                         String(latest2._id),
-                        {
-                          reminderAt: latestAt2,
-                          reminderNote: (latest2 as Message & { reminderNote?: string }).reminderNote,
-                          reminderRepeat: (latest2 as Message & { reminderRepeat?: MessageCreate['reminderRepeat'] })
-                            .reminderRepeat,
-                          reminderContent: latest2.content,
-                        },
                       );
                     }
                   } catch {}
@@ -1198,13 +1090,6 @@ export default function ChatWindow({
                   await sendNotifyMessage(
                     `Đến giờ lịch hẹn: "${latest.content || ''}" lúc ${timeStr}`,
                     String(latest._id),
-                    {
-                      reminderAt: latestAt,
-                      reminderNote: (latest as Message & { reminderNote?: string }).reminderNote,
-                      reminderRepeat: (latest as Message & { reminderRepeat?: MessageCreate['reminderRepeat'] })
-                        .reminderRepeat,
-                      reminderContent: latest.content,
-                    },
                   );
                 }
               } catch {}

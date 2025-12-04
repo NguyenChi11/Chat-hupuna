@@ -31,12 +31,12 @@ export default function DepartmentDropdown({ value, onChange }: DepartmentDropdo
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-5 py-4 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all 
-                   flex items-center justify-between text-left font-medium text-lg border-2 border-transparent 
+        className="w-full px-5 py-2 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all 
+                   flex items-center justify-between text-left font-medium text-sm border-2 border-transparent 
                    focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none"
       >
         <div className="flex items-center gap-3">
-          <HiBuildingOffice2 className="w-6 h-6 text-gray-600" />
+          <HiBuildingOffice2 className="w-4 h-4 text-gray-600" />
           <span className={selected ? 'text-gray-900' : 'text-gray-500'}>{selected?.label || 'Chọn phòng ban'}</span>
         </div>
         <HiChevronDown className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -53,7 +53,7 @@ export default function DepartmentDropdown({ value, onChange }: DepartmentDropdo
                   onChange(dept.value);
                   setIsOpen(false);
                 }}
-                className="w-full px-5 py-4 hover:bg-gray-50 transition-all flex items-center justify-between text-left"
+                className="w-full px-5 py-3 hover:bg-gray-50 transition-all flex items-center justify-between text-left"
               >
                 <span className="font-medium">{dept.label}</span>
                 {value === dept.value && <HiCheck className="w-5 h-5 text-indigo-600" />}

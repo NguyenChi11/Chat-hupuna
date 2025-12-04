@@ -115,14 +115,14 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
         editedAt: now,
         timestamp: now,
       });
-  const socket = io(
-    typeof window !== 'undefined'
-      ? SOCKET_URL?.includes('localhost')
-        ? SOCKET_URL.replace('localhost', window.location.hostname)
-        : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-      : SOCKET_URL || '',
-    { transports: ['websocket'], withCredentials: false },
-  );
+      const socket = io(
+        typeof window !== 'undefined'
+          ? SOCKET_URL?.includes('localhost')
+            ? SOCKET_URL.replace('localhost', window.location.hostname)
+            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
+          : SOCKET_URL || '',
+        { transports: ['websocket'], withCredentials: false },
+      );
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         const receiver = isGroup ? null : String((selectedChat as User)._id);

@@ -3,12 +3,12 @@ import React from 'react';
 import { HiUser, HiPhone, HiCalendar, HiEnvelope, HiMapPin, HiBriefcase } from 'react-icons/hi2';
 
 const iconMap: Record<string, React.ReactNode> = {
-  user: <HiUser className="w-6 h-6" />,
-  phone: <HiPhone className="w-6 h-6" />,
-  calendar: <HiCalendar className="w-6 h-6" />,
-  email: <HiEnvelope className="w-6 h-6" />,
-  location: <HiMapPin className="w-6 h-6" />,
-  briefcase: <HiBriefcase className="w-6 h-6" />,
+  user: <HiUser className="w-4 h-4" />,
+  phone: <HiPhone className="w-4 h-4" />,
+  calendar: <HiCalendar className="w-4 h-4" />,
+  email: <HiEnvelope className="w-4 h-4" />,
+  location: <HiMapPin className="w-4 h-4" />,
+  briefcase: <HiBriefcase className="w-4 h-4" />,
 };
 
 interface InputFieldProps {
@@ -30,9 +30,9 @@ export default function InputField({ icon, placeholder = '', value, onChange, ty
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-14 pr-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent 
+        className="w-full pl-14 pr-5 py-2 rounded-2xl bg-gray-50 border-2 border-transparent 
                    focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 
-                   transition-all duration-200 text-lg font-medium outline-none 
+                   transition-all duration-200 text-sm font-medium outline-none 
                    placeholder:text-gray-400"
       />
     </div>

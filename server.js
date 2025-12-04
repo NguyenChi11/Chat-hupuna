@@ -1,12 +1,15 @@
 // server.js
 import { Server } from 'socket.io';
 
-const io = new Server(Number(process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || process.env.NEXT_PUBLIC_SERVER_PORT || 3002), {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
+const io = new Server(
+  Number(process.env.SOCKET_PORT || process.env.NEXT_PUBLIC_SOCKET_PORT || process.env.NEXT_PUBLIC_SERVER_PORT || 3002),
+  {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+    },
   },
-});
+);
 
 const presence = new Map();
 

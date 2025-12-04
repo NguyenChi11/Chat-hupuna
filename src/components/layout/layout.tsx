@@ -23,18 +23,24 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
     const checkAuth = async () => {
       try {
-        let res = await fetch('/api/users/me');
-        let json = await res.json();
-        if (!res.ok || !json?.success) {
-          const r = await fetch('/api/auth/refresh');
-          if (r.ok) {
-            res = await fetch('/api/users/me');
-            json = await res.json();
-          }
+        const res = await fetch('/api/auth/refresh', { credentials: 'include' });
+        if (res.ok) {
+          const meRes = await fetch('/api/users/me', { credentials: 'include' });
+          const meJson = await meRes.json();
+          if (mounted) setIsAuthed(!!meJson?.success);
+        } else {
+          const meRes = await fetch('/api/users/me', { credentials: 'include' });
+          const meJson = await meRes.json();
+          if (mounted) setIsAuthed(!!meJson?.success);
         }
-        if (mounted) setIsAuthed(!!json?.success);
       } catch {
-        if (mounted) setIsAuthed(false);
+        try {
+          const raw = localStorage.getItem('info_user');
+          const u = raw ? JSON.parse(raw) : null;
+          if (mounted) setIsAuthed(!!u && !!u._id);
+        } catch {
+          if (mounted) setIsAuthed(false);
+        }
       } finally {
         if (mounted) setChecked(true);
       }
