@@ -1194,7 +1194,7 @@ export default function ChatWindow({
           receiver: isGroup ? null : getId(selectedChat),
           members: isGroup ? (selectedChat as GroupConversation).members : [],
           type: 'recall',
-          content: 'Tin nhắn đã bị thu hồi',
+          content: 'đã thu hồi tin nhắn',
           timestamp: Date.now(),
         };
 

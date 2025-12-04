@@ -93,7 +93,7 @@ export default function PinnedMessageListModal({
                 {/* Nội dung */}
                 <p className="text-sm text-gray-700 line-clamp-3 leading-relaxed">
                   {msg.isRecalled ? (
-                    <span className="italic text-gray-400">Tin nhắn đã bị thu hồi</span>
+                    <span className="italic text-gray-400">đã thu hồi tin nhắn</span>
                   ) : (
                     onGetContentDisplay(msg)
                   )}

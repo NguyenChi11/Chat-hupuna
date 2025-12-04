@@ -143,7 +143,10 @@ export default function MessageList({
                     <React.Fragment key={`notify-${msg._id}-due`}>
                       {pillNode}
                       <div className="flex justify-center -mt-2 ">
-                        <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                        <button
+                          onClick={() => setDetailMsg(related)}
+                          className="text-xs text-blue-600 hover:underline hover:cursor-pointer"
+                        >
                           Xem thêm
                         </button>
                       </div>
@@ -151,7 +154,8 @@ export default function MessageList({
                   );
                 }
                 const inlineAt = (msg as Message & { reminderAt?: number }).reminderAt;
-                const inlineContent = (msg as Message & { reminderContent?: string }).reminderContent || msg.content || '';
+                const inlineContent =
+                  (msg as Message & { reminderContent?: string }).reminderContent || msg.content || '';
                 const inlineNote = (msg as Message & { reminderNote?: string }).reminderNote;
                 const stub: Message = {
                   _id: (msg.replyToMessageId as unknown as string) || String(msg._id),
@@ -169,7 +173,10 @@ export default function MessageList({
                   <React.Fragment key={`notify-${msg._id}-due-inline`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
-                      <button onClick={() => setDetailMsg(stub)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                      <button
+                        onClick={() => setDetailMsg(stub)}
+                        className="text-xs text-blue-600 hover:underline hover:cursor-pointer"
+                      >
                         Xem thêm
                       </button>
                     </div>
@@ -181,14 +188,17 @@ export default function MessageList({
                   <React.Fragment key={`notify-${msg._id}-reminder`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
-                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                      <button
+                        onClick={() => setDetailMsg(related)}
+                        className="text-xs text-blue-600 hover:underline hover:cursor-pointer"
+                      >
                         Xem thêm
                       </button>
                     </div>
                   </React.Fragment>
                 );
               }
-              if ((isCreate || isEdit || isDelete)) {
+              if (isCreate || isEdit || isDelete) {
                 const inlineAt = (msg as Message & { reminderAt?: number }).reminderAt;
                 const inlineContent = (msg as Message & { reminderContent?: string }).reminderContent || '';
                 const inlineNote = (msg as Message & { reminderNote?: string }).reminderNote;
@@ -209,7 +219,10 @@ export default function MessageList({
                     <React.Fragment key={`notify-${msg._id}-reminder-inline`}>
                       {pillNode}
                       <div className="flex justify-center -mt-2">
-                        <button onClick={() => setDetailMsg(stub)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                        <button
+                          onClick={() => setDetailMsg(stub)}
+                          className="text-xs text-blue-600 hover:underline hover:cursor-pointer"
+                        >
                           Xem thêm
                         </button>
                       </div>
@@ -222,7 +235,10 @@ export default function MessageList({
                   <React.Fragment key={`notify-${msg._id}-poll`}>
                     {pillNode}
                     <div className="flex justify-center -mt-2">
-                      <button onClick={() => setDetailMsg(related)} className="text-xs text-blue-600 hover:underline hover:cursor-pointer">
+                      <button
+                        onClick={() => setDetailMsg(related)}
+                        className="text-xs text-blue-600 hover:underline hover:cursor-pointer"
+                      >
                         Xem
                       </button>
                     </div>
@@ -434,10 +450,10 @@ export default function MessageList({
                       ${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'}
                       ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
                       ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}
-                      ${isRecalled ? '!bg-gray-200 !text-gray-500 italic' : ''}
-                      ${isVideo || msg.type === 'sticker' ? '!p-0 !shadow-none bg-transparent' : ''}
-                      ${msg.type === 'image' ? '!p-0' : ''}
-                      ${msg.type === 'file' ? '!px-2 !py-2' : ''}
+                      ${isRecalled ? '!bg-gray-200 !text-gray-500 italic !px-4 !py-2 sm:!max-w-[18rem]' : ''}
+                      ${!isRecalled && (isVideo || msg.type === 'sticker') ? '!p-0 !shadow-none bg-transparent' : ''}
+                      ${!isRecalled && msg.type === 'image' ? '!p-0' : ''}
+                      ${!isRecalled && msg.type === 'file' ? '!px-2 !py-2' : ''}
                     relative
                     `}
                     onClick={() => {
@@ -510,7 +526,7 @@ export default function MessageList({
                     )}
 
                     {/* IMAGE – FIX SIZE MOBILE */}
-                    {msg.type === 'image' && msg.fileUrl && (
+                    {msg.type === 'image' && msg.fileUrl && !isRecalled && (
                       <div
                         className="relative rounded-2xl overflow-hidden cursor-pointer shadow-md max-w-[70vw] sm:max-w-[18rem]"
                         onClick={() => !isUploading && onOpenMedia(getProxyUrl(msg.fileUrl), 'image')}
@@ -532,7 +548,7 @@ export default function MessageList({
                     )}
 
                     {/* VIDEO – FIX SIZE MOBILE */}
-                    {isVideo && msg.fileUrl && (
+                    {isVideo && msg.fileUrl && !isRecalled && (
                       <div
                         className="relative rounded-2xl overflow-hidden cursor-pointer shadow-lg max-w-[70vw] sm:max-w-[18rem] aspect-video bg-black"
                         onClick={() => !isUploading && onOpenMedia(getProxyUrl(msg.fileUrl!), 'video')}
@@ -560,7 +576,7 @@ export default function MessageList({
                     )}
 
                     {/* FILE – FIX SIZE MOBILE */}
-                    {msg.type === 'file' && msg.fileUrl && !isVideo && (
+                    {msg.type === 'file' && msg.fileUrl && !isVideo && !isRecalled && (
                       <a
                         href={getProxyUrl(msg.fileUrl)}
                         target="_blank"
@@ -580,7 +596,7 @@ export default function MessageList({
                       </a>
                     )}
 
-                    {isRecalled && <p className="text-sm italic opacity-70">Tin nhắn đã bị thu hồi</p>}
+                    {isRecalled && <p className="text-sm italic opacity-70">đã thu hồi tin nhắn</p>}
 
                     {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}
                     {isEdited && !isRecalled && msg.originalContent && (

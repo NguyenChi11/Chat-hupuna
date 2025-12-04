@@ -117,7 +117,7 @@ io.on('connection', (socket) => {
 
     const sidebarData = {
       ...data,
-      content: 'Tin nhắn đã bị thu hồi',
+      content: 'đã thu hồi tin nhắn',
       type: 'recall',
       isRecalled: true,
     };

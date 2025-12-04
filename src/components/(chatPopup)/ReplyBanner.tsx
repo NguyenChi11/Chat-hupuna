@@ -21,7 +21,7 @@ export default function ReplyBanner({ replyingTo, getSenderName, onCancel }: Rep
           Trả lời {getSenderName(replyingTo.sender)}
         </div>
         <p className="truncate text-xs text-gray-700">
-          {replyingTo.isRecalled ? 'Tin nhắn đã bị thu hồi' : replyingTo.content || `[${replyingTo.type}]`}
+          {replyingTo.isRecalled ? 'đã thu hồi tin nhắn' : replyingTo.content || `[${replyingTo.type}]`}
         </p>
       </div>
       <button onClick={onCancel} className="cursor-pointer text-red-500 hover:text-red-700 p-1">

@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
               }
 
               if (lastMsgObj.isRecalled) {
-                lastMessagePreview = `${senderName}: Tin nhắn đã bị thu hồi`;
+                lastMessagePreview = `${senderName}: đã thu hồi tin nhắn`;
               } else {
                 const content =
                   lastMsgObj.type === 'text' || lastMsgObj.type === 'notify'

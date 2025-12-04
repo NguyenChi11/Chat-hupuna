@@ -163,7 +163,7 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose, roomId, 
         {searchResults.map((msg: Message) => {
           const isRecalled = msg.isRecalled === true;
           const contentDisplay = isRecalled
-            ? 'Tin nhắn đã bị thu hồi'
+            ? 'đã thu hồi tin nhắn'
             : msg.content || `[${msg.type.charAt(0).toUpperCase() + msg.type.slice(1)}]`;
 
           // Lấy tên người gửi (sender được khai báo là string ID trong Message)
