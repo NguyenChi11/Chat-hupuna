@@ -157,6 +157,8 @@ export async function POST(req: NextRequest) {
     roomId,
     userId,
     messageId,
+    assetType,
+    beforeTs,
   } = await req.json();
 
   try {
@@ -265,6 +267,118 @@ export async function POST(req: NextRequest) {
           total: result.total,
           data: uniqueMessages,
         });
+      }
+
+      case 'readAssets': {
+        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
+        const type = String(assetType || '').toLowerCase();
+        const max = typeof limit === 'number' && limit > 0 ? Math.min(limit, 5000) : 6;
+
+        const videoRegex = /\.(mp4|mov|mkv|webm|avi|m4v)$/i;
+        const linkRegex = /(https?:\/\/|www\.)\S+/i;
+
+        const baseFilters: MongoFilters = {
+          roomId,
+          isRecalled: { $ne: true },
+        };
+        if (typeof beforeTs === 'number' && beforeTs > 0) {
+          (baseFilters as MongoFilters).timestamp = { $lte: beforeTs };
+        }
+
+        let mongoFilters: MongoFilters = { ...baseFilters };
+
+        if (type === 'media') {
+          mongoFilters = {
+            ...baseFilters,
+            $or: [
+              { type: 'image' },
+              { type: 'video' },
+              { $and: [{ type: 'file' }, { $or: [{ fileUrl: { $regex: videoRegex } }, { fileName: { $regex: videoRegex } }] }] },
+            ],
+          };
+        } else if (type === 'file') {
+          mongoFilters = {
+            ...baseFilters,
+            type: 'file',
+            $nor: [{ fileUrl: { $regex: videoRegex } }, { fileName: { $regex: videoRegex } }],
+          };
+        } else if (type === 'link') {
+          mongoFilters = {
+            ...baseFilters,
+            type: 'text',
+            content: { $regex: linkRegex },
+          };
+        } else {
+          return NextResponse.json({ error: 'Invalid assetType' }, { status: 400 });
+        }
+
+        const result = await getAllRows<Message>(collectionName, {
+          filters: mongoFilters,
+          limit: max,
+          sort: { field: 'timestamp', order: 'desc' },
+        });
+
+        const items: { id: string; url?: string; fileName?: string; type?: string; timestamp: number }[] = (result.data || [])
+          .map((msg) => {
+            if (type === 'media') {
+              const isVid = msg.type === 'video' || videoRegex.test(String(msg.fileUrl || msg.fileName || ''));
+              return {
+                id: String(msg._id),
+                url: String(msg.fileUrl || ''),
+                fileName: msg.fileName,
+                type: isVid ? 'video' : 'image',
+                timestamp: Number(msg.timestamp) || Date.now(),
+              };
+            }
+            if (type === 'file') {
+              return {
+                id: String(msg._id),
+                url: String(msg.fileUrl || msg.content || ''),
+                fileName: msg.fileName || 'Tài liệu',
+                timestamp: Number(msg.timestamp) || Date.now(),
+              };
+            }
+            // link
+            return {
+              id: String(msg._id),
+              url: String(msg.content || ''),
+              timestamp: Number(msg.timestamp) || Date.now(),
+            };
+          });
+
+        const toDateKey = (ts: number) => {
+          const d = new Date(ts);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
+        const toDateLabel = (ts: number) => {
+          const d = new Date(ts);
+          const today = new Date();
+          const yday = new Date();
+          yday.setDate(yday.getDate() - 1);
+          const sameDate = (a: Date, b: Date) =>
+            a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+          if (sameDate(d, today)) return 'Hôm nay';
+          if (sameDate(d, yday)) return 'Hôm qua';
+          return d.toLocaleDateString('vi-VN');
+        };
+
+        const map = new Map<string, { dateKey: string; dateLabel: string; items: typeof items }>();
+        items.forEach((it) => {
+          const key = toDateKey(it.timestamp);
+          if (!map.has(key)) map.set(key, { dateKey: key, dateLabel: toDateLabel(it.timestamp), items: [] });
+          map.get(key)!.items.push(it);
+        });
+        const groups = Array.from(map.values());
+        groups.sort((a, b) => (a.dateKey < b.dateKey ? 1 : a.dateKey > b.dateKey ? -1 : 0));
+        groups.forEach((g) => g.items.sort((a, b) => b.timestamp - a.timestamp));
+
+        const nextCursor = (result.data || []).length > 0 ? Math.min(...(result.data || []).map((m) => m.timestamp)) : null;
+
+        return NextResponse.json({ success: true, total: result.total || items.length, groups, nextCursor });
       }
 
       case 'recall': {
