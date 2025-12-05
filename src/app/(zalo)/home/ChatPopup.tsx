@@ -417,14 +417,14 @@ export default function ChatWindow({
 
     const allOption = {
       _id: ALL_MENTION_ID,
-      name: 'Tất cả mọi người',
+      name: 'All',
       avatar: undefined,
     } as User;
 
     // Tránh trùng nếu đã có trong list
     if (mentionSuggestions.some((u) => (u as User)._id === ALL_MENTION_ID)) return mentionSuggestions;
 
-    return [allOption, ...mentionSuggestions];
+    return [ ...mentionSuggestions,allOption];
   }, [isGroup, mentionSuggestions]);
 
   // Kết hợp keydown: vừa xử lý mention menu, vừa gửi tin nhắn với Enter
