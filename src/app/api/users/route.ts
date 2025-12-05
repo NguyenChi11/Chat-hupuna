@@ -156,13 +156,20 @@ export async function POST(req: NextRequest) {
             const lastMsgObj = lastMsgs[0];
 
             if (lastMsgObj) {
-              const content = lastMsgObj.type === 'text' ? lastMsgObj.content : `[${lastMsgObj.type}]`;
+              if(lastMsgObj.isRecalled) {
+                const isMySender = String(lastMsgObj.sender) === userIdStr;
+                const senderName = isMySender ? 'Bạn' : u.name  || 'Người dùng';
+                lastMessagePreview = `${senderName}: đã thu hồi tin nhắn`;
+              }else{
+                const content = lastMsgObj.type === 'text' ? lastMsgObj.content : `[${lastMsgObj.type}]`;
 
-              if (String(lastMsgObj.sender) === userIdStr) {
-                lastMessagePreview = `Bạn: ${content}`;
+                if (String(lastMsgObj.sender) === userIdStr) {
+                  lastMessagePreview = `Bạn: ${content}`;
               } else {
                 lastMessagePreview = content || '';
               }
+              }
+              
             } else {
               lastMessagePreview = 'Các bạn đã kết nối với nhau trên Zalo';
             }
@@ -175,6 +182,7 @@ export async function POST(req: NextRequest) {
               lastMessage: lastMessagePreview,
               lastMessageAt: lastMsgObj ? lastMsgObj.timestamp : null,
               isGroup: false,
+              isRecall:lastMsgObj ? lastMsgObj.isRecalled || false : false,
               isPinned,
               isHidden,
             };

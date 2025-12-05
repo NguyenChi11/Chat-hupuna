@@ -21,6 +21,7 @@ export interface User {
   isHidden?: boolean;
   isPinnedBy?: Record<string, boolean>;
   isHiddenBy?: Record<string, boolean>;
+  isRecall?: boolean;
   onesignalSubs?: string[];
 }
 export interface UserCreate {

@@ -7,6 +7,7 @@ import type { User } from '@/types/User';
 import { updateMessageApi, createMessageApi } from '@/fetch/messages';
 import { useChatContext } from '@/context/ChatContext';
 import { io } from 'socket.io-client';
+import { resolveSocketUrl } from '@/utils/utils';
 import { getProxyUrl } from '@/utils/utils';
 import Image from 'next/image';
 
@@ -115,14 +116,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
         editedAt: now,
         timestamp: now,
       });
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-        { transports: ['websocket'], withCredentials: false },
-      );
+      const socket = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         const receiver = isGroup ? null : String((selectedChat as User)._id);
@@ -215,14 +209,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
       await updateMessageApi(String(message._id), { pollVotes: nextVotes, editedAt: now, timestamp: now });
 
       // 🔥 EMIT SOCKET EVENT ĐỂ CẬP NHẬT REALTIME
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-        { transports: ['websocket'], withCredentials: false },
-      );
+      const socket = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         socket.emit('edit_message', {
@@ -289,14 +276,10 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
     try {
       const now = Date.now();
       await updateMessageApi(String(message._id), { pollOptions: nextOptions, editedAt: now, timestamp: now });
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-        { transports: ['websocket'], withCredentials: false },
-      );
+      const socket = io(resolveSocketUrl(), 
+            { transports: ['websocket'], 
+              withCredentials: false
+             });  
       socket.once('connect', async () => {
         socket.emit('join_room', roomId);
         socket.emit('edit_message', {
@@ -356,14 +339,10 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
         ? { isPollLocked: true, pollLockedAt: now, editedAt: now, timestamp: now }
         : { isPollLocked: false, editedAt: now, timestamp: now };
       await updateMessageApi(String(message._id), updateData);
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-        { transports: ['websocket'], withCredentials: false },
-      );
+      const socket = io(resolveSocketUrl(), 
+            { transports: ['websocket'], 
+              withCredentials: false
+             });  
       socket.emit('edit_message', { _id: message._id, roomId, ...updateData });
       if (next) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
@@ -431,52 +410,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
     }
   };
 
-  // const handleTogglePin = async () => {
-  //   if (!message) return;
-  //   const next = !message.isPinned;
-  //   setSaving(true);
-  //   try {
-  //     const now = Date.now();
-  //     await updateMessageApi(String(message._id), { isPinned: next, editedAt: now });
-  //     const socket = io(SOCKET_URL);
-  //     socket.emit('edit_message', { _id: message._id, roomId, isPinned: next, editedAt: now });
-
-  //     const receiver = isGroup ? null : String((selectedChat as User)._id);
-  //     const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
-  //     const who = currentUser.name || 'Ai đó';
-  //     const action = next ? 'đã ghim' : 'đã bỏ ghim';
-  //     const notifyText = `${who} ${action} một bình chọn: "${String(message.content || message.pollQuestion || '')}"`;
-  //     const notifyRes = await createMessageApi({
-  //       roomId,
-  //       sender: String(currentUser._id),
-  //       type: 'notify',
-  //       content: notifyText,
-  //       timestamp: now,
-  //       replyToMessageId: String(message._id),
-  //     });
-  //     if (notifyRes?.success) {
-  //       socket.emit('send_message', {
-  //         roomId,
-  //         sender: String(currentUser._id),
-  //         senderName: currentUser.name,
-  //         isGroup,
-  //         receiver,
-  //         members: members2,
-  //         _id: notifyRes._id,
-  //         type: 'notify',
-  //         content: notifyText,
-  //         timestamp: now,
-  //         replyToMessageId: String(message._id),
-  //       });
-  //     }
-  //     socket.disconnect();
-  //     if (onRefresh) {
-  //       await onRefresh();
-  //     }
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
+ 
 
   if (!isOpen || !message) return null;
 

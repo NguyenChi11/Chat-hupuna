@@ -33,3 +33,16 @@ export const isLink = (str: string | undefined): boolean => {
   );
   return !!pattern.test(str || '');
 };
+
+export const resolveSocketUrl = (): string => {
+  const envUrl = (process.env.NEXT_PUBLIC_SOCKET_URL || '').trim();
+  const envPort = (process.env.NEXT_PUBLIC_SOCKET_PORT || process.env.NEXT_PUBLIC_SERVER_PORT || '').trim();
+  if (typeof window === 'undefined') return envUrl || '';
+  const host = window.location.hostname;
+  const protocol = window.location.protocol;
+  if (envUrl) {
+    return envUrl.includes('localhost') ? envUrl.replace('localhost', host) : envUrl;
+  }
+  const port = envPort || '3002';
+  return `${protocol}//${host}:${port}`;
+};

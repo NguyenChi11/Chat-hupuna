@@ -7,6 +7,7 @@ import type { GroupConversation } from '@/types/Group';
 import type { User } from '@/types/User';
 import { readMessagesApi, createMessageApi, updateMessageApi } from '@/fetch/messages';
 import { io } from 'socket.io-client';
+import { resolveSocketUrl } from '@/utils/utils';
 import CreatePollModal from './CreatePollModal';
 import PollDetailModal from './PollDetailModal';
 
@@ -16,7 +17,9 @@ interface PollListProps {
 }
 
 export default function PollList({ onClose, onRefresh }: PollListProps) {
-  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
+  // ✅ BỎ DÒNG NÀY - Không cần nữa
+  // const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
+  
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -29,6 +32,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
   const [detailMsg, setDetailMsg] = useState<Message | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -63,16 +67,16 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
   }, [openMenuId]);
 
   useEffect(() => {
-    const socket = io(
-      typeof window !== 'undefined'
-        ? SOCKET_URL?.includes('localhost')
-          ? SOCKET_URL.replace('localhost', window.location.hostname)
-          : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-        : SOCKET_URL || '',
-      { transports: ['websocket'], withCredentials: false },
-    );
-    socket.emit('join_room', roomId);
-    socket.on('receive_message', (data: Message) => {
+    socketRef.current?.disconnect();
+    
+    // ✅ DÙNG resolveSocketUrl() thống nhất
+    socketRef.current = io(resolveSocketUrl(), { 
+      transports: ['websocket'], 
+      withCredentials: false 
+    });
+    
+    socketRef.current.emit('join_room', roomId);
+    socketRef.current.on('receive_message', (data: Message) => {
       if (String(data.roomId) !== String(roomId) || data.type !== 'poll') return;
       setItems((prev) => {
         const map = new Map<string, Message>();
@@ -80,7 +84,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
         return Array.from(map.values()).sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
       });
     });
-    socket.on(
+    socketRef.current.on(
       'message_edited',
       (data: {
         _id: string;
@@ -117,7 +121,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
         });
       },
     );
-    socket.on('edit_message', (data: { _id: string; roomId: string; newContent: string; editedAt: number }) => {
+    socketRef.current.on('edit_message', (data: { _id: string; roomId: string; newContent: string; editedAt: number }) => {
       if (String(data.roomId) !== String(roomId)) return;
       setItems((prev) =>
         prev.map((m) =>
@@ -132,14 +136,15 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
         ),
       );
     });
-    socket.on('message_deleted', (data: { _id: string; roomId: string }) => {
+    socketRef.current.on('message_deleted', (data: { _id: string; roomId: string }) => {
       if (String(data.roomId) !== String(roomId)) return;
       setItems((prev) => prev.filter((m) => String(m._id) !== String(data._id)));
     });
     return () => {
-      socket.disconnect();
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     };
-  }, [roomId, load, SOCKET_URL]);
+  }, [roomId, load]); // ✅ BỎ SOCKET_URL khỏi dependencies
 
   const handleCreate = async ({ question, options }: { question: string; options: string[] }) => {
     const cleanOptions = options.map((o) => o.trim()).filter((o) => o);
@@ -157,13 +162,6 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
         isPollLocked: false,
       });
       if (createRes?.success) {
-        const socket = io(
-          typeof window !== 'undefined'
-            ? SOCKET_URL?.includes('localhost')
-              ? SOCKET_URL.replace('localhost', window.location.hostname)
-              : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-            : SOCKET_URL || '',
-        );
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const sockBase = {
@@ -175,7 +173,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
           members,
         };
         if (typeof createRes._id === 'string') {
-          socket.emit('send_message', {
+          socketRef.current?.emit('send_message', {
             ...sockBase,
             _id: createRes._id,
             type: 'poll',
@@ -195,7 +193,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
             replyToMessageId: createRes._id,
           });
           if (notify?.success) {
-            socket.emit('send_message', {
+            socketRef.current?.emit('send_message', {
               ...sockBase,
               _id: notify._id,
               type: 'notify',
@@ -205,7 +203,6 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
             });
           }
         }
-        socket.disconnect();
       }
     } catch {}
     setShowCreate(false);
@@ -227,14 +224,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
         ? { isPollLocked: true, pollLockedAt: now, editedAt: now, timestamp: now }
         : { isPollLocked: false, editedAt: now, timestamp: now };
       await updateMessageApi(String(item._id), updateData);
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-      );
-      socket.emit('message_edited', { _id: item._id, roomId, ...updateData });
+      socketRef.current?.emit('message_edited', { _id: item._id, roomId, ...updateData });
       if (next) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -249,7 +239,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
           replyToMessageId: String(item._id),
         });
         if (notifyRes?.success) {
-          socket.emit('send_message', {
+          socketRef.current?.emit('send_message', {
             roomId,
             sender: String(currentUser._id),
             senderName: currentUser.name,
@@ -276,7 +266,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
           replyToMessageId: String(item._id),
         });
         if (notifyRes?.success) {
-          socket.emit('send_message', {
+          socketRef.current?.emit('send_message', {
             roomId,
             sender: String(currentUser._id),
             senderName: currentUser.name,
@@ -295,7 +285,6 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
       if (onRefresh) {
         await onRefresh();
       }
-      socket.disconnect();
     } catch {}
   };
 
@@ -305,20 +294,9 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
     try {
       const now = Date.now();
       await updateMessageApi(String(item._id), { isPinned: next, editedAt: now });
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-      );
-      socket.emit('message_edited', { _id: item._id, roomId, isPinned: next, editedAt: now });
+      socketRef.current?.emit('message_edited', { _id: item._id, roomId, isPinned: next, editedAt: now });
       await updateMessageApi(String(item._id), { isPinned: next });
-      socket.once('connect', () => {
-        socket.emit('join_room', roomId);
-        socket.emit('pin_message', { _id: item._id, roomId, isPinned: next });
-        setTimeout(() => socket.disconnect(), 300);
-      });
+      socketRef.current?.emit('pin_message', { _id: item._id, roomId, isPinned: next });
 
       const receiver = isGroup ? null : String((selectedChat as User)._id);
       const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
@@ -334,7 +312,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
         replyToMessageId: String(item._id),
       });
       if (notifyRes?.success) {
-        socket.emit('send_message', {
+        socketRef.current?.emit('send_message', {
           roomId,
           sender: String(currentUser._id),
           senderName: currentUser.name,
@@ -348,13 +326,10 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
           replyToMessageId: String(item._id),
         });
       }
-      socket.disconnect();
     } catch {
       setItems((prev) => prev.map((m) => (String(m._id) === String(item._id) ? { ...m, isPinned: !next } : m)));
     }
   };
-
-  // Bỏ vote trực tiếp trong danh sách; chỉ vote trong modal
 
   const handleEdit = (item: Message) => {
     setDetailMsg(item);

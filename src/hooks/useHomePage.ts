@@ -27,21 +27,7 @@ interface GlobalSearchMessageApi {
   displayRoomName?: string;
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
-
-function resolveSocketUrl(): string {
-  const envUrl = SOCKET_URL || '';
-  if (typeof window === 'undefined') return envUrl;
-  const host = window.location.hostname;
-  const protocol = window.location.protocol;
-  if (!envUrl) {
-    return `${protocol}//${host}:3002`;
-  }
-  if (envUrl.includes('localhost')) {
-    return envUrl.replace('localhost', host);
-  }
-  return envUrl;
-}
+import { resolveSocketUrl } from '@/utils/utils';
 
 export function useHomePage() {
   const router = useRouter();
@@ -403,13 +389,17 @@ export function useHomePage() {
         // 2. 🔥 Format nội dung tin nhắn - Ưu tiên lastMessage nếu có
         let contentDisplay = '';
 
-        // Nếu server đã gửi kèm lastMessage (đã format sẵn), dùng luôn
-        if (data.lastMessage) {
+        // Nếu server đã gửi kèm lastMessage (đã format sẵn), dùng luôn, trừ khi là recall để tự chèn prefix
+        if (data.lastMessage && !data.isRecalled && data.type !== 'recall') {
           contentDisplay = data.lastMessage;
         }
-        // Nếu là tin nhắn bị thu hồi
-        else if (data.isRecalled) {
-          contentDisplay = isMyMsg ? 'Bạn: Tin nhắn đã bị thu hồi' : `${senderName}: Tin nhắn đã bị thu hồi`;
+        // Thu hồi: hiển thị kèm người thu hồi (1-1 và nhóm), "Bạn" nếu là mình
+        else if (data.isRecalled || data.type === 'recall') {
+          contentDisplay = data.isGroup
+            ? isMyMsg
+              ? 'Bạn: Tin nhắn đã được thu hồi'
+              : `${senderName}: Tin nhắn đã được thu hồi`
+            : 'Tin nhắn đã được thu hồi';
         }
         // Nếu là tin nhắn text bình thường
         else {

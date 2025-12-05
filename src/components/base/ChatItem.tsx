@@ -226,7 +226,7 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
                   ${unreadCount > 0 ? 'font-semibold text-gray-800' : 'text-gray-600'}
                 `}
               >
-                {formatMessagePreview(lastMessage)}
+                {item.isRecall ? 'Tin nhắn đã được thu hồi' : formatMessagePreview(lastMessage)}
               </p>
 
               {/* Unread Badge – đẹp hơn Zalo */}

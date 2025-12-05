@@ -35,7 +35,7 @@ import {
   markAsReadApi,
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
-import { isVideoFile } from '@/utils/utils';
+import { isVideoFile, resolveSocketUrl } from '@/utils/utils';
 import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
@@ -310,6 +310,7 @@ export default function ChatWindow({
                     _id: latest2._id,
                     roomId,
                     content: latest2.content,
+                    newContent: latest2.content,
                     editedAt: Date.now(),
                     originalContent: latest2.originalContent || latest2.content,
                     reminderAt: nextAt2,
@@ -353,6 +354,7 @@ export default function ChatWindow({
                 _id: latest._id,
                 roomId,
                 content: latest.content,
+                newContent: latest.content,
                 editedAt: Date.now(),
                 originalContent: latest.originalContent || latest.content,
                 reminderAt: nextAt,
@@ -879,14 +881,7 @@ export default function ChatWindow({
   useEffect(() => {
     if (!roomId) return;
 
-    socketRef.current = io(
-      typeof window !== 'undefined'
-        ? SOCKET_URL?.includes('localhost')
-          ? SOCKET_URL.replace('localhost', window.location.hostname)
-          : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-        : SOCKET_URL || '',
-      { transports: ['websocket'], withCredentials: false },
-    );
+    socketRef.current = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
     socketRef.current.emit('join_room', roomId);
 
     socketRef.current.on('receive_message', (data: Message) => {

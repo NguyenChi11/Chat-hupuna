@@ -4,6 +4,7 @@ import type { Message } from '@/types/Message';
 import { useChatContext } from '@/context/ChatContext';
 import { updateMessageApi, deleteMessageApi, createMessageApi } from '@/fetch/messages';
 import { io } from 'socket.io-client';
+import { resolveSocketUrl } from '@/utils/utils';
 import type { GroupConversation } from '@/types/Group';
 import type { User } from '@/types/User';
 import { HiX } from 'react-icons/hi';
@@ -59,14 +60,10 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
         reminderRepeat: repeat,
       });
 
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-        { transports: ['websocket'], withCredentials: false },
-      );
+    const socket = io(resolveSocketUrl(), 
+      { transports: ['websocket'], 
+        withCredentials: false
+       });  
       const receiver = isGroup ? null : String((selectedChat as User)._id);
       const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
       socket.emit('edit_message', {
@@ -78,6 +75,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
         receiver,
         members,
         content: content.trim(),
+        newContent: content.trim(),
         editedAt: Date.now(),
         originalContent: message.content,
         reminderAt: dt,
@@ -85,12 +83,13 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
         reminderFired: false,
         reminderRepeat: repeat,
       });
+      const name = currentUser.name
       const timeStr = new Date(dt).toLocaleString('vi-VN');
       const notifyRes = await createMessageApi({
         roomId,
         sender: String(currentUser._id),
         type: 'notify',
-        content: `Bạn đã chỉnh sửa lịch hẹn: "${content.trim()}" lúc ${timeStr}`,
+        content: `${name} đã chỉnh sửa lịch hẹn: "${content.trim()}" lúc ${timeStr}`,
         timestamp: Date.now(),
         replyToMessageId: String(message._id),
       });
@@ -129,13 +128,10 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
     setSaving(true);
     try {
       await deleteMessageApi(String(message._id));
-      const socket = io(
-        typeof window !== 'undefined'
-          ? SOCKET_URL?.includes('localhost')
-            ? SOCKET_URL.replace('localhost', window.location.hostname)
-            : SOCKET_URL || `${window.location.protocol}//${window.location.hostname}:3002`
-          : SOCKET_URL || '',
-      );
+      const socket = io(resolveSocketUrl(), { 
+            transports: ['websocket'], 
+            withCredentials: false 
+      });
       const receiver = isGroup ? null : String((selectedChat as User)._id);
       const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
       socket.emit('message_deleted', {
@@ -149,6 +145,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
         type: 'delete',
         timestamp: Date.now(),
       });
+      const name = currentUser.name
       const notifyRes = await createMessageApi({
         roomId,
         sender: String(currentUser._id),
@@ -167,7 +164,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
           receiver,
           members,
           type: 'notify',
-          content: `Bạn đã xóa lịch hẹn: "${String(message.content || '')}"`,
+          content: `${name} đã xóa lịch hẹn: "${String(message.content || '')}"`,
           timestamp: Date.now(),
           replyToMessageId: String(message._id),
         });
