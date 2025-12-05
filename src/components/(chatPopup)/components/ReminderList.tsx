@@ -10,17 +10,14 @@ import type { User } from '@/types/User';
 import CreateReminderModal from './CreateReminderModal';
 import ReminderDetailModal from './ReminderDetailModal';
 import { io } from 'socket.io-client';
-import { resolveSocketUrl } from '@/utils/utils';
 import { HiEllipsisVertical } from 'react-icons/hi2';
+import { resolveSocketUrl } from '@/utils/utils';
 
 interface ReminderListProps {
   onClose: () => void;
 }
 
 export default function ReminderList({ onClose }: ReminderListProps) {
-  // ✅ BỎ DÒNG NÀY - Không cần nữa
-  // const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
-  
   const { selectedChat, currentUser, isGroup } = useChatContext();
   const roomId = useMemo(() => {
     const me = String(currentUser._id);
@@ -31,8 +28,8 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [detailMsg, setDetailMsg] = useState<Message | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null); // 🔥 Track ID của menu đang mở
+  const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map()); // 🔥 Refs cho các menu
 
   const load = useCallback(async () => {
     try {
@@ -55,7 +52,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     void load();
   }, [load]);
 
-  // CLOSE MENU KHI CLICK BÊN NGOÀI
+  // 🔥 CLOSE MENU KHI CLICK BÊN NGOÀI
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!openMenuId) return;
@@ -71,12 +68,10 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   }, [openMenuId]);
 
   useEffect(() => {
-    // ✅ DÙNG resolveSocketUrl() thống nhất
-    const socket = io(resolveSocketUrl(), { 
-      transports: ['websocket'], 
-      withCredentials: false 
-    });
-    
+       const socket = io(resolveSocketUrl(), { 
+                transports: ['websocket'], 
+                withCredentials: false 
+          });
     socket.emit('join_room', roomId);
 
     socket.on('receive_message', (data: Message) => {
@@ -153,7 +148,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     return () => {
       socket.disconnect();
     };
-  }, [roomId, load]); // ✅ BỎ SOCKET_URL khỏi dependencies
+  }, [roomId, load]);
 
   const handleCreate = async ({
     content,
@@ -186,12 +181,10 @@ export default function ReminderList({ onClose }: ReminderListProps) {
       });
 
       if (createRes?.success) {
-        // ✅ DÙNG resolveSocketUrl() thay vì build URL thủ công
-        const socket = io(resolveSocketUrl(), { 
-          transports: ['websocket'], 
-          withCredentials: false 
-        });
-        
+           const socket = io(resolveSocketUrl(), { 
+                    transports: ['websocket'], 
+                    withCredentials: false 
+              });
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const sockBase = {
@@ -218,7 +211,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         }
 
         const timeStr = new Date(dt).toLocaleString('vi-VN');
-        const myName = currentUser.name;
+        const myName = 'Bạn';
         const notifyRes = await createMessageApi({
           roomId,
           sender: String(currentUser._id),
@@ -254,19 +247,14 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     if (!ok) return;
 
     try {
-      setItems((prev) => prev.filter((m) => String(m._id) !== String(item._id)));
       await deleteMessageApi(String(item._id));
-      
-      // ✅ DÙNG resolveSocketUrl() thay vì build URL phức tạp
-      const socket = io(resolveSocketUrl(), { 
-        transports: ['websocket'], 
-        withCredentials: false 
-      });
-      
+           const socket = io(resolveSocketUrl(), { 
+                    transports: ['websocket'], 
+                    withCredentials: false 
+              });
       socket.emit('message_deleted', { _id: item._id, roomId });
       socket.disconnect();
-      setOpenMenuId(null);
-      // Re-sync để chắc chắn state phản ánh DB
+      setOpenMenuId(null); // 🔥 Đóng menu sau khi xóa
       await load();
     } catch (error) {
       console.error('❌ Lỗi khi xóa lịch hẹn:', error);
@@ -276,7 +264,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
 
   const handleEdit = (item: Message) => {
     setDetailMsg(item);
-    setOpenMenuId(null);
+    setOpenMenuId(null); // 🔥 Đóng menu khi mở modal edit
   };
 
   return (
@@ -364,7 +352,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                         {senderName ? <p className="text-xs text-gray-400 mt-2">Tạo bởi {senderName}</p> : null}
                       </div>
 
-                      {/* MENU BUTTON */}
+                      {/* 🔥 MENU BUTTON */}
                       <div
                         className="relative"
                         ref={(el) => {
@@ -381,7 +369,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
                           <HiEllipsisVertical className="w-5 h-5 text-gray-600" />
                         </button>
 
-                        {/* DROPDOWN MENU */}
+                        {/* 🔥 DROPDOWN MENU */}
                         {isMenuOpen && (
                           <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-10 animate-in fade-in slide-in-from-top-2 duration-200">
                             <button
