@@ -344,11 +344,12 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
               withCredentials: false
              });  
       socket.emit('edit_message', { _id: message._id, roomId, ...updateData });
+      const name = currentUser.name
       if (next) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const endStr = new Date(now).toLocaleString('vi-VN');
-        const notifyText = `Đã khóa bình chọn: "${String(message.content || message.pollQuestion || '')}" (kết thúc lúc ${endStr})`;
+        const notifyText = `${name} đã khóa bình chọn: "${String(message.content || message.pollQuestion || '')}" (kết thúc lúc ${endStr})`;
         const notifyRes = await createMessageApi({
           roomId,
           sender: String(currentUser._id),
@@ -375,7 +376,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
       } else {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members2 = isGroup ? (selectedChat as GroupConversation).members || [] : [];
-        const notifyText = `Đã mở khóa bình chọn: "${String(message.content || message.pollQuestion || '')}"`;
+        const notifyText = `${name} đã mở khóa bình chọn: "${String(message.content || message.pollQuestion || '')}"`;
         const notifyRes = await createMessageApi({
           roomId,
           sender: String(currentUser._id),

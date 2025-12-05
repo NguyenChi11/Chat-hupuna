@@ -254,6 +254,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     if (!ok) return;
 
     try {
+      setItems((prev) => prev.filter((m) => String(m._id) !== String(item._id)));
       await deleteMessageApi(String(item._id));
       
       // ✅ DÙNG resolveSocketUrl() thay vì build URL phức tạp
@@ -265,6 +266,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
       socket.emit('message_deleted', { _id: item._id, roomId });
       socket.disconnect();
       setOpenMenuId(null);
+      // Re-sync để chắc chắn state phản ánh DB
       await load();
     } catch (error) {
       console.error('❌ Lỗi khi xóa lịch hẹn:', error);

@@ -103,7 +103,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
           receiver,
           members,
           type: 'notify',
-          content: `Bạn đã chỉnh sửa lịch hẹn: "${content.trim()}" lúc ${timeStr}`,
+          content: `${name} đã chỉnh sửa lịch hẹn: "${content.trim()}" lúc ${timeStr}`,
           timestamp: Date.now(),
           replyToMessageId: String(message._id),
         });
@@ -150,7 +150,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
         roomId,
         sender: String(currentUser._id),
         type: 'notify',
-        content: `Bạn đã xóa lịch hẹn: "${String(message.content || '')}"`,
+        content: `${name} đã xóa lịch hẹn: "${String(message.content || '')}"`,
         timestamp: Date.now(),
         replyToMessageId: String(message._id),
       });

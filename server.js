@@ -135,6 +135,39 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('message_deleted', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('message_deleted', {
+      _id: data._id,
+      roomId: data.roomId,
+    });
+
+    const sidebarData = {
+      _id: data._id,
+      roomId: data.roomId,
+      sender: data.sender,
+      senderName: data.senderName,
+      isGroup: data.isGroup,
+      receiver: data.receiver,
+      members: data.members,
+      type: 'delete',
+      timestamp: data.timestamp || Date.now(),
+      lastMessage: `${data.senderName || 'Ai đó'}: [Xóa lịch hẹn]`,
+    };
+
+    if (data.isGroup && data.members) {
+      data.members.forEach((memberId) => {
+        const idStr = typeof memberId === 'object' ? memberId._id : memberId;
+        io.to(String(idStr)).emit('update_sidebar', sidebarData);
+      });
+    } else if (data.receiver) {
+      io.to(String(data.receiver)).emit('update_sidebar', sidebarData);
+    }
+    if (data.sender) {
+      io.to(String(data.sender)).emit('update_sidebar', sidebarData);
+    }
+  });
+
   socket.on('user_online', (payload) => {
     const userId = String(payload?.userId || '');
     if (!userId) return;

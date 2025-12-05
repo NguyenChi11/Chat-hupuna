@@ -140,6 +140,12 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
       if (String(data.roomId) !== String(roomId)) return;
       setItems((prev) => prev.filter((m) => String(m._id) !== String(data._id)));
     });
+    socketRef.current.on('message_pinned', (data: { _id: string; roomId: string; isPinned: boolean }) => {
+      if (String(data.roomId) !== String(roomId)) return;
+      setItems((prev) =>
+        prev.map((m) => (String(m._id) === String(data._id) ? { ...m, isPinned: !!data.isPinned } : m)),
+      );
+    });
     return () => {
       socketRef.current?.disconnect();
       socketRef.current = null;
@@ -172,6 +178,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
           receiver,
           members,
         };
+        const name = currentUser.name
         if (typeof createRes._id === 'string') {
           socketRef.current?.emit('send_message', {
             ...sockBase,
@@ -188,7 +195,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
             roomId,
             sender: String(currentUser._id),
             type: 'notify',
-            content: `Bạn tạo cuộc bình chọn mới: "${question.trim()}"`,
+            content: `${name} tạo cuộc bình chọn mới: "${question.trim()}"`,
             timestamp: Date.now(),
             replyToMessageId: createRes._id,
           });
@@ -197,7 +204,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
               ...sockBase,
               _id: notify._id,
               type: 'notify',
-              content: `Bạn tạo cuộc bình chọn mới: "${question.trim()}"`,
+              content: `${name} tạo cuộc bình chọn mới: "${question.trim()}"`,
               timestamp: Date.now(),
               replyToMessageId: createRes._id,
             });
@@ -220,16 +227,17 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
     const next = !item.isPollLocked;
     try {
       const now = Date.now();
+      const name = currentUser.name
       const updateData = next
         ? { isPollLocked: true, pollLockedAt: now, editedAt: now, timestamp: now }
         : { isPollLocked: false, editedAt: now, timestamp: now };
       await updateMessageApi(String(item._id), updateData);
-      socketRef.current?.emit('message_edited', { _id: item._id, roomId, ...updateData });
+      socketRef.current?.emit('edit_message', { _id: item._id, roomId, ...updateData });
       if (next) {
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const endStr = new Date(now).toLocaleString('vi-VN');
-        const notifyText = `Đã khóa bình chọn: "${String(item.content || item.pollQuestion || '')}" (kết thúc lúc ${endStr})`;
+        const notifyText = `${name} đã khóa bình chọn: "${String(item.content || item.pollQuestion || '')}" (kết thúc lúc ${endStr})`;
         const notifyRes = await createMessageApi({
           roomId,
           sender: String(currentUser._id),
@@ -254,9 +262,10 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
           });
         }
       } else {
+        
         const receiver = isGroup ? null : String((selectedChat as User)._id);
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
-        const notifyText = `Đã mở khóa bình chọn: "${String(item.content || item.pollQuestion || '')}"`;
+        const notifyText = `${name} đã mở khóa bình chọn: "${String(item.content || item.pollQuestion || '')}"`;
         const notifyRes = await createMessageApi({
           roomId,
           sender: String(currentUser._id),
@@ -294,7 +303,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
     try {
       const now = Date.now();
       await updateMessageApi(String(item._id), { isPinned: next, editedAt: now });
-      socketRef.current?.emit('message_edited', { _id: item._id, roomId, isPinned: next, editedAt: now });
+      socketRef.current?.emit('edit_message', { _id: item._id, roomId, isPinned: next, editedAt: now });
       await updateMessageApi(String(item._id), { isPinned: next });
       socketRef.current?.emit('pin_message', { _id: item._id, roomId, isPinned: next });
 
