@@ -424,7 +424,7 @@ export default function ChatWindow({
     // Tránh trùng nếu đã có trong list
     if (mentionSuggestions.some((u) => (u as User)._id === ALL_MENTION_ID)) return mentionSuggestions;
 
-    return [ ...mentionSuggestions,allOption];
+    return [...mentionSuggestions, allOption];
   }, [isGroup, mentionSuggestions]);
 
   // Kết hợp keydown: vừa xử lý mention menu, vừa gửi tin nhắn với Enter
@@ -1724,7 +1724,7 @@ const handleToggleReaction = useCallback(
           </div>
         )}
         {showSearchSidebar && (
-          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full  ">
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full z-20 ">
             <SearchSidebar
               isOpen={showSearchSidebar}
               onClose={() => setShowSearchSidebar(false)}
