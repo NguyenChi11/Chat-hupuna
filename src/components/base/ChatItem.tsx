@@ -181,10 +181,11 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
 
             {/* Online indicator (chỉ cá nhân) */}
             {!isGroup && (
-              <div 
-              className={`absolute bottom-0 right-0 w-5
+              <div
+                className={`absolute bottom-0 right-0 w-5
                h-5 rounded-full border-4 border-white shadow-lg
-                ${presenceOnline ? 'bg-green-400' : 'bg-gray-400'}`} />
+                ${presenceOnline ? 'bg-green-400' : 'bg-gray-400'}`}
+              />
             )}
 
             {/* Group icon */}
@@ -255,10 +256,10 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
             {/* Ghim */}
             <button
               onClick={() => handleAction('pin')}
-              className="flex items-center cursor-pointer gap-4 w-full px-6 py-5 hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 transition-all font-semibold text-gray-800"
+              className="flex items-center cursor-pointer gap-4 w-full px-3 py-2 hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 transition-all font-semibold text-gray-800"
             >
               <div className={`p-3 rounded-2xl ${isPinned ? 'bg-orange-100' : 'bg-gray-100'}`}>
-                <HiOutlineMapPin className={`w-6 h-6 ${isPinned ? 'text-orange-600 rotate-45' : 'text-gray-600'}`} />
+                <HiOutlineMapPin className={`w-4 h-4 ${isPinned ? 'text-orange-600 rotate-45' : 'text-gray-600'}`} />
               </div>
               <span className="flex-1 text-left">{isPinned ? 'Bỏ ghim' : 'Ghim lên đầu'}</span>
               {isPinned && <HiCheck className="w-5 h-5 text-orange-600" />}
@@ -267,13 +268,13 @@ export default function ChatItem({ item, isGroup, selectedChat, onSelectChat, on
             {/* Ẩn/Hiện */}
             <button
               onClick={() => handleAction('hide')}
-              className="flex items-center cursor-pointer gap-4 w-full px-6 py-5 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 transition-all font-semibold text-gray-800 border-t border-gray-100"
+              className="flex items-center cursor-pointer gap-4 w-full px-3 py-2 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 transition-all font-semibold text-gray-800 border-t border-gray-100"
             >
               <div className={`p-3 rounded-2xl ${isHidden ? 'bg-green-100' : 'bg-red-100'}`}>
                 {isHidden ? (
-                  <HiEye className="w-6 h-6 text-green-600" />
+                  <HiEye className="w-4 h-4 text-green-600" />
                 ) : (
-                  <HiEyeSlash className="w-6 h-6 text-red-600" />
+                  <HiEyeSlash className="w-4 h-4 text-red-600" />
                 )}
               </div>
               <span className="flex-1 text-left">{isHidden ? 'Hiện lại' : 'Ẩn trò chuyện'}</span>

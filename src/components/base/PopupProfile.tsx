@@ -112,18 +112,38 @@ export default function PopupProfile({ isOpen, onClose, user, onAvatarUpdated, o
                 return;
               }
               const newUrl = String(uploadJson.link);
-              const updateRes = await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: 'update',
-                  field: '_id',
-                  value: String(user._id),
-                  data: { background: newUrl },
-                }),
-              });
-              const updateJson = await updateRes.json();
-              if (!updateRes.ok || updateJson.error) {
+              let updateOk = false;
+              try {
+                const res1 = await fetch('/api/users', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'update',
+                    field: '_id',
+                    value: String(user._id),
+                    data: { background: newUrl },
+                  }),
+                });
+                const json1 = await res1.json();
+                updateOk = res1.ok && !json1.error;
+              } catch {}
+              if (!updateOk) {
+                try {
+                  const res2 = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      action: 'update',
+                      field: 'username',
+                      value: String(user.username || ''),
+                      data: { background: newUrl },
+                    }),
+                  });
+                  const json2 = await res2.json();
+                  updateOk = res2.ok && !json2.error;
+                } catch {}
+              }
+              if (!updateOk) {
                 toast({ type: 'error', message: 'Cập nhật nền thất bại' });
                 return;
               }
