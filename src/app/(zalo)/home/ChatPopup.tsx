@@ -47,7 +47,6 @@ const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408201.png',
 ];
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
 const SCROLL_BUMP_PX = 80;
 
 interface ChatWindowProps {

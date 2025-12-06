@@ -66,9 +66,8 @@ export default function MessageList({
   onRefresh,
   onPinMessage,
   onToggleReaction,
-  contextMenu
 }: MessageListProps) {
-  const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
+  const [, setTimeVisibleId] = useState<string | null>(null);
   const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
   const [activeMoreId, setActiveMoreId] = useState<string | null>(null);
   const [detailMsg, setDetailMsg] = useState<Message | null>(null);

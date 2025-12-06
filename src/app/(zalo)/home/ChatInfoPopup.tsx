@@ -89,14 +89,34 @@ export default function ChatInfoPopup({
     toggleItem,
     closeMenu,
     mediaList,
+    mediaGroups,
     fileList,
+    fileGroups,
     linkList,
+    linkGroups,
+    mediaTotal,
+    fileTotal,
+    linkTotal,
+    isMediaExpanded,
+    isFileExpanded,
+    isLinkExpanded,
+    fetchAssets,
   } = useChatInfoPopup({
     selectedChat,
     isGroup,
     messages,
     onChatAction,
   });
+
+  const handleToggleMediaExpanded = useCallback(() => {
+    void fetchAssets('media', !isMediaExpanded);
+  }, [fetchAssets, isMediaExpanded]);
+  const handleToggleFileExpanded = useCallback(() => {
+    void fetchAssets('file', !isFileExpanded);
+  }, [fetchAssets, isFileExpanded]);
+  const handleToggleLinkExpanded = useCallback(() => {
+    void fetchAssets('link', !isLinkExpanded);
+  }, [fetchAssets, isLinkExpanded]);
 
   const handleChangeGroupAvatar = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,6 +306,10 @@ export default function ChatInfoPopup({
               isOpen={openItems['Ảnh/Video']}
               onToggle={() => toggleItem('Ảnh/Video')}
               mediaList={mediaList}
+              groups={mediaGroups}
+              totalCount={mediaTotal}
+              isExpanded={isMediaExpanded}
+              onToggleExpanded={handleToggleMediaExpanded}
               setPreviewMedia={setPreviewMedia}
               activeMenuId={activeMenuId}
               setActiveMenuId={setActiveMenuId}
@@ -297,6 +321,10 @@ export default function ChatInfoPopup({
               isOpen={openItems['File']}
               onToggle={() => toggleItem('File')}
               fileList={fileList}
+              groups={fileGroups}
+              totalCount={fileTotal}
+              isExpanded={isFileExpanded}
+              onToggleExpanded={handleToggleFileExpanded}
               activeMenuId={activeMenuId}
               setActiveMenuId={setActiveMenuId}
               onJumpToMessage={onJumpToMessage}
@@ -307,6 +335,10 @@ export default function ChatInfoPopup({
               isOpen={openItems['Link']}
               onToggle={() => toggleItem('Link')}
               linkList={linkList}
+              groups={linkGroups}
+              totalCount={linkTotal}
+              isExpanded={isLinkExpanded}
+              onToggleExpanded={handleToggleLinkExpanded}
               activeMenuId={activeMenuId}
               setActiveMenuId={setActiveMenuId}
               onJumpToMessage={onJumpToMessage}

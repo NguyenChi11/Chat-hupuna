@@ -45,7 +45,6 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
 
   if (!isOpen || !message) return null;
 
-  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
 
   const handleSave = async () => {
     const dt = Date.parse(dateTime);

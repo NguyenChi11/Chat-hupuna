@@ -18,7 +18,6 @@ interface PollDetailModalProps {
   onRefresh?: () => void;
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL as string | undefined;
 
 export default function PollDetailModal({ isOpen, message, onClose, onRefresh }: PollDetailModalProps) {
   const { selectedChat, currentUser, isGroup } = useChatContext();

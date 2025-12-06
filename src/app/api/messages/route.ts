@@ -117,7 +117,7 @@ async function sendPushOnMessage(data: { roomId: string; senderId: string; conte
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const txt = await res.text();
+      // const txt = await res.text();
       const filtersPayload = {
         app_id: appId,
         target_channel: 'push',
