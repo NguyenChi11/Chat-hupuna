@@ -79,6 +79,8 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
     { key: 'setting', label: 'Cài đặt', paths: ['/setting'], icon: HiCog6Tooth },
   ];
 
+  const isWidgetIframe = pathname === '/chat-iframe' || pathname?.startsWith('/chat-iframe');
+
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 overflow-hidden">
       {/* Sidebar Desktop */}
@@ -129,12 +131,12 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
       )}
 
       {/* Nội dung chính */}
-      <main className={`flex-1 overflow-hidden ${isAuthed && !hideMobileFooter ? 'pb-20 md:pb-0' : ''}`}>
+      <main className={`flex-1 overflow-hidden ${isAuthed && !(hideMobileFooter || isWidgetIframe) ? 'pb-20 md:pb-0' : ''}`}>
         {children}
       </main>
 
       {/* Mobile Bottom Navigation – ĐẸP NHƯ ZALO PRO 2025 */}
-      {isAuthed && !hideMobileFooter && (
+      {isAuthed && !(hideMobileFooter || isWidgetIframe) && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
           {/* Gradient mờ từ trên xuống */}
           <div className="absolute inset-x-0 -top-12 h-16 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />

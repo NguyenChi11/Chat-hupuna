@@ -12,7 +12,7 @@ import { FaPlus } from 'react-icons/fa6';
 
 // React Icons – Bộ hiện đại nhất 2025
 import { HiMagnifyingGlass, HiXMark, HiUserCircle, HiChatBubbleLeftRight } from 'react-icons/hi2';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface SidebarProps {
   currentUser: User;
@@ -25,6 +25,7 @@ interface SidebarProps {
   onSelectChat: (item: ChatItemType) => void;
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroup: boolean) => void;
   onNavigateToMessage: (message: Message) => void;
+  styleWidget?: string;
 }
 
 interface Message {
@@ -126,6 +127,7 @@ export default function Sidebar({
   onSelectChat,
   onChatAction,
   onNavigateToMessage,
+  styleWidget = '',
 }: SidebarProps) {
   const currentUserId = currentUser._id;
   const [activeTab, setActiveTab] = useState<'all' | 'contacts' | 'messages' | 'files'>('all');
@@ -138,6 +140,8 @@ export default function Sidebar({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [filterType, setFilterType] = useState<FilterType>('all');
   const router = useRouter();
+  const pathname = usePathname();
+  const isWidgetIframe = pathname === '/chat-iframe' || (pathname?.startsWith('/chat-iframe') ?? false);
 
   // === TẤT CẢ LOGIC GIỮ NGUYÊN NHƯ BẠN ĐÃ VIẾT ===
   const handleGlobalSearch = useCallback(
@@ -366,22 +370,29 @@ export default function Sidebar({
               )}
             </div>
 
-            <button
-              onClick={() => setShowCreateGroupModal(true)}
-              className="cursor-pointer p-2 bg-gradient-to-br from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 rounded-3xl shadow-xl transition-all duration-300 active:scale-95"
-              title="Tạo nhóm mới"
-            >
-              <FaPlus className="w-5 h-5 text-white" />
-            </button>
+            {!isWidgetIframe && (
+              <button
+                onClick={() => setShowCreateGroupModal(true)}
+                className="cursor-pointer p-2 bg-gradient-to-br from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 rounded-3xl shadow-xl transition-all duration-300 active:scale-95"
+                title="Tạo nhóm mới"
+              >
+                <FaPlus className="w-5 h-5 text-white" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      {!isSearchActive && (
-        <div className="px-2 pt-2 hidden sm:block bg-white/70 backdrop-blur-sm border-b border-gray-200">
-          <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
-        </div>
+      {!isSearchActive && !isWidgetIframe && (
+        <>
+          <div className="px-2 pt-2 hidden sm:block bg-white/70 backdrop-blur-sm border-b border-gray-200">
+            <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
+          </div>
+          <div className="px-2 pt-2 sm:hidden block bg-white/70 backdrop-blur-sm border-b border-gray-200">
+            <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
+          </div>
+        </>
       )}
 
       {/* Chat List */}
@@ -420,10 +431,7 @@ export default function Sidebar({
                 {filterType === 'all' && <p className="text-sm mt-2 text-gray-400">Nhấn vào nút tạo nhóm để bắt đầu</p>}
               </div>
             ) : (
-              <div className="space-y-1 px-1 py-1 pb-[5rem] ">
-                <div className="px-2 pt-2 sm:hidden block bg-white/70 backdrop-blur-sm border-b border-gray-200">
-                  <MessageFilter filterType={filterType} setFilterType={setFilterType} counts={filterCounts} />
-                </div>
+              <div className={`space-y-1 px-1 py-1 pb-[5rem] ${styleWidget}`}>
                 {filteredAndSortedChats.map((item: ChatItemType) => {
                   const isGroupItem = item.isGroup === true || Array.isArray(item.members);
                   return (

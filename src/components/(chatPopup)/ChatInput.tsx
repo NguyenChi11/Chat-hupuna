@@ -97,7 +97,7 @@ export default function ChatInput({
       {/* Input Area + Send Button */}
       <div className="flex items-end gap-3">
         {/* Input contentEditable – Đẹp như iMessage */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <div
             ref={editableRef}
             contentEditable
@@ -105,7 +105,7 @@ export default function ChatInput({
             onKeyDown={onKeyDownEditable}
             onFocus={onFocusEditable}
             onPaste={onPasteEditable}
-            className="w-full min-h-10 max-h-40 px-6 py-2 bg-white/90 rounded-3xl shadow-xl border border-gray-200/50 focus:outline-none  transition-all duration-300 text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400"
+            className="min-h-10 max-h-40 px-6 py-2 bg-white/90 rounded-3xl shadow-xl border border-gray-200/50 focus:outline-none  transition-all duration-300 text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 w-full max-w-full break-words whitespace-pre-wrap"
             data-placeholder="Nhập tin nhắn..."
           />
 
