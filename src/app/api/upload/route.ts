@@ -1,6 +1,7 @@
 // app/api/upload/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'nodejs';
 import { uploadToMega } from '@/lib/megaUploadService';
 import { MessageCreate, MessageType } from '@/types/Message';
 import { setProgress, clearProgress, getProgress } from '@/lib/uploadStore';

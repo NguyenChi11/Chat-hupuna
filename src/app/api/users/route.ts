@@ -215,15 +215,19 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Missing field or value for update' }, { status: 400 });
         }
         try {
-          // 🔥 FIX: Xử lý update với _id có thể là ObjectId hoặc number
           if (field === '_id') {
             const userCollection = await getCollection<User>(collectionName);
-            const queryId = createIdFilter(value as string | number);
+            const idStr = String(value);
 
-            // 🔥 Type-safe filter
-            const filter: UserIdFilter = { _id: queryId } as UserIdFilter;
+            const orFilters: Array<Record<string, unknown>> = [{ _id: idStr }];
+            if (!isNaN(Number(idStr))) {
+              orFilters.push({ _id: Number(idStr) });
+            }
+            if (ObjectId.isValid(idStr) && idStr.length === 24) {
+              orFilters.push({ _id: new ObjectId(idStr) });
+            }
 
-            const result = await userCollection.updateOne(filter, { $set: data || {} });
+            const result = await userCollection.updateOne({ $or: orFilters } as Filter<User>, { $set: data || {} });
 
             if (result.matchedCount === 0) {
               return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -231,7 +235,6 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json({ success: true, modified: result.modifiedCount });
           } else {
-            // Các trường khác vẫn dùng updateByField
             await updateByField<User>(collectionName, field, value as string | number, (data || {}) as Partial<User>);
             return NextResponse.json({ success: true });
           }
