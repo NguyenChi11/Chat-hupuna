@@ -32,7 +32,7 @@ export default function MediaSection({
   closeMenu,
 }: MediaSectionProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 ">
       {/* Header: Ảnh/Video + mũi tên */}
       <button
         onClick={onToggle}
@@ -56,7 +56,7 @@ export default function MediaSection({
       {/* Nội dung khi mở */}
       {isOpen && (
         <div className="px-5 pb-5 border-t border-gray-100">
-          {totalCount > 0 ? (
+         {totalCount > 0 ? (
             <div className="mt-4 space-y-4">
               {groups.map((group) => (
                 <div key={group.dateKey} className="space-y-3">
@@ -65,7 +65,9 @@ export default function MediaSection({
                     {group.items.map((item) => (
                       <div
                         key={item.id}
-                        className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100"
+                        className={`relative aspect-square rounded-xl  cursor-pointer group bg-gray-100 ${
+                          activeMenuId === item.id ? 'z-50' : 'z-0'
+                        }`}
                         onClick={() => {
                           const mediaType = item.type === 'video' ? 'video' : 'image';
                           setPreviewMedia({ url: getProxyUrl(item.url), type: mediaType });

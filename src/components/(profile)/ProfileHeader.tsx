@@ -93,13 +93,15 @@ export default function ProfileHeader({
             </div>
           )}
 
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], 'avatar')}
-            disabled={isUploadingAvatar}
-          />
+          {isOwner && (
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], 'avatar')}
+              disabled={isUploadingAvatar}
+            />
+          )}
         </label>
       </div>
     </div>
