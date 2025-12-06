@@ -4,24 +4,24 @@ import React, { useState } from 'react';
 type Props = {
   isMine: boolean;
   onPick: (emoji: string) => void;
+  visible?: boolean;
+  className?: string;
 };
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 
-export default function ReactionButton({ isMine, onPick }: Props) {
+export default function ReactionButton({ isMine, onPick, visible, className = '' }: Props) {
   const [open, setOpen] = useState(false);
-  const sideCls = isMine ? 'right-full ml-3' : 'left-full mr-3';
-  const pickerSideCls = isMine ? 'right-0 -translate-x-1' : 'right-0 translate-x-1/4';
+  const sideCls = isMine ? 'right-full mr-3' : 'left-full ml-3';
+  const pickerSideCls = isMine ? 'right-0 -translate-x-1' : 'left-0 translate-x-1';
 
   return (
     <div
       className={`
-        absolute top-1/2 -translate-y-1/2 z-20
-        
-        ${sideCls}
-        opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto
+        absolute top-1/2 -translate-y-1/2 z-20 ${sideCls}
+        ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
         transition-opacity duration-150
-        
+        ${className}
       `}
     >
       <div className="relative inline-flex">
@@ -33,10 +33,10 @@ export default function ReactionButton({ isMine, onPick }: Props) {
           className="w-8 h-8 hover:cursor-pointer rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center text-base hover:scale-110 active:scale-95 transition-all"
           aria-label="Thả cảm xúc"
         >
-        <ICSmile className='w-4 h-4'/>
+          <ICSmile className='w-4 h-4'/>
         </button>
         <div
-          className={`absolute ${pickerSideCls} z-99 bottom-full mb-2 flex items-center gap-1 px-3 py-2 bg-white rounded-full shadow-xl border border-gray-200 transition-all ${open ? 'opacity-100 visible pointer-events-auto scale-100' : 'opacity-0 invisible pointer-events-none scale-95'} origin-bottom`}
+          className={`absolute ${pickerSideCls} z-50 bottom-full mb-2 flex items-center gap-1 px-3 py-2 bg-white rounded-full shadow-xl border border-gray-200 transition-all ${open ? 'opacity-100 visible pointer-events-auto scale-100' : 'opacity-0 invisible pointer-events-none scale-95'} origin-bottom`}
         >
           {EMOJIS.map((emoji) => (
             <button

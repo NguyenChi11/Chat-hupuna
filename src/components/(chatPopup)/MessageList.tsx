@@ -435,7 +435,7 @@ export default function MessageList({
                 <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
                   {isEdited && !isRecalled && (
                     <span
-                      className="text-[10px] px-1 text-blue-500 hover:underline hover:cursor-pointer"
+                      className="text-[0.625rem] px-1 text-blue-500 hover:underline hover:cursor-pointer"
                       onClick={() => setExpandedOriginalId((prev) => (prev === msg._id ? null : msg._id))}
                     >
                       {expandedOriginalId === msg._id ? <p>Ẩn chỉnh sửa</p> : <p>Đã chỉnh sửa</p>}
@@ -496,20 +496,21 @@ export default function MessageList({
                           </button>
 
                           {/* Reaction Button - cách xa button menu */}
-                          <div
+                          <ReactionButton 
+                            isMine={isMe}
+                            visible={activeMoreId === msg._id} // Truyền prop visible thay vì dùng className
+                            onPick={(emoji) => {
+                              onToggleReaction?.(msg, emoji);
+                              setActiveMoreId(null); // Đóng sau khi chọn emoji
+                            }}
                             className={`
-                              absolute top-1/2 -translate-y-1/2 z-10
                               ${isMe ? 'right-full mr-10' : 'left-full ml-10'}
-                              ${activeMoreId === msg._id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-                              sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100
+                              ${activeMoreId === msg._id
+                                ? 'opacity-100 pointer-events-auto'
+                                : 'opacity-0 pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto'
+                              }
                             `}
-                          >
-                            <ReactionButton 
-                              isMine={isMe} 
-                             
-                              onPick={(emoji) => onToggleReaction?.(msg, emoji)} 
-                            />
-                          </div>
+                          />
                         </>
                       )}
                     {/* {!isRecalled && (
