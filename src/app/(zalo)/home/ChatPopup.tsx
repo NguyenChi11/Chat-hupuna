@@ -33,6 +33,7 @@ import {
   readPinnedMessagesApi,
   recallMessageApi,
   markAsReadApi,
+  updateMessageApi,
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
 import { isVideoFile, resolveSocketUrl } from '@/utils/utils';
@@ -441,6 +442,87 @@ export default function ChatWindow({
       void handleSendMessage();
     }
   };
+
+ // ✅ FIXED VERSION - Đặt trong ChatWindow.tsx
+
+const handleToggleReaction = useCallback(
+  async (msg: Message, emoji: string) => {
+    const myId = String(currentUser._id);
+    const old = (msg.reactions || {}) as Record<string, string[]>;
+    
+    // Clean up và toggle reaction
+    const cleaned: Record<string, string[]> = Object.fromEntries(
+      Object.entries(old).map(([k, arr]) => [
+        k, 
+        (Array.isArray(arr) ? arr : []).filter((id) => String(id) !== myId)
+      ])
+    );
+    
+    const had = Array.isArray(old[emoji]) && old[emoji].includes(myId);
+    const next: Record<string, string[]> = { ...cleaned };
+    const arr = Array.isArray(next[emoji]) ? next[emoji] : [];
+    next[emoji] = had ? arr.filter((id) => String(id) !== myId) : [...arr, myId];
+
+    // 1. ✅ Optimistic Update UI ngay lập tức
+    setMessages((prev) => 
+      prev.map((m) => 
+        String(m._id) === String(msg._id) 
+          ? { ...m, reactions: next } 
+          : m
+      )
+    );
+
+    // 2. ✅ Tạo payload đầy đủ cho socket
+    const socketPayload = {
+      _id: msg._id,
+      roomId,
+      reactions: next,
+      // Thêm thông tin để server có thể broadcast đầy đủ
+      sender: currentUser._id,
+      senderName: currentUser.name,
+      isGroup: isGroup,
+      receiver: isGroup ? null : getId(selectedChat),
+      members: isGroup ? (selectedChat as GroupConversation).members : [],
+    };
+
+    // 3. ✅ Emit socket với error handling tốt hơn
+    try {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('toggle_reaction', socketPayload);
+      } else {
+        // Fallback: reconnect và emit
+        const tempSocket = io(resolveSocketUrl(), { 
+          transports: ['websocket'], 
+          withCredentials: false 
+        });
+        
+        tempSocket.on('connect', () => {
+          tempSocket.emit('toggle_reaction', socketPayload);
+          setTimeout(() => tempSocket.disconnect(), 500);
+        });
+      }
+    } catch (error) {
+      console.error('❌ Socket emit error:', error);
+    }
+
+    // 4. ✅ Gọi API để persist vào DB
+    try {
+      await updateMessageApi(String(msg._id), { reactions: next });
+    } catch (error) {
+      console.error('❌ API update error:', error);
+      
+      // Rollback nếu API fail
+      setMessages((prev) => 
+        prev.map((m) => 
+          String(m._id) === String(msg._id) 
+            ? { ...m, reactions: old } 
+            : m
+        )
+      );
+    }
+  },
+  [currentUser._id, currentUser.name, roomId, isGroup, selectedChat]
+);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, msg: Message) => {
     e.preventDefault();
@@ -915,6 +997,25 @@ export default function ChatWindow({
         }, 0);
       }
     });
+    socketRef.current.on('reaction_updated', (data: {
+    _id: string;
+    roomId: string;
+    reactions: Record<string, string[]>;
+  }) => {
+    if (String(data.roomId) === String(roomId)) {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          String(msg._id) === String(data._id)
+            ? {
+                ...msg,
+                reactions: data.reactions, // ✅ Update reactions
+              }
+            : msg
+        )
+      );
+      
+    }
+  });
 
     // 🔥 LISTENER CHO edit_message
     socketRef.current.on(
@@ -934,6 +1035,7 @@ export default function ChatWindow({
         pollLockedAt?: number;
         timestamp?: number;
         isPinned?: boolean;
+        reactions?: Record<string, string[]>;
       }) => {
         if (String(data.roomId) === String(roomId)) {
           setMessages((prevMessages) => {
@@ -953,6 +1055,7 @@ export default function ChatWindow({
                     pollLockedAt: data.pollLockedAt ?? msg.pollLockedAt,
                     timestamp: data.timestamp ?? msg.timestamp,
                     isPinned: typeof data.isPinned === 'boolean' ? data.isPinned : msg.isPinned,
+                    reactions: data.reactions ?? msg.reactions,
                   }
                 : msg,
             );
@@ -1538,6 +1641,8 @@ export default function ChatWindow({
               onSaveEdit={handleSaveEdit}
               onRefresh={fetchMessages}
               onPinMessage={handlePinMessage}
+              onToggleReaction={handleToggleReaction}
+              contextMenu={contextMenu}
             />
             <div ref={messagesEndRef} />
           </div>

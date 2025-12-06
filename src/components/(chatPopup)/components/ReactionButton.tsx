@@ -1,0 +1,59 @@
+import ICSmile from '@/components/svg/ICSmile';
+import React, { useState } from 'react';
+
+type Props = {
+  isMine: boolean;
+  onPick: (emoji: string) => void;
+};
+
+const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+
+export default function ReactionButton({ isMine, onPick }: Props) {
+  const [open, setOpen] = useState(false);
+  const sideCls = isMine ? 'right-full ml-3' : 'left-full mr-3';
+  const pickerSideCls = isMine ? 'right-0 -translate-x-1' : 'right-0 translate-x-1/4';
+
+  return (
+    <div
+      className={`
+        absolute top-1/2 -translate-y-1/2 z-20
+        
+        ${sideCls}
+        opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto
+        transition-opacity duration-150
+        
+      `}
+    >
+      <div className="relative inline-flex">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+          className="w-8 h-8 hover:cursor-pointer rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center text-base hover:scale-110 active:scale-95 transition-all"
+          aria-label="Thả cảm xúc"
+        >
+        <ICSmile className='w-4 h-4'/>
+        </button>
+        <div
+          className={`absolute ${pickerSideCls} z-99 bottom-full mb-2 flex items-center gap-1 px-3 py-2 bg-white rounded-full shadow-xl border border-gray-200 transition-all ${open ? 'opacity-100 visible pointer-events-auto scale-100' : 'opacity-0 invisible pointer-events-none scale-95'} origin-bottom`}
+        >
+          {EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                onPick(emoji);
+              }}
+              className="w-9 h-9 flex items-center justify-center text-xl rounded-full hover:bg-gray-100 active:scale-90 transition-transform"
+              aria-label={emoji}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

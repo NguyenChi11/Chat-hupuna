@@ -118,7 +118,6 @@ async function sendPushOnMessage(data: { roomId: string; senderId: string; conte
     });
     if (!res.ok) {
       const txt = await res.text();
-      console.warn('OneSignal push error', res.status, txt);
       const filtersPayload = {
         app_id: appId,
         target_channel: 'push',

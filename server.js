@@ -50,7 +50,41 @@ io.on('connection', (socket) => {
       isPinned: data.isPinned,
     });
   });
-
+socket.on('toggle_reaction', (data) => {
+  
+  const roomId = String(data.roomId);
+  
+  // ✅ Broadcast reaction update tới tất cả clients trong room
+  const payload = {
+    _id: data._id,
+    roomId: data.roomId,
+    reactions: data.reactions, // ✅ QUAN TRỌNG: Phải có field này
+    editedAt: data.editedAt || Date.now(),
+  };
+  
+  // Emit tới tất cả clients trong room (bao gồm cả sender)
+  io.in(roomId).emit('reaction_updated', payload);
+  
+  // ✅ Optional: Update sidebar nếu cần
+  if (data.isGroup && data.members) {
+    data.members.forEach((memberId) => {
+      const idRaw = typeof memberId === 'object' ? memberId._id : memberId;
+      io.to(String(idRaw)).emit('update_sidebar', {
+        ...data,
+        lastMessage: `${data.senderName || 'Ai đó'}: [Đã thả cảm xúc]`,
+        type: 'reaction',
+        timestamp: data.editedAt || Date.now(),
+      });
+    });
+  } else if (data.receiver) {
+    io.to(String(data.receiver)).emit('update_sidebar', {
+      ...data,
+      lastMessage: `${data.senderName || 'Ai đó'}: [Đã thả cảm xúc]`,
+      type: 'reaction',
+      timestamp: data.editedAt || Date.now(),
+    });
+  }
+});
   // 🔥 THÊM SOCKET EVENT CHO EDIT MESSAGE
   socket.on('edit_message', (data) => {
     const payload = {
@@ -73,6 +107,7 @@ io.on('connection', (socket) => {
       timestamp: data.timestamp,
       // other flags
       isPinned: data.isPinned,
+      reactions: data.reactions
     };
 
     io.in(String(data.roomId)).emit('edit_message', payload);

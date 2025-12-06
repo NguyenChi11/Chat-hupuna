@@ -10,6 +10,8 @@ import { isVideoFile, getProxyUrl } from '@/utils/utils';
 import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical, HiOutlineClock } from 'react-icons/hi2';
 import ReminderDetailModal from './components/ReminderDetailModal';
 import PollDetailModal from './components/PollDetailModal';
+import ReactionButton from './components/ReactionButton';
+import { ContextMenuState } from './MessageContextMenu';
 
 interface SenderInfo {
   _id: string;
@@ -38,6 +40,8 @@ interface MessageListProps {
   onSaveEdit?: (id: string, content: string) => void;
   onRefresh?: () => Promise<void>;
   onPinMessage?: (msg: Message) => void;
+  onToggleReaction?: (msg: Message, emoji: string) => void;
+  contextMenu: ContextMenuState | null;
 }
 
 export default function MessageList({
@@ -61,11 +65,15 @@ export default function MessageList({
   onSaveEdit,
   onRefresh,
   onPinMessage,
+  onToggleReaction,
+  contextMenu
 }: MessageListProps) {
   const [timeVisibleId, setTimeVisibleId] = useState<string | null>(null);
   const [expandedOriginalId, setExpandedOriginalId] = useState<string | null>(null);
   const [activeMoreId, setActiveMoreId] = useState<string | null>(null);
   const [detailMsg, setDetailMsg] = useState<Message | null>(null);
+  const [reactionDetail, setReactionDetail] = useState<{ msgId: string; emoji: string } | null>(null);
+  
   const formatTimestamp = (ts: number) => {
     const d = new Date(ts);
     const now = new Date();
@@ -103,6 +111,9 @@ export default function MessageList({
             const isEdited = msg.editedAt && !isEditing;
             const isRecalled = msg.isRecalled;
             const isVideo = msg.type === 'video' || (msg.fileUrl && isVideoFile(msg.fileUrl));
+            const reactions = (msg.reactions || {}) as Record<string, string[]>;
+            const myId = String(currentUser._id);
+            const hasReactions = Object.values(reactions).some((arr) => (arr || []).length > 0);
 
             // Group detection
             const prevMsg = index > 0 ? msgs[index - 1] : null;
@@ -446,40 +457,199 @@ export default function MessageList({
                   {/* MAIN BUBBLE */}
                   <div
                     className={`
-                      px-4 py-2 rounded-3xl shadow-md max-w-[70vw] sm:max-w-[20rem] break-words
-                      ${isMe ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border border-gray-200'}
+                      px-4 py-2 rounded-lg shadow-md max-w-[70vw] sm:max-w-[20rem] break-words
+                      ${isMe ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 border border-gray-200'}
                       ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
                       ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}
                       ${isRecalled ? '!bg-gray-200 !text-gray-500 italic !px-4 !py-2 sm:!max-w-[18rem]' : ''}
                       ${!isRecalled && (isVideo || msg.type === 'sticker') ? '!p-0 !shadow-none bg-transparent' : ''}
                       ${!isRecalled && msg.type === 'image' ? '!p-0' : ''}
                       ${!isRecalled && msg.type === 'file' ? '!px-2 !py-2' : ''}
-                    relative
+                    relative ${hasReactions ? 'mb-4' : ''}
                     `}
                     onClick={() => {
                       setTimeVisibleId((prev) => (prev === msg._id ? null : msg._id));
                       setActiveMoreId(msg._id);
+                      setReactionDetail(null);
+                      
                     }}
                   >
+                   {!isRecalled && (
+                        <>
+                          {/* Button menu ba chấm */}
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              onContextMenu(e, msg);
+                            }}
+                            className={`
+                              absolute top-1/2 -translate-y-1/2 z-10
+                              cursor-pointer p-1.5 bg-white/90 rounded-full shadow hover:bg-blue-50
+                              ${isMe ? 'right-full mr-2' : 'left-full ml-2'}
+                              ${activeMoreId === msg._id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+                              sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100
+                            `}
+                            aria-label="Mở menu"
+                            title="Thêm"
+                          >
+                            <HiEllipsisVertical className="w-4 h-4 text-gray-600" />
+                          </button>
+
+                          {/* Reaction Button - cách xa button menu */}
+                          <div
+                            className={`
+                              absolute top-1/2 -translate-y-1/2 z-10
+                              ${isMe ? 'right-full mr-10' : 'left-full ml-10'}
+                              ${activeMoreId === msg._id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+                              sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100
+                            `}
+                          >
+                            <ReactionButton 
+                              isMine={isMe} 
+                             
+                              onPick={(emoji) => onToggleReaction?.(msg, emoji)} 
+                            />
+                          </div>
+                        </>
+                      )}
+                    {/* {!isRecalled && (
+                      
+                    )} */}
                     {!isRecalled && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onContextMenu(e, msg);
-                        }}
-                        className={`
-                          absolute top-1/2 -translate-y-1/2 z-10
-                          cursor-pointer p-1.5 bg-white/90 rounded-4xl shadow hover:bg-blue-50
-                          ${isMe ? 'right-full mr-2' : 'left-full ml-2'}
-                          ${activeMoreId === msg._id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-                          sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100
-                        `}
-                        aria-label="Mở menu"
-                        title="Thêm"
-                      >
-                        <HiEllipsisVertical className="w-4 h-4 text-gray-600" />
-                      </button>
-                    )}
+                      <>
+                            {(() => {
+                              const items = Object.entries(reactions)
+                                .map(([emoji, arr]) => ({
+                                  emoji,
+                                  count: (arr || []).length,
+                                  mine: (arr || []).includes(myId),
+                                  users: (arr || []).map((id) => allUsersMap.get(String(id)) || 'Người dùng')
+                                }))
+                                .filter((x) => x.count > 0)
+                                .sort((a, b) => b.count - a.count);
+
+                              if (items.length === 0) return null;
+
+                              return (
+                                <div className={`
+                                  absolute ${isMe ? 'right-2 -mr-1' : 'left-2 -ml-1'} 
+                                  -bottom-4 
+                                  flex items-center gap-1
+                                `}>
+                                  <div className="flex items-center bg-white rounded-full shadow-lg border border-gray-200">
+                                    {items.slice(0, 3).map((it, idx) => (
+                                      <div
+                                        key={`${msg._id}-react-${idx}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setReactionDetail(
+                                            reactionDetail?.msgId === msg._id && reactionDetail?.emoji === it.emoji
+                                              ? null
+                                              : { msgId: msg._id, emoji: it.emoji }
+                                          );
+                                        }}
+                                        className={`
+                                          flex items-center gap-0.5 py-0.5 rounded-full text-sm cursor-pointer
+                                          transition-all duration-200 hover:bg-gray-100 active:scale-95
+                                          ${it.mine ? 'bg-blue-50' : 'bg-transparent'}
+                                        `}
+                                        title={`${it.count} người`}
+                                      >
+                                        <span className="text-lg leading-none">{it.emoji}</span>
+                                        {it.count > 1 && (
+                                          <span className={`text-xs font-medium ${it.mine ? 'text-blue-600' : 'text-gray-600'}`}>
+                                            {it.count}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {items.length > 3 && (
+                                      <div className="px-2 text-xs text-gray-500 font-medium">
+                                        +{items.length - 3}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Hiệu ứng nổi nhẹ khi hover toàn bộ bubble */}
+                                  <div className="absolute inset-0 -z-10 bg-white/60 backdrop-blur-sm rounded-full scale-0 group-hover:scale-100 transition-transform duration-300" />
+                                </div>
+                              );
+                            })()}       
+                  
+                          {/* Reaction Detail Popover - Hiển thị danh sách người thả */}
+                          {reactionDetail && reactionDetail.msgId === msg._id && (
+                              <>
+                                {/* Backdrop để đóng popover */}
+                                <div
+                                  className="fixed inset-0 z-30"
+                                  onClick={() => setReactionDetail(null)}
+                                />
+                                                            
+                                {/* Popover content */}
+                                <div
+                                  ref={(el) => {
+                                    if (el && reactionDetail.msgId === msg._id) {
+                                      const rect = el.parentElement?.getBoundingClientRect();
+                                      if (rect) {
+                                        const spaceBelow = window.innerHeight - rect.bottom;
+                                        const spaceAbove = rect.top;
+                                        const popoverHeight = 250; // Estimate height
+                                        
+                                        // Nếu không đủ chỗ ở dưới và có nhiều chỗ hơn ở trên
+                                        if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
+                                          el.style.bottom = '100%';
+                                          el.style.top = 'auto';
+                                          el.style.marginBottom = '0.625rem'; // mb-2.5
+                                          el.style.marginTop = '0';
+                                        } else {
+                                          el.style.top = '100%';
+                                          el.style.bottom = 'auto';
+                                          el.style.marginTop = '0.625rem'; // mt-2.5
+                                          el.style.marginBottom = '0';
+                                        }
+                                      }
+                                    }
+                                  }}
+                                  className={`
+                                    absolute ${isMe ? 'right-2' : 'left-2'} 
+                                    z-40
+                                  `}
+                                >
+                                  {(() => {
+                                    const users = (reactions[reactionDetail.emoji] || []).map(
+                                      (id) => allUsersMap.get(String(id)) || String(id)
+                                    );
+                                    
+                                    return (
+                                      <div className="min-w-[11.25rem] max-w-[15rem] px-3 py-2.5 bg-white rounded-xl border border-gray-200 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                                          <span className="text-2xl">{reactionDetail.emoji}</span>
+                                          <span className="text-sm font-semibold text-gray-700">
+                                            {users.length} người
+                                          </span>
+                                        </div>
+                                        {users.length > 0 ? ( 
+                                          <ul className="space-y-1.5 max-h-48 overflow-y-auto">
+                                            {users.map((name, idx) => (
+                                              <li
+                                                key={`${msg._id}-user-${idx}`}
+                                                className="text-sm text-gray-700 py-1 hover:text-blue-600 transition-colors"
+                                              >
+                                                {name}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        ) : (
+                                          <div className="text-sm text-gray-500 py-1">Chưa có ai</div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </>
+                            )}
+                        </>
+                      )}
                     {/* Group sender name */}
                     {!isMe && isGroup && !isGrouped && !isRecalled && (
                       <p className="text-blue-600 text-xs font-bold mb-1">{senderName}</p>
@@ -610,13 +780,16 @@ export default function MessageList({
                         )}
                       </div>
                     )}
+                    <span className={`text-xs mt-1 ${isMe ? 'text-white' : 'text-gray-500'}  `}>{formatTimestamp(msg.timestamp)}</span>
                   </div>
 
                   {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}
 
-                  {timeVisibleId === msg._id && (
-                    <span className={`text-xs mt-1  text-gray-500`}>{formatTimestamp(msg.timestamp)}</span>
-                  )}
+                  {/* Reactions: trigger bottom overlap + hover picker */}
+                 
+                            {/* {timeVisibleId === msg._id && ( */}
+                              {/* <span className={`text-xs mt-1  text-gray-500`}>{formatTimestamp(msg.timestamp)}</span> */}
+                            {/* )} */}
                 </div>
               </div>
             );
