@@ -32,7 +32,6 @@ export interface Message {
   pollVotes?: Record<string, string[]>;
   isPollLocked?: boolean;
   pollLockedAt?: number;
-  reactions?: Record<string, string[]>;
 }
 export interface MessageCreate {
   [key: string]: unknown;
@@ -59,5 +58,4 @@ export interface MessageCreate {
   pollVotes?: Record<string, string[]>;
   isPollLocked?: boolean;
   pollLockedAt?: number;
-  reactions?: Record<string, string[]>;
 }

@@ -457,7 +457,7 @@ export default function MessageList({
                   {/* MAIN BUBBLE */}
                   <div
                     className={`
-                      px-4 py-2 rounded-lg shadow-md max-w-[70vw] sm:max-w-[20rem] break-words
+                      px-4 py-2 rounded-lg shadow-md max-w-[50vw] sm:max-w-[20rem] break-words
                       ${isMe ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 border border-gray-200'}
                       ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
                       ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}

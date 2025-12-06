@@ -88,18 +88,9 @@ export default function ChatInfoPopup({
     handleChatActionClick,
     toggleItem,
     closeMenu,
-    mediaVisibleGroups,
-    mediaTotalCount,
-    isMediaExpanded,
-    setIsMediaExpanded,
-    fileVisibleGroups,
-    fileTotalCount,
-    isFileExpanded,
-    setIsFileExpanded,
-    linkVisibleGroups,
-    linkTotalCount,
-    isLinkExpanded,
-    setIsLinkExpanded,
+    mediaList,
+    fileList,
+    linkList,
   } = useChatInfoPopup({
     selectedChat,
     isGroup,
@@ -294,10 +285,7 @@ export default function ChatInfoPopup({
             <MediaSection
               isOpen={openItems['Ảnh/Video']}
               onToggle={() => toggleItem('Ảnh/Video')}
-              groups={mediaVisibleGroups}
-              totalCount={mediaTotalCount}
-              isExpanded={isMediaExpanded}
-              onToggleExpanded={() => setIsMediaExpanded(!isMediaExpanded)}
+              mediaList={mediaList}
               setPreviewMedia={setPreviewMedia}
               activeMenuId={activeMenuId}
               setActiveMenuId={setActiveMenuId}
@@ -308,10 +296,7 @@ export default function ChatInfoPopup({
             <FileSection
               isOpen={openItems['File']}
               onToggle={() => toggleItem('File')}
-              groups={fileVisibleGroups}
-              totalCount={fileTotalCount}
-              isExpanded={isFileExpanded}
-              onToggleExpanded={() => setIsFileExpanded(!isFileExpanded)}
+              fileList={fileList}
               activeMenuId={activeMenuId}
               setActiveMenuId={setActiveMenuId}
               onJumpToMessage={onJumpToMessage}
@@ -321,10 +306,7 @@ export default function ChatInfoPopup({
             <LinkSection
               isOpen={openItems['Link']}
               onToggle={() => toggleItem('Link')}
-              groups={linkVisibleGroups}
-              totalCount={linkTotalCount}
-              isExpanded={isLinkExpanded}
-              onToggleExpanded={() => setIsLinkExpanded(!isLinkExpanded)}
+              linkList={linkList}
               activeMenuId={activeMenuId}
               setActiveMenuId={setActiveMenuId}
               onJumpToMessage={onJumpToMessage}

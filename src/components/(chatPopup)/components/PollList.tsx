@@ -412,7 +412,7 @@ export default function PollList({ onClose, onRefresh }: PollListProps) {
                           <div className="relative flex items-center gap-2">
                             <button
                               onClick={() => handleTogglePin(it)}
-                              className="px-2 py-1 text-[12px] rounded-lg
+                              className="px-2 py-1 text-[0.74rem] rounded-lg
                                border border-yellow-300 text-yellow-700 hover:bg-yellow-100 cursor-pointer"
                             >
                               {it.isPinned ? 'Bỏ ghim' : 'Ghim'}

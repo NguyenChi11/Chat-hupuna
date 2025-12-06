@@ -498,7 +498,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
                                       {info?.name?.charAt(0).toUpperCase() || 'U'}
                                     </div>
                                   )}
-                                  <span className="text-[8px] text-blue-600">{info?.name || String(uid)}</span>
+                                  <span className="text-[0.6875rem] text-blue-600">{info?.name || String(uid)}</span>
                                 </div>
                               );
                             })

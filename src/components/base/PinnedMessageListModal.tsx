@@ -66,7 +66,7 @@ export default function PinnedMessageListModal({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-yellow-800 text-sm">{onGetSenderName(msg.sender)}</span>
-                <span className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${msg.type === 'poll' ? 'bg-yellow-100 text-yellow-800' : msg.type === 'reminder' ? 'bg-blue-100 text-blue-800' : msg.type === 'image' ? 'bg-pink-100 text-pink-800' : msg.type === 'file' ? 'bg-gray-100 text-gray-800' : msg.type === 'sticker' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-700'}`}>
+                <span className={`text-[0.6875rem] px-2 py-0.5 rounded-md font-semibold ${msg.type === 'poll' ? 'bg-yellow-100 text-yellow-800' : msg.type === 'reminder' ? 'bg-blue-100 text-blue-800' : msg.type === 'image' ? 'bg-pink-100 text-pink-800' : msg.type === 'file' ? 'bg-gray-100 text-gray-800' : msg.type === 'sticker' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-700'}`}>
                   {msg.type === 'poll' ? 'Bình chọn' : msg.type === 'reminder' ? 'Lịch hẹn' : msg.type === 'image' ? 'Ảnh' : msg.type === 'file' ? 'File' : msg.type === 'sticker' ? 'Sticker' : 'Tin nhắn'}
                 </span>
               </div>
@@ -83,7 +83,7 @@ export default function PinnedMessageListModal({
                     e.stopPropagation();
                     onUnpinMessage(msg);
                   }}
-                  className="px-2 py-1 text-[12px] rounded-lg border border-red-300 text-red-700 hover:bg-red-50 cursor-pointer"
+                  className="px-2 py-1 text-[0.74rem] rounded-lg border border-red-300 text-red-700 hover:bg-red-50 cursor-pointer"
                 >
                   Bỏ ghim
                 </button>

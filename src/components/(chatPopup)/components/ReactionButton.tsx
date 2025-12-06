@@ -13,7 +13,8 @@ const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 export default function ReactionButton({ isMine, onPick, visible, className = '' }: Props) {
   const [open, setOpen] = useState(false);
   const sideCls = isMine ? 'right-full mr-3' : 'left-full ml-3';
-  const pickerSideCls = isMine ? 'right-0 -translate-x-1' : 'left-0 translate-x-1';
+  const pickerSideCls = isMine ? 'left-1/2 -translate-x-1/2' : 'left-1/2 -translate-x-3/4';
+  // const pickerSideCls = isMine ? 'right-0' : 'left-0 -translate-x-';
 
   return (
     <div
@@ -36,7 +37,7 @@ export default function ReactionButton({ isMine, onPick, visible, className = ''
           <ICSmile className='w-4 h-4'/>
         </button>
         <div
-          className={`absolute ${pickerSideCls} z-50 bottom-full mb-2 flex items-center gap-1 px-3 py-2 bg-white rounded-full shadow-xl border border-gray-200 transition-all ${open ? 'opacity-100 visible pointer-events-auto scale-100' : 'opacity-0 invisible pointer-events-none scale-95'} origin-bottom`}
+          className={`absolute ${pickerSideCls} z-50 bottom-full mb-2 flex items-center gap-1 px-3 py-2 bg-white rounded-full shadow-xl border border-gray-200 transition-all ${open ? 'opacity-100 visible pointer-events-auto scale-100' : 'opacity-0 invisible pointer-events-none scale-95'} origin-bottom whitespace-nowrap overflow-x-auto no-scrollbar max-w-[calc(100vw-64px)] sm:max-w-[20rem]`}
         >
           {EMOJIS.map((emoji) => (
             <button

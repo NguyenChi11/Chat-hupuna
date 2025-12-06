@@ -7,10 +7,12 @@ import Image from 'next/image';
 interface MediaSectionProps {
   isOpen: boolean;
   onToggle: () => void;
-  groups: { dateKey: string; dateLabel: string; items: { id: string; type: string; url: string; fileName?: string }[] }[];
-  totalCount: number;
-  isExpanded: boolean;
-  onToggleExpanded: () => void;
+  mediaList: {
+    id: string;
+    type: string;
+    url: string;
+    fileName?: string;
+  }[];
   setPreviewMedia: (media: { url: string; type: 'image' | 'video' } | null) => void;
   activeMenuId: string | null;
   setActiveMenuId: (id: string | null) => void;
@@ -21,10 +23,7 @@ interface MediaSectionProps {
 export default function MediaSection({
   isOpen,
   onToggle,
-  groups,
-  totalCount,
-  isExpanded,
-  onToggleExpanded,
+  mediaList,
   setPreviewMedia,
   activeMenuId,
   setActiveMenuId,
@@ -32,7 +31,7 @@ export default function MediaSection({
   closeMenu,
 }: MediaSectionProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 ">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header: Ảnh/Video + mũi tên */}
       <button
         onClick={onToggle}
@@ -43,7 +42,9 @@ export default function MediaSection({
             <HiPlay className="w-5 h-5" />
           </div>
           <span className="font-semibold text-gray-900">Ảnh & Video</span>
-          
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+            {mediaList.length}
+          </span>
         </div>
 
         <HiChevronRight
@@ -56,65 +57,66 @@ export default function MediaSection({
       {/* Nội dung khi mở */}
       {isOpen && (
         <div className="px-5 pb-5 border-t border-gray-100">
-         {totalCount > 0 ? (
-            <div className="mt-4 space-y-4">
-              {groups.map((group) => (
-                <div key={group.dateKey} className="space-y-3">
-                  <div className="text-xs font-semibold text-gray-500">{group.dateLabel}</div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {group.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`relative aspect-square rounded-xl  cursor-pointer group bg-gray-100 ${
-                          activeMenuId === item.id ? 'z-50' : 'z-0'
-                        }`}
-                        onClick={() => {
-                          const mediaType = item.type === 'video' ? 'video' : 'image';
-                          setPreviewMedia({ url: getProxyUrl(item.url), type: mediaType });
-                        }}
-                      >
-                        {item.type === 'video' ? (
-                          <video src={getProxyUrl(item.url)} className="w-full h-full object-cover pointer-events-none" preload="metadata" />
-                        ) : (
-                          <Image width={200} height={200} src={getProxyUrl(item.url)} alt="Media" className="w-full h-full object-cover" />
-                        )}
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          {item.type === 'video' && <HiPlay className="w-10 h-10 text-white drop-shadow-lg" />}
-                        </div>
-                        <button
-                          className={`cursor-pointer absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg transition-all duration-200 z-10 ${
-                            activeMenuId === item.id ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'
-                          } hover:bg-white hover:scale-110`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuId(activeMenuId === item.id ? null : item.id);
-                          }}
-                        >
-                          <HiDotsVertical className="w-4 h-4 text-gray-700" />
-                        </button>
-                        <ItemDropdownMenu
-                          itemUrl={item.url}
-                          itemId={item.id}
-                          fileName={item.fileName}
-                          activeMenuId={activeMenuId}
-                          onClose={closeMenu}
-                          onJumpToMessage={onJumpToMessage}
-                        />
-                      </div>
-                    ))}
+          {mediaList.length > 0 ? (
+            <div className="grid grid-cols-3 gap-3 mt-4">
+              {mediaList.map((item) => (
+                <div
+                  key={item.id}
+                  className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100"
+                  onClick={() => {
+                    const mediaType = item.type === 'video' ? 'video' : 'image';
+                    setPreviewMedia({
+                      url: getProxyUrl(item.url),
+                      type: mediaType,
+                    });
+                  }}
+                >
+                  {/* Ảnh/Video */}
+                  {item.type === 'video' ? (
+                    <video
+                      src={getProxyUrl(item.url)}
+                      className="w-full h-full object-cover pointer-events-none"
+                      preload="metadata"
+                    />
+                  ) : (
+                    <Image
+                      width={200}
+                      height={200}
+                      src={getProxyUrl(item.url)}
+                      alt="Media"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+
+                  {/* Overlay khi hover + icon play cho video */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    {item.type === 'video' && <HiPlay className="w-10 h-10 text-white drop-shadow-lg" />}
                   </div>
+
+                  {/* Nút "..." hiện đại */}
+                  <button
+                    className={`cursor-pointer absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg transition-all duration-200 z-10
+                      ${activeMenuId === item.id ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'}
+                      hover:bg-white hover:scale-110`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuId(activeMenuId === item.id ? null : item.id);
+                    }}
+                  >
+                    <HiDotsVertical className="w-4 h-4 text-gray-700" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  <ItemDropdownMenu
+                    itemUrl={item.url}
+                    itemId={item.id}
+                    fileName={item.fileName}
+                    activeMenuId={activeMenuId}
+                    onClose={closeMenu}
+                    onJumpToMessage={onJumpToMessage}
+                  />
                 </div>
               ))}
-              {totalCount > 6 && (
-                <div className="mt-3">
-                  <button
-                    onClick={onToggleExpanded}
-                    className="cursor-pointer w-full py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                  >
-                    {isExpanded ? 'Thu gọn' : 'Xem tất cả'}
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
             <div className="text-center py-10 text-gray-400">
