@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import Image from 'next/image';
 import IconArrow from '@/public/icons/arrow.svg';
 import IconFR from '@/public/icons/friend.svg';
 import IconSH from '@/public/icons/search.svg';
@@ -141,7 +140,7 @@ export default function FriendsList() {
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center space-x-2 text-gray-800 font-semibold text-lg">
-          <Image src={IconFR.src} alt="Avatar" width={40} height={40} className="w-10 h-10 object-contain" />
+          <img src={IconFR.src} alt="Avatar" className="w-10 h-10 object-contain" />
           <span>Danh sách nhóm và cộng đồng</span>
         </div>
       </div>
@@ -150,7 +149,7 @@ export default function FriendsList() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0 mb-4 p-2">
         {/* Ô tìm kiếm */}
         <div className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md w-full sm:flex-1">
-          <Image src={IconSH.src} alt="search" width={20} height={20} className="w-5 h-5 object-contain" />
+          <img src={IconSH.src} alt="search" className="w-5 h-5 object-contain" />
           <input
             type="text"
             placeholder="Tìm kiếm"
@@ -166,12 +165,12 @@ export default function FriendsList() {
           onClick={() => setShowSortMenu(!showSortMenu)}
         >
           <div className="flex items-center space-x-2">
-            <Image src={IconArrow.src} alt="sort" width={16} height={16} className="w-4 h-4 object-contain" />
+            <img src={IconArrow.src} alt="sort" className="w-4 h-4 object-contain" />
             <span className="text-gray-600 text-sm md:text-base">
               {sortOrder === 'asc' ? ' Tên (A - Z)' : ' Tên (Z - A)'}
             </span>
           </div>
-          <Image src={IconAR.src} alt="arrow" width={12} height={12} className="w-3 h-3 object-contain" />
+          <img src={IconAR.src} alt="arrow" className="w-3 h-3 object-contain" />
 
           {showSortMenu && (
             <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-md shadow-lg w-full z-50">
@@ -204,7 +203,7 @@ export default function FriendsList() {
             onClick={() => setOpen(!open)}
           >
             <span className="text-black">{selected}</span>
-            <Image src={IconAR.src} alt="arrow" width={12} height={12} className="w-3 h-3 ml-2" />
+            <img src={IconAR.src} alt="arrow" className="w-3 h-3 ml-2" />
           </div>
 
           {open && (
@@ -223,7 +222,7 @@ export default function FriendsList() {
                   }}
                 >
                   <span>{o}</span>
-                  {o === 'Phân loại' && <Image src={IconAR2.src} alt="arrow-right" width={12} height={12} className="w-3 h-3 ml-2" />}
+                  {o === 'Phân loại' && <img src={IconAR2.src} alt="arrow-right" className="w-3 h-3 ml-2" />}
 
                   {/* Popup phân loại */}
                   {o === 'Phân loại' && showFilterPopup && <FilterPopup />}
@@ -241,17 +240,14 @@ export default function FriendsList() {
             <h2 className="text-gray-400 font-bold text-base md:text-lg mb-2">{section}</h2>
             {groupedFriends[section].map((friend, index) => (
               <div key={index} className="flex items-center p-2 hover:bg-gray-100 rounded-lg cursor-pointer">
-                <Image
+                <img
                   src={friend.avatar}
                   alt={friend.name}
-                  width={40}
-                  height={40}
                   className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover"
-                  unoptimized
                 />
                 <span className="ml-3 font-medium text-gray-800 text-sm md:text-base">{friend.name}</span>
                 <div className="ml-auto text-gray-500">
-                  <Image src={IconDot.src} alt="menu" width={12} height={12} className="w-3 h-3 object-contain" />
+                  <img src={IconDot.src} alt="menu" className="w-3 h-3 object-contain" />
                 </div>
               </div>
             ))}

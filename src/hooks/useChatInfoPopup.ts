@@ -49,14 +49,15 @@ export function useChatInfoPopup({ selectedChat, isGroup, messages, currentUser,
   }, [currentRoomId, initialIsPinned, initialIsHidden]);
 
   const handleChatActionClick = (actionType: 'pin' | 'hide') => {
+    const targetId = isGroup ? currentRoomId : getId(selectedChat);
     if (actionType === 'pin') {
       const newState = !localIsPinned;
       setLocalIsPinned(newState);
-      onChatAction(currentRoomId, 'pin', newState, isGroup);
+      onChatAction(targetId, 'pin', newState, isGroup);
     } else if (actionType === 'hide') {
       const newState = !localIsHidden;
       setLocalIsHidden(newState);
-      onChatAction(currentRoomId, 'hide', newState, isGroup);
+      onChatAction(targetId, 'hide', newState, isGroup);
     }
   };
 

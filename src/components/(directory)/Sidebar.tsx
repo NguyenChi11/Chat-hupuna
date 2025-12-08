@@ -1,8 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
-// File: components/Sidebar.tsx
 import React from 'react';
 import Image from 'next/image';
-
 import IconBB from '@/public/icons/bb.svg';
 import IconGroup from '@/public/icons/group.svg';
 import IconUser from '@/public/icons/user.svg';

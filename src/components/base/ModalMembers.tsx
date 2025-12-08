@@ -303,7 +303,7 @@ export default function GroupMembersModal({
         <div className="flex-1 flex flex-col min-h-0 bg-gray-50/60">
           {/* Search & Add Section */}
           <div className="flex-none p-4 space-y-3 bg-white shadow-sm z-10">
-            {(myRole === 'OWNER' || myRole === 'ADMIN') && (
+            {/* {(myRole === 'OWNER' || myRole === 'ADMIN') && ( */}
               <button
                 onClick={() => setShowCreateGroupModal(true)}
                 className="w-full py-1.5 cursor-pointer sm:py-2.5 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold sm:text-lg text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-98"
@@ -311,7 +311,7 @@ export default function GroupMembersModal({
                 <HiUserPlus className="sm:w-6 sm:h-6 w-4 h-4" />
                 Thêm thành viên mới
               </button>
-            )}
+            {/* )} */}
 
             <div className="relative">
               <HiSearch className="absolute left-5 top-1/2 -translate-y-1/2 sm:w-6 sm:h-6 w-4 h-4  text-gray-400" />

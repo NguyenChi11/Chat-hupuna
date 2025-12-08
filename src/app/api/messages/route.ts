@@ -877,7 +877,7 @@ export async function POST(req: NextRequest) {
         } as Filter<Message>; // ✅ Thêm type assertion
 
         const upd = await updateMany<Message>(collectionName, filter, { $set: updateData });
-        const modified = (upd as any)?.modifiedCount ?? 0;
+        const modified = upd?.modifiedCount ?? 0;
 
         if (!modified) {
           return NextResponse.json({ success: true, updated: false });

@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import Image from 'next/image';
 import IconGR from '@/public/icons/group1.svg';
 import IconArrow from '@/public/icons/arrow.svg';
 import IconAR from '@/public/icons/arrow1.svg';
@@ -64,7 +63,7 @@ export default function GroupsList() {
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center space-x-2 text-gray-800 font-semibold text-lg">
-          <Image src={IconGR.src} alt="Avatar" width={40} height={40} className="w-10 h-10 object-contain" />
+          <img src={IconGR.src} alt="Avatar" className="w-10 h-10 object-contain" />
           <span>Danh sách nhóm và cộng đồng</span>
         </div>
       </div>
@@ -76,7 +75,7 @@ export default function GroupsList() {
         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-3 md:space-y-0 mb-4 relative">
           {/* Tìm kiếm */}
           <div className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md w-48 md:w-150">
-            <Image src={IconSH.src} alt="Search" width={20} height={20} className="w-4 h-4 md:w-5 md:h-5 object-contain" />
+            <img src={IconSH.src} alt="Search" className="w-4 h-4 md:w-5 md:h-5 object-contain" />
             <input
               type="text"
               placeholder="Tìm kiếm"
@@ -93,10 +92,10 @@ export default function GroupsList() {
               className="flex cursor-pointer items-center justify-between w-full px-3 py-2 border border-gray-300 rounded-md text-sm md:text-base"
             >
               <div className="flex items-center space-x-2">
-                <Image src={IconArrow.src} alt="Arrow" width={12} height={12} className="w-3 h-3" />
+                <img src={IconArrow.src} alt="Arrow" className="w-3 h-3" />
                 <span className="text-gray-600 truncate">{sortLabels[sortBy]}</span>
               </div>
-              <Image src={IconAR.src} alt="Arrow" width={20} height={20} className="w-4 h-4 md:w-5 md:h-5" />
+              <img src={IconAR.src} alt="Arrow" className="w-4 h-4 md:w-5 md:h-5" />
             </button>
 
             {openSort && (
@@ -113,7 +112,7 @@ export default function GroupsList() {
                     }`}
                   >
                     <span className="truncate">{label}</span>
-                    {sortBy === key && <Image src={IconTick.src} alt="Tick" width={20} height={20} className="w-4 h-4 md:w-5 md:h-5" />}
+                    {sortBy === key && <img src={IconTick.src} alt="Tick" className="w-4 h-4 md:w-5 md:h-5" />}
                   </div>
                 ))}
               </div>
@@ -123,7 +122,7 @@ export default function GroupsList() {
           {/* Dropdown Tất cả */}
           <div className="flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md flex-1 text-sm md:text-base">
             <span className="text-gray-600">Tất cả</span>
-            <Image src={IconAR.src} alt="Arrow" width={20} height={20} className="w-4 h-4 md:w-5 md:h-5" />
+            <img src={IconAR.src} alt="Arrow" className="w-4 h-4 md:w-5 md:h-5" />
           </div>
         </div>
 
@@ -133,13 +132,13 @@ export default function GroupsList() {
             key={index}
             className="flex items-center p-2 md:p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
           >
-            <Image src={group.avatar} alt={group.name} width={48} height={48} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" unoptimized />
+            <img src={group.avatar} alt={group.name} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
             <div className="ml-3 flex-1 overflow-hidden">
               <span className="font-semibold text-gray-800 text-sm md:text-base truncate block">{group.name}</span>
               <span className="text-gray-500 text-xs md:text-sm">{group.members} thành viên</span>
             </div>
             <button className="cursor-pointer p-1.5 md:p-2 rounded-full hover:bg-gray-200 text-gray-500">
-              <Image src={IconDot.src} alt="More" width={16} height={16} className="w-3 h-3 md:w-4 md:h-4" />
+              <img src={IconDot.src} alt="More" className="w-3 h-3 md:w-4 md:h-4" />
             </button>
           </div>
         ))}

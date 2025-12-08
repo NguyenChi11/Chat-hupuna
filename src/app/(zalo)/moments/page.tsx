@@ -450,7 +450,7 @@ export default function MomentsPage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, skip, limit, currentId, mapPostDoc]);
+  }, [loadingMore, hasMore, skip, limit, mapPostDoc]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;

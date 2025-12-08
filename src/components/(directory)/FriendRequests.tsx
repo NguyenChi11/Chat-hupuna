@@ -3,7 +3,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import IconUser from '@/public/icons/user.svg';
 
 // Dữ liệu giả định
@@ -21,14 +20,14 @@ export default function FriendRequests() {
   return (
     <div className="flex-1 flex flex-col p-4 bg-white shadow-sm overflow-y-auto">
       <h1 className="font-semibold text-gray-900 text-lg mb-4 flex items-center gap-2">
-        <Image src={IconUser.src} alt="user" width={40} height={40} className="w-10 h-10  object-cover" />
+        <img src={IconUser.src} alt="user" className="w-10 h-10  object-cover" />
         Lời mời kết bạn
       </h1>
       <div className="mb-4">
         <h2 className="text-gray-700 font-semibold mb-2">Lời mời đã nhận ({receivedRequests.length})</h2>
         {receivedRequests.map((request, index) => (
           <div key={index} className="p-4 bg-gray-100 rounded-lg flex items-start space-x-4">
-            <Image src={request.avatar} alt={request.name} width={48} height={48} className="w-12 h-12 rounded-full object-cover" unoptimized />
+            <img src={request.avatar} alt={request.name} className="w-12 h-12 rounded-full object-cover" />
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-gray-800">{request.name}</h3>
@@ -53,7 +52,7 @@ export default function FriendRequests() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {sentRequests.map((request, index) => (
             <div key={index} className="p-4 bg-gray-100 rounded-lg flex flex-col items-center text-center">
-              <Image src={request.avatar} alt={request.name} width={64} height={64} className="w-16 h-16 rounded-full object-cover mb-2" unoptimized />
+              <img src={request.avatar} alt={request.name} className="w-16 h-16 rounded-full object-cover mb-2" />
               <h3 className="font-medium text-gray-800 text-base">{request.name}</h3>
               <p className="text-xs text-gray-500 mb-4">{request.time}</p>
               <button className="cursor-pointer px-4 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
