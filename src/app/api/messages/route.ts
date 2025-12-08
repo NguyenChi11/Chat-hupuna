@@ -845,14 +845,14 @@ export async function POST(req: NextRequest) {
         }
 
         const rowRes = await getRowByIdOrCode<Message>(collectionName, { _id: messageId });
-        const row = ((rowRes as any)?.row ?? null) as Message | null;
+        const row = (rowRes?.row ?? null) as Message | null;
 
         if (!row || row.type !== 'reminder') {
           return NextResponse.json({ success: false, updated: false });
         }
 
-        const latestAt = (row as any).reminderAt || row.timestamp || Date.now();
-        const repeat = (row as any).reminderRepeat || 'none';
+        const latestAt = row.reminderAt || row.timestamp || Date.now();
+        const repeat = row.reminderRepeat || 'none';
 
         // Tính nextAt cho recurring reminder
         let nextAt: number | null = null;

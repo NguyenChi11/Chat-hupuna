@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 // File: components/Sidebar.tsx
 import React from 'react';
+import Image from 'next/image';
 
 import IconBB from '@/public/icons/bb.svg';
 import IconGroup from '@/public/icons/group.svg';
@@ -19,22 +20,22 @@ export default function Sidebar({ selectedMenu, onMenuClick }: SidebarProps) {
     {
       name: 'friends',
       label: 'Danh sách bạn bè',
-      icon: <img src={IconFR.src} alt="Arrow" className="w-5 h-5 object-contain" />,
+      icon: <Image src={IconFR.src} alt="Arrow" width={20} height={20} className="w-5 h-5 object-contain" />,
     },
     {
       name: 'groups',
       label: 'Danh sách nhóm và cộng đồng',
-      icon: <img src={IconGR.src} alt="Arrow" className="w-5 h-5 object-contain" />,
+      icon: <Image src={IconGR.src} alt="Arrow" width={20} height={20} className="w-5 h-5 object-contain" />,
     },
     {
       name: 'requests',
       label: 'Lời mời kết bạn',
-      icon: <img src={IconUser.src} alt="Arrow" className="w-5 h-5 object-contain" />,
+      icon: <Image src={IconUser.src} alt="Arrow" width={20} height={20} className="w-5 h-5 object-contain" />,
     },
     {
       name: 'requestsgroup',
       label: 'Lời mời nhóm và cộng đồng',
-      icon: <img src={IconGR1.src} alt="Arrow" className="w-5 h-5 object-contain" />,
+      icon: <Image src={IconGR1.src} alt="Arrow" width={20} height={20} className="w-5 h-5 object-contain" />,
     },
   ];
 
@@ -50,10 +51,10 @@ export default function Sidebar({ selectedMenu, onMenuClick }: SidebarProps) {
           />
           <div className="flex items-center gap-4">
             <button className="cursor-pointer w-6 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-              <img src={IconBB.src} alt="Avatar" className="w-8 h-8 object-contain" />
+              <Image src={IconBB.src} alt="Avatar" width={32} height={32} className="w-8 h-8 object-contain" />
             </button>
             <button className="cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-              <img src={IconGroup.src} alt="Avatar" className="w-8 h-8 object-contain" />
+              <Image src={IconGroup.src} alt="Avatar" width={32} height={32} className="w-8 h-8 object-contain" />
             </button>
           </div>
         </div>

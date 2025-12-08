@@ -7,6 +7,12 @@ import io, { type Socket } from 'socket.io-client';
 import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
 import type { Message } from '@/types/Message';
+
+declare global {
+  interface Window {
+    __globalReminderSchedulerActive?: boolean;
+  }
+}
 import type { GlobalSearchMessage, GlobalSearchContact } from '@/components/(home)/HomeOverlays'; // Cập nhật đường dẫn nếu cần // Cập nhật đường dẫn nếu cần
 
 // Kiểu dữ liệu cho bản ghi tin nhắn trả về từ API globalSearch
@@ -328,16 +334,16 @@ export function useHomePage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    try {
-      (window as unknown as { [k: string]: any }).__globalReminderSchedulerActive = true;
-    } catch {}
+    if (typeof window !== 'undefined') {
+      window.__globalReminderSchedulerActive = true;
+    }
     void fetchAndScheduleReminders();
     const iv = setInterval(() => void fetchAndScheduleReminders(), 60000);
     return () => {
       clearInterval(iv);
-      try {
-        (window as unknown as { [k: string]: any }).__globalReminderSchedulerActive = false;
-      } catch {}
+      if (typeof window !== 'undefined') {
+        window.__globalReminderSchedulerActive = false;
+      }
     };
   }, [currentUser, fetchAndScheduleReminders]);
 

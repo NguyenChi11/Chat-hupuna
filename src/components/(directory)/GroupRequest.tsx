@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import IconGR from '@/public/icons/group.svg';
 export default function GroupRequest() {
   return (
@@ -10,7 +11,7 @@ export default function GroupRequest() {
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white shadow-sm">
           <div className="flex items-center space-x-2 text-black font-semibold text-lg">
-            <img src={IconGR.src} alt="Arrow" className="w-10 h-10 object-contain" />
+            <Image src={IconGR.src} alt="Arrow" width={40} height={40} className="w-10 h-10 object-contain" />
             <span>Lời mời vào nhóm và cộng đồng</span>
           </div>
         </div>

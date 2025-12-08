@@ -109,8 +109,8 @@ function PostComposer({
           {images.length > 0 && (
             <div className="mt-3 grid grid-cols-2 gap-2">
               {images.map((src, i) => (
-                <div key={i} className="relative rounded-xl overflow-hidden">
-                  <img src={src} alt="preview" className="object-cover w-full h-40" />
+                <div key={i} className="relative rounded-xl overflow-hidden w-full h-40">
+                  <Image src={src} alt="preview" fill sizes="100vw" className="object-cover" unoptimized />
                 </div>
               ))}
             </div>
@@ -183,8 +183,8 @@ function ImageGrid({ images }: { images?: string[] }) {
   if (imgs.length === 0) return null;
   if (imgs.length === 1) {
     return (
-      <div className="rounded-2xl overflow-hidden">
-        <img src={imgs[0]} alt="post-image" className="w-full h-auto object-cover" />
+      <div className="rounded-2xl overflow-hidden relative w-full">
+        <Image src={imgs[0]} alt="post-image" width={1200} height={675} className="w-full h-auto object-cover" unoptimized />
       </div>
     );
   }
@@ -192,8 +192,8 @@ function ImageGrid({ images }: { images?: string[] }) {
     return (
       <div className="grid grid-cols-2 gap-2">
         {imgs.map((src, i) => (
-          <div key={i} className="rounded-2xl overflow-hidden">
-            <img src={src} alt="post-image" className="w-full h-64 object-cover" />
+          <div key={i} className="rounded-2xl overflow-hidden relative w-full h-64">
+            <Image src={src} alt="post-image" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
           </div>
         ))}
       </div>
@@ -201,17 +201,17 @@ function ImageGrid({ images }: { images?: string[] }) {
   }
   return (
     <div className="grid grid-cols-2 gap-2">
-      <div className="rounded-2xl overflow-hidden">
-        <img src={imgs[0]} alt="post-image" className="w-full h-64 object-cover" />
+      <div className="rounded-2xl overflow-hidden relative w-full h-64">
+        <Image src={imgs[0]} alt="post-image" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
       </div>
-      <div className="rounded-2xl overflow-hidden">
-        <img src={imgs[1]} alt="post-image" className="w-full h-64 object-cover" />
+      <div className="rounded-2xl overflow-hidden relative w-full h-64">
+        <Image src={imgs[1]} alt="post-image" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
       </div>
-      <div className="rounded-2xl overflow-hidden">
-        <img src={imgs[2]} alt="post-image" className="w-full h-64 object-cover" />
+      <div className="rounded-2xl overflow-hidden relative w-full h-64">
+        <Image src={imgs[2]} alt="post-image" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
       </div>
-      <div className="rounded-2xl overflow-hidden">
-        <img src={imgs[3]} alt="post-image" className="w-full h-64 object-cover" />
+      <div className="rounded-2xl overflow-hidden relative w-full h-64">
+        <Image src={imgs[3]} alt="post-image" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
       </div>
     </div>
   );

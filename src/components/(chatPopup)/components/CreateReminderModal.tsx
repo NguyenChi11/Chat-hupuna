@@ -100,8 +100,8 @@ export default function CreateReminderModal({ isOpen, onClose, onCreate, createL
                     Đang tạo...
                   </div>
             ) : (
-              <div className="">
-                <HiCheck className="w-5 h-5" />
+              <div className="flex items-center gap-2">
+                <HiCheck className="w-5 h-5 " />
                 Tạo lịch hẹn
               </div>
             )}

@@ -5,6 +5,7 @@ import React, { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
 // React Icons hi2 – Đỉnh cao nhất 2025
 import { HiFaceSmile, HiPaperClip, HiPhoto, HiMicrophone, HiPaperAirplane, HiSparkles } from 'react-icons/hi2';
 import { HiDocumentText, HiX } from 'react-icons/hi';
+import Image from 'next/image';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -55,10 +56,19 @@ export default function ChatInput({
           <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
             {attachments.map((att, idx) => (
               <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white">
-                {att.type === 'image' || att.type === 'video' ? (
-                  <img src={att.previewUrl} alt="" className="w-full h-full object-cover" />
+                {att.type === 'image' ? (
+                  <Image
+                    src={att.previewUrl}
+                    alt=""
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                    unoptimized
+                    priority
+                  />
+                ) : att.type === 'video' ? (
+                  <video src={att.previewUrl} className="w-full h-full object-cover" muted playsInline />
                 ) : (
-               
                   <div className=' rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-200 group cursor-pointer border border-gray-200 hover:border-blue-300'>
                     <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 text-white shadow-lg">
                       <HiDocumentText className="w-3 h-3" />
