@@ -82,7 +82,7 @@ export default function MediaSection({
                         className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100"
                         onClick={() => {
                           const mediaType = item.type === 'video' ? 'video' : 'image';
-                          setPreviewMedia({ url: getProxyUrl(item.url), type: mediaType });
+                          setPreviewMedia({ url: item.url, type: mediaType });
                         }}
                       >
                         {item.type === 'video' ? (

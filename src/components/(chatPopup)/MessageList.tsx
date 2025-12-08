@@ -731,7 +731,7 @@ export default function MessageList({
                     {msg.type === 'image' && msg.fileUrl && !isRecalled && (
                       <div
                         className="relative rounded-2xl overflow-hidden cursor-pointer shadow-md max-w-[70vw] sm:max-w-[18rem]"
-                        onClick={() => !isUploading && onOpenMedia(getProxyUrl(msg.fileUrl), 'image')}
+                        onClick={() => !isUploading && onOpenMedia(String(msg.fileUrl), 'image')}
                       >
                         <Image
                           src={getProxyUrl(msg.fileUrl)}
@@ -758,7 +758,7 @@ export default function MessageList({
                     {isVideo && msg.fileUrl && !isRecalled && (
                       <div
                         className="relative rounded-2xl overflow-hidden cursor-pointer shadow-lg max-w-[70vw] sm:max-w-[18rem] aspect-video bg-black"
-                        onClick={() => !isUploading && onOpenMedia(getProxyUrl(msg.fileUrl!), 'video')}
+                        onClick={() => !isUploading && onOpenMedia(String(msg.fileUrl!), 'video')}
                       >
                         <video
                           src={getProxyUrl(msg.fileUrl)}

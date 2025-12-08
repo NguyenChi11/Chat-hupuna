@@ -1,18 +1,61 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { HiX, HiDownload, HiPhotograph, HiVideoCamera } from 'react-icons/hi';
+import { HiX, HiDownload, HiPhotograph, HiVideoCamera, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
+import { getProxyUrl } from '@/utils/utils';
 
 interface MediaPreviewModalProps {
   media: { url: string; type: 'image' | 'video' } | null;
   chatName?: string;
   isGroup?: boolean;
   onClose: () => void;
+  roomId?: string;
 }
 
-export default function MediaPreviewModal({ media, chatName, isGroup, onClose }: MediaPreviewModalProps) {
-  if (!media) return null;
+export default function MediaPreviewModal({ media, chatName, isGroup, onClose, roomId }: MediaPreviewModalProps) {
+  const [groups, setGroups] = useState<
+    { dateLabel: string; items: { id: string; type: 'image' | 'video'; url: string; timestamp?: number }[] }[]
+  >([]);
+  const items = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const [current, setCurrent] = useState<{ url: string; type: 'image' | 'video' } | null>(media);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    setCurrent(media);
+  }, [media]);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      if (!roomId) return;
+      try {
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'readAssets', roomId, assetType: 'media', limit: 5000 }),
+        });
+        const json = await res.json();
+        const gs = Array.isArray(json?.groups) ? json.groups : [];
+        setGroups(gs);
+      } catch {}
+    };
+    fetchAll();
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!current) return;
+    const el = itemRefs.current[current.url];
+    const list = listRef.current;
+    if (el && list) {
+      try {
+        const targetLeft = el.offsetLeft - (list.clientWidth / 2 - el.clientWidth / 2);
+        list.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+      } catch {}
+    }
+  }, [current, items]);
+
+  if (!current) return null;
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center px-4" onClick={onClose}>
@@ -25,7 +68,7 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose }:
               {chatName || (isGroup ? 'Nhóm chat' : 'Cuộc trò chuyện')}
             </h3>
             <p className="text-sm text-white/70 mt-1 flex items-center gap-2">
-              {media.type === 'image' ? (
+              {current.type === 'image' ? (
                 <>
                   <HiPhotograph className="w-4 h-4" />
                   Ảnh
@@ -44,7 +87,7 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose }:
           <div className="flex items-center gap-3 ml-4">
             {/* Tải xuống */}
             <a
-              href={media.url}
+              href={getProxyUrl(current.url)}
               download
               target="_blank"
               rel="noopener noreferrer"
@@ -66,12 +109,12 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose }:
         </div>
 
         {/* Media chính – full trải nghiệm */}
-        <div className="flex items-center justify-center min-h-screen py-20">
+        <div className="flex items-center justify-center min-h-screen py-20 pb-32 sm:pb-36">
           <div className="relative max-w-full max-h-full">
-            {media.type === 'image' ? (
+            {current.type === 'image' ? (
               <div className="animate-in fade-in zoom-in-95 duration-300">
                 <Image
-                  src={media.url}
+                  src={getProxyUrl(current.url)}
                   alt="Xem ảnh lớn"
                   width={1600}
                   height={1200}
@@ -82,7 +125,7 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose }:
             ) : (
               <div className="animate-in fade-in duration-500 rounded-2xl overflow-hidden shadow-2xl">
                 <video
-                  src={media.url}
+                  src={getProxyUrl(current.url)}
                   controls
                   autoPlay
                   loop
@@ -94,6 +137,72 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose }:
             )}
           </div>
         </div>
+
+        {items.length > 0 && (
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-28 sm:bottom-32 flex items-center gap-3 z-20">
+            <button
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white"
+              onClick={() => {
+                const el = listRef.current;
+                if (el) el.scrollBy({ left: -300, behavior: 'smooth' });
+              }}
+            >
+              <HiChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white"
+              onClick={() => {
+                const el = listRef.current;
+                if (el) el.scrollBy({ left: 300, behavior: 'smooth' });
+              }}
+            >
+              <HiChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {groups.length > 0 && (
+          <div
+            className="absolute left-0 right-0 bottom-0 h-28 sm:h-32 bg-black/40 backdrop-blur-sm border-t border-white/10 overflow-x-auto no-scrollbar"
+            ref={listRef}
+          >
+            <div className="flex items-start gap-4 px-3 py-2">
+              {groups.map((g, gi) => (
+                <div key={`${g.dateLabel}-${gi}`} className="flex items-start gap-2">
+                  {g.dateLabel && (
+                    <div className="text-[10px] text-white/70 font-semibold mt-1 mr-1 min-w-max">{g.dateLabel}</div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {g.items.map((it) => (
+                      <div
+                        key={it.id}
+                        ref={(el) => {
+                          itemRefs.current[it.url] = el;
+                        }}
+                        className={`relative rounded-md overflow-hidden border ${
+                          current && current.url === it.url ? 'border-blue-400' : 'border-transparent'
+                        } cursor-pointer w-24 h-20`}
+                        onClick={() => setCurrent({ url: it.url, type: it.type })}
+                      >
+                        {it.type === 'image' ? (
+                          <Image
+                            src={getProxyUrl(it.url)}
+                            alt="thumb"
+                            width={160}
+                            height={120}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <video src={getProxyUrl(it.url)} className="w-full h-full object-cover" preload="metadata" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Hướng dẫn chạm (chỉ hiện trên mobile) */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center text-white/60 text-xs sm:hidden">

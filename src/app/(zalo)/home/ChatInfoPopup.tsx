@@ -109,6 +109,13 @@ export default function ChatInfoPopup({
     onChatAction,
   });
 
+  const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
+    return [user1Id, user2Id].sort().join('_');
+  };
+  const roomId = isGroup
+    ? String((selectedChat as GroupConversation)._id)
+    : getOneToOneRoomId(String(currentUser._id), String((selectedChat as User)._id));
+
   const handleToggleMediaExpanded = useCallback(() => {
     void fetchAssets('media', !isMediaExpanded);
   }, [fetchAssets, isMediaExpanded]);
@@ -398,6 +405,7 @@ export default function ChatInfoPopup({
         media={previewMedia}
         chatName={chatName}
         isGroup={isGroup}
+        roomId={roomId}
         onClose={() => setPreviewMedia(null)}
       />
 

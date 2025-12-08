@@ -1869,6 +1869,7 @@ const handleToggleReaction = useCallback(
           media={previewMedia}
           chatName={chatName}
           isGroup={isGroup}
+          roomId={roomId}
           onClose={() => setPreviewMedia(null)}
         />
       </main>
