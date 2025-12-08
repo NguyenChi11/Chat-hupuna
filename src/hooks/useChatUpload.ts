@@ -26,7 +26,13 @@ export function useChatUpload({
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
 
   const handleUploadAndSend = useCallback(
-    async (file: File, type: MessageType, caption?: string, replyToMessageId?: string) => {
+    async (
+      file: File,
+      type: MessageType,
+      caption?: string,
+      replyToMessageId?: string,
+      mentions?: string[],
+    ) => {
       const sanitizeName = (name: string) => {
         return name
           .normalize('NFD')
@@ -127,6 +133,7 @@ export function useChatUpload({
             timestamp: Date.now(),
             content: caption,
             replyToMessageId,
+            mentions,
           } as unknown as MessageCreate;
 
           await sendMessageProcess(socketData);

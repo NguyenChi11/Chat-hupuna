@@ -8,6 +8,7 @@ import { isVideoFile, getProxyUrl } from '@/utils/utils';
 
 // Icons
 import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical, HiOutlineClock } from 'react-icons/hi2';
+import { HiLink } from 'react-icons/hi';
 import ReminderDetailModal from './components/ReminderDetailModal';
 import PollDetailModal from './components/PollDetailModal';
 import ReactionButton from './components/ReactionButton';
@@ -457,11 +458,11 @@ export default function MessageList({
                   <div
                     className={`
                       px-4 py-2 rounded-lg shadow-md max-w-[50vw] sm:max-w-[20rem] break-words
-                      ${isMe ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 border border-gray-200'}
+                      ${isMe && ( msg.type !== "image") ? 'bg-[#E5F1FF] text-white' : 'bg-white text-gray-800 border border-gray-200'}
                       ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
                       ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}
                       ${isRecalled ? '!bg-gray-200 !text-gray-500 italic !px-4 !py-2 sm:!max-w-[18rem]' : ''}
-                      ${!isRecalled && (isVideo || msg.type === 'sticker') ? '!p-0 !shadow-none bg-transparent' : ''}
+                      ${!isRecalled && (isVideo || msg.type === 'sticker' || msg.type === "file" || msg.type === "image") ? '!p-0 !shadow-none bg-transparent' : ''}
                       ${!isRecalled && msg.type === 'image' ? '!p-0' : ''}
                       ${!isRecalled && msg.type === 'file' ? '!px-2 !py-2' : ''}
                     relative ${hasReactions ? 'mb-4' : ''}
@@ -657,8 +658,39 @@ export default function MessageList({
 
                     {/* TEXT */}
                     {msg.type === 'text' && !isRecalled && !isEditing && (
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      <div className="text-sm leading-relaxed text-black whitespace-pre-wrap">
                         {renderMessageContent(msg.content || '', msg.mentions, isMe)}
+                        {(() => {
+                          const linkMatch = (msg.content || '').match(/(https?:\/\/|www\.)\S+/i);
+                          if (!linkMatch) return null;
+                          const raw = linkMatch[0];
+                          const href = raw.startsWith('http') ? raw : `https://${raw}`;
+                          const hostname = (() => {
+                            try {
+                              return new URL(href).hostname.replace('www.', '');
+                            } catch {
+                              return 'Website';
+                            }
+                          })();
+                          return (
+                            <div
+                              className={`mt-2 rounded-xl border ${isMe ? 'border-white/30' : 'border-gray-200'} bg-white overflow-hidden`}
+                            >
+                              <button
+                                onClick={() => window.open(href, '_blank')}
+                                className="w-full text-left p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50"
+                              >
+                                <div className="p-2.5 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white">
+                                  <HiLink className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-purple-600 truncate">{raw}</p>
+                                  <p className="text-xs text-gray-500 mt-0.5">{hostname}</p>
+                                </div>
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -716,6 +748,11 @@ export default function MessageList({
                         )}
                       </div>
                     )}
+                    {msg.type === 'image' && !isRecalled && msg.content && (
+                      <div className={`mt-2 text-sm leading-relaxed px-2 ${isMe ? 'text-white' : 'text-gray-700'}`}>
+                        {renderMessageContent(msg.content || '', msg.mentions, isMe)}
+                      </div>
+                    )}
 
                     {/* VIDEO – FIX SIZE MOBILE */}
                     {isVideo && msg.fileUrl && !isRecalled && (
@@ -744,6 +781,12 @@ export default function MessageList({
                         )}
                       </div>
                     )}
+                    
+                    {isVideo && !isRecalled && msg.content && (
+                      <div className={`px-2 mt-2 text-sm leading-relaxed ${isMe ? 'text-white' : 'text-gray-700'}`}>
+                        {renderMessageContent(msg.content || '', msg.mentions, isMe)}
+                      </div>
+                    )}
 
                     {/* FILE – FIX SIZE MOBILE */}
                     {msg.type === 'file' && msg.fileUrl && !isVideo && !isRecalled && (
@@ -765,6 +808,11 @@ export default function MessageList({
                         </div>
                       </a>
                     )}
+                    {msg.type === 'file' && !isRecalled && msg.content && (
+                      <div className={`mt-2 text-sm leading-relaxed px-2 ${isMe ? 'text-white' : 'text-gray-700'}`}>
+                        {renderMessageContent(msg.content || '', msg.mentions, isMe)}
+                      </div>
+                    )}
 
                     {isRecalled && <p className="text-sm italic opacity-70">đã thu hồi tin nhắn</p>}
 
@@ -780,7 +828,7 @@ export default function MessageList({
                         )}
                       </div>
                     )}
-                    <span className={`text-xs mt-1 ${isMe ? 'text-white' : 'text-gray-500'}  `}>{formatTimestamp(msg.timestamp)}</span>
+                    <span className={`text-xs mt-1 ${isMe ? 'text-black' : 'text-gray-500'}  `}>{formatTimestamp(msg.timestamp)}</span>
                   </div>
 
                   {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}

@@ -223,7 +223,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
         const members = isGroup ? (selectedChat as GroupConversation).members || [] : [];
         const who = currentUser.name || 'Ai đó';
         const opted = selected.join(', ');
-        const notifyText = `${who} đã bình chọn: ${opted} trong bình chọn: "${question}"`;
+        const notifyText = `${who} đã bình chọn:  ${opted} trong bình chọn: "${question}"`;
         const notifyRes = await createMessageApi({
           roomId,
           sender: myId,

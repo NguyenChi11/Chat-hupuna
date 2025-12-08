@@ -4,7 +4,7 @@ import React, { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
 
 // React Icons hi2 – Đỉnh cao nhất 2025
 import { HiFaceSmile, HiPaperClip, HiPhoto, HiMicrophone, HiPaperAirplane, HiSparkles } from 'react-icons/hi2';
-import { HiX } from 'react-icons/hi';
+import { HiDocumentText, HiX } from 'react-icons/hi';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -58,8 +58,19 @@ export default function ChatInput({
                 {att.type === 'image' || att.type === 'video' ? (
                   <img src={att.previewUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-700 px-2">
-                    {att.fileName || 'Tệp'}
+               
+                  <div className=' rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-200 group cursor-pointer border border-gray-200 hover:border-blue-300'>
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 text-white shadow-lg">
+                      <HiDocumentText className="w-3 h-3" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">
+                        {att.fileName || 'Tệp'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wider">
+                        .{att.fileName?.split('.').pop()}
+                      </p>
+                    </div>
                   </div>
                 )}
                 <button

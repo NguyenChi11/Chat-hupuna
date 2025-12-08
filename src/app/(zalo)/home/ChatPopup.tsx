@@ -1402,10 +1402,9 @@ const handleToggleReaction = useCallback(
     }
 
     if (hasAtt) {
-      for (let i = 0; i < attachments.length; i++) {
-        const att = attachments[i];
-        await handleUploadAndSend(att.file, att.type);
-      }
+      await Promise.all(
+        attachments.map((att) => handleUploadAndSend(att.file, att.type, undefined, replyingTo?._id, undefined)),
+      );
       setAttachments((prev) => {
         prev.forEach((a) => {
           try {
@@ -1494,7 +1493,7 @@ const handleToggleReaction = useCallback(
       avatar: null,
     };
   };
-  // Render tin nhắn với highlight mentions
+  // Render tin nhắn với highlight mentions + link clickable
   const renderMessageContent = (content: string, mentionedUserIds?: string[], isMe?: boolean) => {
     if (!content) return null;
 
@@ -1508,7 +1507,7 @@ const handleToggleReaction = useCallback(
 
         return (
           <span
-            key={index}
+            key={`m-${index}`}
             className={`font-semibold px-1 rounded ${
               isMentioningMe
                 ? 'bg-yellow-300 text-yellow-900'
@@ -1521,7 +1520,37 @@ const handleToggleReaction = useCallback(
           </span>
         );
       }
-      return <span key={index}>{part}</span>;
+
+      const linkRegex = /(https?:\/\/|www\.)\S+/gi;
+      const nodes: React.ReactNode[] = [];
+      let lastIndex = 0;
+      let match: RegExpExecArray | null;
+      const text = part;
+      while ((match = linkRegex.exec(text)) !== null) {
+        const start = match.index;
+        const end = start + match[0].length;
+        if (start > lastIndex) {
+          nodes.push(<span key={`t-${index}-${lastIndex}`}>{text.slice(lastIndex, start)}</span>);
+        }
+        const url = match[0];
+        const href = url.startsWith('http') ? url : `https://${url}`;
+        nodes.push(
+          <a
+            key={`a-${index}-${start}`}
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-600 hover:underline break-all"
+          >
+            {url}
+          </a>
+        );
+        lastIndex = end;
+      }
+      if (lastIndex < text.length) {
+        nodes.push(<span key={`t-${index}-${lastIndex}-end`}>{text.slice(lastIndex)}</span>);
+      }
+      return <React.Fragment key={`p-${index}`}>{nodes}</React.Fragment>;
     });
   };
 

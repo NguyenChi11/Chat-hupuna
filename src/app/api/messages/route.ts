@@ -338,11 +338,16 @@ export async function POST(req: NextRequest) {
               };
             }
             // link
-            return {
-              id: String(msg._id),
-              url: String(msg.content || ''),
-              timestamp: Number(msg.timestamp) || Date.now(),
-            };
+            {
+              const raw = String(msg.content || '');
+              const firstMatch = raw.match(linkRegex);
+              const onlyUrl = firstMatch ? String(firstMatch[0]) : '';
+              return {
+                id: String(msg._id),
+                url: onlyUrl,
+                timestamp: Number(msg.timestamp) || Date.now(),
+              };
+            }
           });
 
         const toDateKey = (ts: number) => {
