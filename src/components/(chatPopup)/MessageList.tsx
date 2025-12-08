@@ -456,9 +456,9 @@ export default function MessageList({
 
                   {/* MAIN BUBBLE */}
                   <div
-                    className={`
+                    className={`  
                       px-4 py-2 rounded-lg shadow-md max-w-[50vw] sm:max-w-[20rem] break-words
-                      ${isMe && ( msg.type !== "image") ? 'bg-[#E5F1FF] text-white' : 'bg-white text-gray-800 border border-gray-200'}
+                      ${isMe ? 'bg-[#E5F1FF] text-white' : 'bg-white text-gray-800 border border-gray-200'}
                       ${!isGrouped && isMe ? 'rounded-tr-md' : ''}
                       ${!isGrouped && !isMe ? 'rounded-tl-md' : ''}
                       ${isRecalled ? '!bg-gray-200 !text-gray-500 italic !px-4 !py-2 sm:!max-w-[18rem]' : ''}
@@ -828,7 +828,7 @@ export default function MessageList({
                         )}
                       </div>
                     )}
-                    <span className={`text-xs mt-1 ${isMe ? 'text-black' : 'text-gray-500'}  `}>{formatTimestamp(msg.timestamp)}</span>
+                    <span className={`text-xs mt-1 ${isMe ? 'text-gray-700' : 'text-gray-500'}  `}>{formatTimestamp(msg.timestamp)}</span>
                   </div>
 
                   {/* ✅ Hiển thị nội dung gốc nếu đã chỉnh sửa */}

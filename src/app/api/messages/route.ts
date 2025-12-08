@@ -189,31 +189,56 @@ export async function POST(req: NextRequest) {
       case 'read': {
         const { roomId, isPinned, searchQuery, ...otherFilters } = filters || {};
 
-        const mongoFilters: MongoFilters = { ...otherFilters };
+        const baseFilters: MongoFilters = {};
         if (roomId) {
-          mongoFilters.roomId = roomId;
+          const variants: unknown[] = [roomId];
+          const num = Number(roomId);
+          if (!Number.isNaN(num)) variants.push(num);
+          if (ObjectId.isValid(String(roomId))) variants.push(new ObjectId(String(roomId)));
+          (baseFilters as Record<string, unknown>).roomId = { $in: variants };
         }
 
         if (isPinned !== undefined) {
-          mongoFilters.isPinned = isPinned;
+          (baseFilters as Record<string, unknown>).isPinned = isPinned;
         }
 
-        // 🔥 LOGIC TÌM KIẾM CỤC BỘ (SEARCH QUERY)
+        const finalFilters: MongoFilters = { ...baseFilters };
+        for (const [k, v] of Object.entries(otherFilters || {})) {
+          if (k === 'timestamp') continue;
+          (finalFilters as Record<string, unknown>)[k] = v;
+        }
+
+        let searchOr: Array<Record<string, unknown>> | null = null;
         if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
           const escapedTerm = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const searchRegex = new RegExp(escapedTerm, 'i');
-
-          // Thêm điều kiện $or để tìm trong content hoặc fileName
-          mongoFilters.$or = [{ content: { $regex: searchRegex } }, { fileName: { $regex: searchRegex } }];
+          searchOr = [{ content: { $regex: searchRegex } }, { fileName: { $regex: searchRegex } }];
         }
 
-        // 1. Lấy tin nhắn với filter đã cập nhật
+        const tsCondRaw = (otherFilters || {})['timestamp'] as Record<string, unknown> | undefined;
+        if (tsCondRaw && typeof tsCondRaw === 'object') {
+          const op = (['$lt', '$lte', '$gt', '$gte'] as const).find((k) => k in tsCondRaw);
+          if (op) {
+            const val = (tsCondRaw as Record<string, unknown>)[op] as number;
+            const expr = { [op]: [{ $toDouble: '$timestamp' }, val] } as Record<string, unknown>;
+            const tsOr = [{ timestamp: tsCondRaw }, { $expr: expr }];
+            if (searchOr) {
+              (finalFilters as Record<string, unknown>).$and = [{ $or: tsOr }, { $or: searchOr }];
+            } else {
+              (finalFilters as Record<string, unknown>).$or = tsOr;
+            }
+          } else if (searchOr) {
+            (finalFilters as Record<string, unknown>).$or = searchOr;
+          }
+        } else if (searchOr) {
+          (finalFilters as Record<string, unknown>).$or = searchOr;
+        }
+
         const result = await getAllRows<Message>(collectionName, {
-          search: undefined, // Bỏ search legacy, dùng mongoFilters
+          search: undefined,
           skip,
           limit,
-          // field, value, // Không dùng field/value nếu dùng filters
-          filters: mongoFilters, // <-- Sử dụng filters đã xây dựng
+          filters: finalFilters,
           sort,
         });
 

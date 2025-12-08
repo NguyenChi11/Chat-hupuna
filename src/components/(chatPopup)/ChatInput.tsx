@@ -107,7 +107,8 @@ export default function ChatInput({
             accept="image/*,video/*"
             className="sr-only"
             onChange={(e) => {
-              if (e.target.files?.[0]) onSelectImage(e.target.files[0]);
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              files.forEach((f) => onSelectImage(f));
               e.target.value = '';
             }}
             multiple
@@ -123,8 +124,10 @@ export default function ChatInput({
           <input
             type="file"
             className="sr-only"
+            multiple
             onChange={(e) => {
-              if (e.target.files?.[0]) onSelectFile(e.target.files[0]);
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              files.forEach((f) => onSelectFile(f));
               e.target.value = '';
             }}
           />

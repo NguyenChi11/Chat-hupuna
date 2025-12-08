@@ -1402,9 +1402,18 @@ const handleToggleReaction = useCallback(
     }
 
     if (hasAtt) {
-      await Promise.all(
-        attachments.map((att) => handleUploadAndSend(att.file, att.type, undefined, replyingTo?._id, undefined)),
-      );
+      const limit = 2;
+      const queue = attachments.slice();
+      const worker = async () => {
+        while (queue.length > 0) {
+          const att = queue.shift();
+          if (!att) break;
+          await handleUploadAndSend(att.file, att.type, undefined, replyingTo?._id, undefined);
+        }
+      };
+      const workers: Promise<void>[] = [];
+      for (let i = 0; i < Math.min(limit, attachments.length); i++) workers.push(worker());
+      await Promise.all(workers);
       setAttachments((prev) => {
         prev.forEach((a) => {
           try {

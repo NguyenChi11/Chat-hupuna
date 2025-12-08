@@ -82,90 +82,58 @@ export function useChatUpload({
       setMessages((prev) => [...prev, tempMsg]);
       setUploadingFiles((prev) => ({ ...prev, [tempId]: 0 }));
 
-      const sseUrl = `/api/upload/progress?id=${uploadId}`;
-      const eventSource = new EventSource(sseUrl);
-
-      eventSource.onmessage = (event) => {
+      let success = false;
+      let lastMessage = '';
+      for (let attempt = 0; attempt < 2 && !success; attempt++) {
         try {
-          const data = JSON.parse(event.data);
-          const serverRawPercent = data.percent;
+          const res = (await uploadFileWithProgress(`/api/upload?uploadId=${uploadId}`, formData, (clientRawPercent) => {
+            const displayed = Math.min(clientRawPercent, 95);
+            setUploadingFiles((prev) => ({ ...prev, [tempId]: displayed }));
+          })) as UploadResponse;
 
-          if (serverRawPercent < 0 || data.done === true) {
-            eventSource.close();
-            return;
-          }
-          if (serverRawPercent >= 0) {
-            setUploadingFiles((prev) => {
-              const current = prev[tempId] || 0;
-              return { ...prev, [tempId]: Math.max(current, serverRawPercent) };
-            });
+          if (res.success) {
+            success = true;
+            const finalMsg = res.data;
 
-            if (serverRawPercent >= 100) {
-              eventSource.close();
-            }
+            setMessages((prev) => prev.filter((m) => m._id !== tempId));
+
+            const socketData: MessageCreate = {
+              ...finalMsg,
+              _id: res.data._id || Date.now().toString(),
+              roomId,
+              sender: currentUser._id,
+              senderName: currentUser.name,
+              isGroup,
+              receiver: isGroup ? null : '_id' in selectedChat ? selectedChat._id : '',
+              members: isGroup ? (selectedChat as GroupConversation).members : [],
+              type,
+              timestamp: Date.now(),
+              content: caption,
+              replyToMessageId,
+              mentions,
+            } as unknown as MessageCreate;
+
+            await sendMessageProcess(socketData);
+          } else {
+            lastMessage = res.message || 'Không xác định';
           }
         } catch (e) {
-          console.error(e);
+          lastMessage = (e as Error)?.message || 'Không xác định';
         }
-      };
-
-      try {
-        const res = (await uploadFileWithProgress(`/api/upload?uploadId=${uploadId}`, formData, (clientRawPercent) => {
-          const displayed = Math.min(clientRawPercent, 95);
-          setUploadingFiles((prev) => ({ ...prev, [tempId]: displayed }));
-        })) as UploadResponse;
-
-        if (res.success) {
-          const finalMsg = res.data;
-
-          setMessages((prev) => prev.filter((m) => m._id !== tempId));
-
-          const socketData: MessageCreate = {
-            ...finalMsg,
-            _id: res.data._id || Date.now().toString(),
-            roomId,
-            sender: currentUser._id,
-            senderName: currentUser.name,
-            isGroup,
-            receiver: isGroup ? null : '_id' in selectedChat ? selectedChat._id : '',
-            members: isGroup ? (selectedChat as GroupConversation).members : [],
-            type,
-            timestamp: Date.now(),
-            content: caption,
-            replyToMessageId,
-            mentions,
-          } as unknown as MessageCreate;
-
-          await sendMessageProcess(socketData);
-        } else {
-          const notify: MessageCreate = {
-            roomId,
-            sender: currentUser._id,
-            content: `Tải lên thất bại: ${file.name}. Lý do: ${res.message || 'Không xác định'}`,
-            type: 'notify',
-            timestamp: Date.now(),
-          };
-          await sendMessageProcess(notify);
-          setMessages((prev) => prev.filter((m) => m._id !== tempId));
-        }
-      } catch {
-        const notify: MessageCreate = {
-          roomId,
-          sender: currentUser._id,
-          content: `Tải lên thất bại: ${file.name}. Vui lòng thử lại`,
-          type: 'notify',
-          timestamp: Date.now(),
-        };
-        await sendMessageProcess(notify);
-        setMessages((prev) => prev.filter((m) => m._id !== tempId));
-      } finally {
-        eventSource.close();
-        setUploadingFiles((prev) => {
-          const newState = { ...prev };
-          delete newState[tempId];
-          return newState;
-        });
       }
+
+      if (!success) {
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
+        try {
+          alert(`Tải lên thất bại: ${file.name}. Lý do: ${lastMessage}`);
+        } catch {}
+      }
+
+      setUploadingFiles((prev) => {
+        const newState = { ...prev };
+        delete newState[tempId];
+        return newState;
+      });
     },
     [roomId, currentUser, isGroup, selectedChat, sendMessageProcess, setMessages],
   );

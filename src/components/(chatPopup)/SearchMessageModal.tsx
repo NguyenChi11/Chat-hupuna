@@ -160,7 +160,10 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose, roomId, 
           <p className="text-center text-gray-400 text-sm">Nhập từ khóa để tìm kiếm trong hội thoại này.</p>
         )}
 
-        {searchResults.map((msg: Message) => {
+        {searchResults
+          .slice()
+          .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+          .map((msg: Message) => {
           const isRecalled = msg.isRecalled === true;
           const contentDisplay = isRecalled
             ? 'đã thu hồi tin nhắn'
@@ -168,6 +171,18 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose, roomId, 
 
           // Lấy tên người gửi (sender được khai báo là string ID trong Message)
           const senderName = getSenderName(msg.sender);
+          const d = new Date(msg.timestamp);
+          const today = new Date();
+          const yesterday = new Date();
+          yesterday.setDate(today.getDate() - 1);
+          const sameDate = (a: Date, b: Date) =>
+            a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+          const dateLabel = sameDate(d, today)
+            ? 'Hôm nay'
+            : sameDate(d, yesterday)
+              ? 'Hôm qua'
+              : d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const timeLabel = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
           return (
             <div
@@ -176,8 +191,7 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ isOpen, onClose, roomId, 
               onClick={() => handleJump(msg._id)}
             >
               <p className="text-xs text-blue-600 font-semibold">
-                {senderName} •{' '}
-                {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                {senderName} • {dateLabel} • {timeLabel}
               </p>
               <p className={`text-sm mt-1 line-clamp-2 ${isRecalled ? 'italic text-gray-500' : 'text-gray-800'}`}>
                 {contentDisplay}
