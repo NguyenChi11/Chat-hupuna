@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { formatTimeAgo } from '@/utils/dateUtils';
 import { HiPhoto, HiHandThumbUp, HiChatBubbleLeftRight, HiArrowUpTray, HiEllipsisHorizontal } from 'react-icons/hi2';
 import { useCurrentUser } from '@/hooks/(profile)/useCurrentUser';
+import { getProxyUrl } from '@/utils/utils';
 const DEFAULT_AVATAR = 'https://cdn.jsdelivr.net/gh/encharm/Font-Awesome-SVG-PNG/black/png/64/user.png';
 const toMegaStream = (url: string) =>
   url.startsWith('https://mega.nz/') ? `/api/mega-stream?url=${encodeURIComponent(url)}` : url;
@@ -31,7 +32,7 @@ function PostComposer({
       images?: string[];
       videos?: string[];
       files?: string[];
-    }
+    },
   ) => void;
   author: { id: string; name: string; avatar?: string } | null;
 }) {
@@ -83,6 +84,19 @@ function PostComposer({
       <div className="p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
           <Image src={author?.avatar || DEFAULT_AVATAR} alt="avatar" width={40} height={40} unoptimized />
+          {author?.avatar ? (
+            <Image
+              src={getProxyUrl(author.avatar)}
+              alt=""
+              width={36}
+              height={36}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-sm flex items-center justify-center">
+              {author?.name?.charAt(0).toUpperCase() || 'B'}
+            </div>
+          )}
         </div>
         <div className="flex-1">
           <textarea
@@ -113,7 +127,13 @@ function PostComposer({
           {files.length > 0 && (
             <div className="mt-3 space-y-2">
               {files.map((src, i) => (
-                <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm text-gray-700">
+                <a
+                  key={i}
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
+                >
                   Tệp đính kèm {i + 1}
                 </a>
               ))}
@@ -131,13 +151,7 @@ function PostComposer({
           className="hidden"
           onChange={(e) => handleMediaFiles(e.target.files)}
         />
-        <input
-          ref={docRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => handleDocFiles(e.target.files)}
-        />
+        <input ref={docRef} type="file" multiple className="hidden" onChange={(e) => handleDocFiles(e.target.files)} />
         <button
           onClick={handlePickMedia}
           className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -274,7 +288,13 @@ function PostCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => vo
           {post.files && post.files.length > 0 && (
             <div className="mt-3 space-y-2">
               {post.files.map((src, i) => (
-                <a key={i} href={src} target="_blank" rel="noopener noreferrer" className="block px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm text-gray-700">
+                <a
+                  key={i}
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
+                >
                   Tệp đính kèm {i + 1}
                 </a>
               ))}
@@ -327,7 +347,11 @@ export default function MomentsPage() {
   const [limit] = useState(20);
 
   const handleCreatePost = async (
-    payload: Omit<FeedPost, 'id' | 'likes' | 'comments' | 'createdAt'> & { images?: string[]; videos?: string[]; files?: string[] },
+    payload: Omit<FeedPost, 'id' | 'likes' | 'comments' | 'createdAt'> & {
+      images?: string[];
+      videos?: string[];
+      files?: string[];
+    },
   ) => {
     const body = {
       action: 'create',

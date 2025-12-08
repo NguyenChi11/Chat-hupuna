@@ -105,6 +105,7 @@ export default function ChatInfoPopup({
     selectedChat,
     isGroup,
     messages,
+    currentUser,
     onChatAction,
   });
 

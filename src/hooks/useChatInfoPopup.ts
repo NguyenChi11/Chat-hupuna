@@ -1,18 +1,35 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type { ChatItem } from '@/types/Group';
+import type { User } from '@/types/User';
 import type { Message } from '@/types/Message';
 
 interface UseChatInfoPopupParams {
   selectedChat: ChatItem;
   isGroup: boolean;
   messages: Message[];
+  currentUser: User;
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroup: boolean) => void;
 }
 
-export function useChatInfoPopup({ selectedChat, isGroup, onChatAction }: UseChatInfoPopupParams) {
-  const currentRoomId = selectedChat._id;
+export function useChatInfoPopup({ selectedChat, isGroup, messages, currentUser, onChatAction }: UseChatInfoPopupParams) {
+  const getId = (u: unknown): string => {
+    if (!u) return '';
+    if (typeof u === 'string') return u;
+    if (typeof u === 'number') return String(u);
+    if (typeof u === 'object' && u !== null) {
+      if ('_id' in (u as Record<string, unknown>) && (u as Record<string, unknown>)._id != null)
+        return String((u as Record<string, unknown>)._id);
+      if ('id' in (u as Record<string, unknown>) && (u as Record<string, unknown>).id != null)
+        return String((u as Record<string, unknown>).id);
+    }
+    return '';
+  };
+  const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
+    return [user1Id, user2Id].sort().join('_');
+  };
+  const currentRoomId = isGroup ? getId(selectedChat) : getOneToOneRoomId(getId(currentUser), getId(selectedChat));
   const { isPinned: initialIsPinned, isHidden: initialIsHidden } = selectedChat;
 
   // Trạng thái ghim / ẩn cục bộ (optimistic UI)
@@ -139,6 +156,24 @@ export function useChatInfoPopup({ selectedChat, isGroup, onChatAction }: UseCha
     },
     [currentRoomId, flattenGroups],
   );
+
+  useEffect(() => {
+    if (!Array.isArray(messages) || messages.length === 0) return;
+    const latest = messages[messages.length - 1];
+    const videoRegex = /(\.mp4|\.mov|\.mkv|\.webm|\.avi|\.m4v)$/i;
+    const linkRegex = /(https?:\/\/|www\.)\S+/i;
+
+    const isMediaMsg =
+      latest.type === 'image' ||
+      latest.type === 'video' ||
+      (latest.type === 'file' && (videoRegex.test(String(latest.fileUrl || '')) || videoRegex.test(String(latest.fileName || ''))));
+    const isFileMsg = latest.type === 'file' && !(videoRegex.test(String(latest.fileUrl || '')) || videoRegex.test(String(latest.fileName || '')));
+    const isLinkMsg = latest.type === 'text' && linkRegex.test(String(latest.content || ''));
+
+    if (isMediaMsg && openItems['Ảnh/Video']) void fetchAssets('media', isMediaExpanded);
+    if (isFileMsg && openItems['File']) void fetchAssets('file', isFileExpanded);
+    if (isLinkMsg && openItems['Link']) void fetchAssets('link', isLinkExpanded);
+  }, [messages, openItems, isMediaExpanded, isFileExpanded, isLinkExpanded, fetchAssets]);
 
   useEffect(() => {
     if (openItems['Ảnh/Video'] && mediaList.length === 0) void fetchAssets('media', false);

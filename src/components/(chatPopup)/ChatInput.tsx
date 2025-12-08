@@ -4,6 +4,7 @@ import React, { ClipboardEvent, KeyboardEvent, RefObject } from 'react';
 
 // React Icons hi2 – Đỉnh cao nhất 2025
 import { HiFaceSmile, HiPaperClip, HiPhoto, HiMicrophone, HiPaperAirplane, HiSparkles } from 'react-icons/hi2';
+import { HiX } from 'react-icons/hi';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -18,6 +19,9 @@ interface ChatInputProps {
   onSendMessage: () => void;
   onSelectImage: (file: File) => void;
   onSelectFile: (file: File) => void;
+  attachments: { previewUrl: string; type: 'image' | 'video' | 'file'; fileName?: string }[];
+  onRemoveAttachment: (index: number) => void;
+  onClearAttachments: () => void;
 }
 
 export default function ChatInput({
@@ -32,9 +36,44 @@ export default function ChatInput({
   onSendMessage,
   onSelectImage,
   onSelectFile,
+  attachments,
+  onRemoveAttachment,
+  onClearAttachments,
 }: ChatInputProps) {
   return (
     <div className="relative w-full p-2 bg-gradient-to-t from-white via-white to-gray-50/50">
+      {attachments && attachments.length > 0 && (
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-600">
+              {attachments.length} {attachments.length === 1 ? 'đính kèm' : 'đính kèm'}
+            </span>
+            <button onClick={onClearAttachments} className="text-xs text-red-600 hover:underline cursor-pointer">
+              Xóa tất cả
+            </button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+            {attachments.map((att, idx) => (
+              <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white">
+                {att.type === 'image' || att.type === 'video' ? (
+                  <img src={att.previewUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-700 px-2">
+                    {att.fileName || 'Tệp'}
+                  </div>
+                )}
+                <button
+                  onClick={() => onRemoveAttachment(idx)}
+                  className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 cursor-pointer"
+                  aria-label="Xóa"
+                >
+                  <HiX className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Toolbar trái – Sang trọng như Zalo Premium */}
       <div className="flex items-center gap-2 mb-2">
         {/* Emoji */}
@@ -60,6 +99,7 @@ export default function ChatInput({
               if (e.target.files?.[0]) onSelectImage(e.target.files[0]);
               e.target.value = '';
             }}
+            multiple
           />
         </label>
 

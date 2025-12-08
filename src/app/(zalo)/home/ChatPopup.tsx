@@ -143,6 +143,9 @@ export default function ChatWindow({
   const [loadingMore, setLoadingMore] = useState(false);
   const [oldestTs, setOldestTs] = useState<number | null>(null);
   const [initialLoading, setInitialLoading] = useState(false);
+  const [attachments, setAttachments] = useState<
+    { file: File; type: 'image' | 'video' | 'file'; previewUrl: string; fileName?: string }[]
+  >([]);
   const reminderScheduledIdsRef = useRef<Set<string>>(new Set());
   const reminderTimersByIdRef = useRef<Map<string, number>>(new Map());
   const messagesRef = useRef<Message[]>([]);
@@ -1357,7 +1360,8 @@ const handleToggleReaction = useCallback(
     if (!editableRef.current) return;
 
     const plainText = getPlainTextFromEditable().trim();
-    if (!plainText) return;
+    const hasAtt = attachments.length > 0;
+    if (!plainText && !hasAtt) return;
 
     const { mentions, displayText } = parseMentions(plainText);
 
@@ -1379,23 +1383,38 @@ const handleToggleReaction = useCallback(
 
     const finalMentions = Array.from(expandedMentionIds);
 
-    const newMsg: MessageCreate = {
-      roomId,
-      sender: currentUser._id,
-      content: displayText,
-      type: 'text',
-      timestamp: Date.now(),
-      replyToMessageId: replyingTo?._id,
-      replyToMessageName: repliedUserName,
-      mentions: finalMentions.length > 0 ? finalMentions : undefined,
-    };
-
-    // Xóa nội dung
     if (editableRef.current) {
       editableRef.current.innerHTML = '';
     }
 
-    await sendMessageProcess(newMsg);
+    if (plainText) {
+      const textMsg: MessageCreate = {
+        roomId,
+        sender: currentUser._id,
+        content: displayText,
+        type: 'text',
+        timestamp: Date.now(),
+        replyToMessageId: replyingTo?._id,
+        replyToMessageName: repliedUserName,
+        mentions: finalMentions.length > 0 ? finalMentions : undefined,
+      };
+      await sendMessageProcess(textMsg);
+    }
+
+    if (hasAtt) {
+      for (let i = 0; i < attachments.length; i++) {
+        const att = attachments[i];
+        await handleUploadAndSend(att.file, att.type);
+      }
+      setAttachments((prev) => {
+        prev.forEach((a) => {
+          try {
+            URL.revokeObjectURL(a.previewUrl);
+          } catch {}
+        });
+        return [];
+      });
+    }
   };
   // 🔥 Helper function để normalize ID
   function normalizeId(value: unknown): string {
@@ -1685,6 +1704,24 @@ const handleToggleReaction = useCallback(
               onInputEditable={handleInputChangeEditable}
               onKeyDownEditable={handleKeyDownCombined}
               onPasteEditable={(e) => {
+                const items = Array.from(e.clipboardData?.items || []);
+                const fileItems = items.filter(
+                  (it) => it.kind === 'file' && (it.type.startsWith('image/') || it.type.startsWith('video/')),
+                );
+                if (fileItems.length > 0) {
+                  e.preventDefault();
+                  fileItems.forEach((it) => {
+                    const f = it.getAsFile();
+                    if (f) {
+                      const isVid = f.type.startsWith('video/') || isVideoFile(f.name);
+                      const isImg = f.type.startsWith('image/');
+                      const t = isVid ? 'video' : isImg ? 'image' : 'file';
+                      const url = URL.createObjectURL(f);
+                      setAttachments((prev) => [...prev, { file: f, type: t, previewUrl: url, fileName: f.name }]);
+                    }
+                  });
+                  return;
+                }
                 e.preventDefault();
                 const text = e.clipboardData.getData('text/plain');
                 document.execCommand('insertText', false, text);
@@ -1694,14 +1731,39 @@ const handleToggleReaction = useCallback(
               onSelectImage={(file) => {
                 const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
                 const msgType = isVideo ? 'video' : 'image';
-                handleUploadAndSend(file, msgType);
+                const url = URL.createObjectURL(file);
+                setAttachments((prev) => [...prev, { file, type: msgType, previewUrl: url, fileName: file.name }]);
               }}
               onSelectFile={(file) => {
                 const isVideo = file.type.startsWith('video/') || isVideoFile(file.name);
                 const msgType = isVideo ? 'video' : 'file';
-                handleUploadAndSend(file, msgType);
+                const url = URL.createObjectURL(file);
+                setAttachments((prev) => [...prev, { file, type: msgType, previewUrl: url, fileName: file.name }]);
               }}
               onFocusEditable={() => setShowEmojiPicker(false)}
+              attachments={attachments.map((a) => ({ previewUrl: a.previewUrl, type: a.type, fileName: a.fileName }))}
+              onRemoveAttachment={(index) => {
+                setAttachments((prev) => {
+                  const next = [...prev];
+                  const [removed] = next.splice(index, 1);
+                  if (removed) {
+                    try {
+                      URL.revokeObjectURL(removed.previewUrl);
+                    } catch {}
+                  }
+                  return next;
+                });
+              }}
+              onClearAttachments={() => {
+                setAttachments((prev) => {
+                  prev.forEach((a) => {
+                    try {
+                      URL.revokeObjectURL(a.previewUrl);
+                    } catch {}
+                  });
+                  return [];
+                });
+              }}
             />
           </div>
         </div>
