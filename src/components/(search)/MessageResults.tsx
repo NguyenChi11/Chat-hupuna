@@ -4,7 +4,7 @@ import React from 'react';
 interface Message {
   _id: string;
   content?: string;
-  type: 'text' | 'image' | 'file' | 'sticker' | 'video';
+  type: 'text' | 'image' | 'file' | 'sticker' | 'video' | 'reminder';
   fileName?: string;
   timestamp: number;
   sender: string;
@@ -121,6 +121,11 @@ function MessageIcon({ type }: { type: Message['type'] }) {
           strokeWidth={2}
           d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         />
+      </svg>
+    ),
+    reminder: (
+      <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z" />
       </svg>
     ),
   };

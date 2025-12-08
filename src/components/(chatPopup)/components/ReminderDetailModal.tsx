@@ -181,7 +181,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="relative px-6 pt-6 pb-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+        <div className="relative px-3 pt-3 pb-2 bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
           <button
             onClick={onClose}
             disabled={saving}
@@ -255,7 +255,7 @@ export default function ReminderDetailModal({ isOpen, message, onClose, onRefres
           )}
         </div>
 
-        <div className="flex gap-3 px-6 pb-6">
+        <div className="flex gap-3 px-3 pb-3">
           {!editing ? (
             <>
               <button

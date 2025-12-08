@@ -21,9 +21,11 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose, r
   const [current, setCurrent] = useState<{ url: string; type: 'image' | 'video' } | null>(media);
   const listRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const openedAtRef = useRef<number>(0);
 
   useEffect(() => {
     setCurrent(media);
+    if (media) openedAtRef.current = Date.now();
   }, [media]);
 
   useEffect(() => {
@@ -58,7 +60,15 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose, r
   if (!current) return null;
 
   return (
-    <div className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center px-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[10000] bg-black/95 flex items-center justify-center px-4 overflow-y-auto"
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        const sinceOpen = Date.now() - openedAtRef.current;
+        if (sinceOpen < 200) return;
+        onClose();
+      }}
+    >
       <div className="relative w-full max-w-6xl mx-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header siêu đẹp */}
         <div className="absolute top-0 left-0 right-0 z-20 p-4 sm:p-6 flex items-start justify-between text-white">

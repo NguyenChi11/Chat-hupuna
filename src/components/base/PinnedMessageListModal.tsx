@@ -5,6 +5,7 @@ import { Message } from '../../types/Message';
 
 // React Icons – chuẩn Zalo, đẹp, nhẹ
 import { HiMapPin, HiXMark } from 'react-icons/hi2';
+import { HiLink } from 'react-icons/hi';
 
 interface Props {
   messages: Message[];
@@ -61,43 +62,101 @@ export default function PinnedMessageListModal({
                   onJumpToMessage(msg._id);
                   onClose();
                 }}
-                className="group p-4 bg-gradient-to-r from-yellow-50 to-white rounded-xl border border-yellow-200 hover:border-yellow-400 hover:shadow-md cursor-pointer transition-all duration-200"
+                className="relative group p-4 bg-gradient-to-r from-yellow-50 to-white rounded-xl border border-yellow-200 hover:border-yellow-400 hover:shadow-md cursor-pointer transition-all duration-200"
               >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-yellow-800 text-sm">{onGetSenderName(msg.sender)}</span>
-                <span className={`text-[0.6875rem] px-2 py-0.5 rounded-md font-semibold ${msg.type === 'poll' ? 'bg-yellow-100 text-yellow-800' : msg.type === 'reminder' ? 'bg-blue-100 text-blue-800' : msg.type === 'image' ? 'bg-pink-100 text-pink-800' : msg.type === 'file' ? 'bg-gray-100 text-gray-800' : msg.type === 'sticker' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-700'}`}>
-                  {msg.type === 'poll' ? 'Bình chọn' : msg.type === 'reminder' ? 'Lịch hẹn' : msg.type === 'image' ? 'Ảnh' : msg.type === 'file' ? 'File' : msg.type === 'sticker' ? 'Sticker' : 'Tin nhắn'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">
-                  {new Date(msg.timestamp).toLocaleDateString('vi-VN', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUnpinMessage(msg);
-                  }}
-                  className="px-2 py-1 text-[0.74rem] rounded-lg border border-red-300 text-red-700 hover:bg-red-50 cursor-pointer"
-                >
-                  Bỏ ghim
-                </button>
-              </div>
-            </div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-yellow-800 text-sm">{onGetSenderName(msg.sender)}</span>
+                    <span
+                      className={`text-[0.6875rem] px-2 py-0.5 rounded-md font-semibold ${
+                        msg.type === 'poll'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : msg.type === 'reminder'
+                            ? 'bg-blue-100 text-blue-800'
+                            : msg.type === 'image'
+                              ? 'bg-pink-100 text-pink-800'
+                              : msg.type === 'file'
+                                ? 'bg-gray-100 text-gray-800'
+                                : msg.type === 'sticker'
+                                  ? 'bg-indigo-100 text-indigo-800'
+                                  : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {msg.type === 'poll'
+                        ? 'Bình chọn'
+                        : msg.type === 'reminder'
+                          ? 'Lịch hẹn'
+                          : msg.type === 'image'
+                            ? 'Ảnh'
+                            : msg.type === 'file'
+                              ? 'File'
+                              : msg.type === 'sticker'
+                                ? 'Sticker'
+                                : 'Tin nhắn'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                      {new Date(msg.timestamp).toLocaleDateString('vi-VN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUnpinMessage(msg);
+                      }}
+                      className="px-2 py-1 text-[0.74rem] rounded-lg border border-red-300 text-red-700 hover:bg-red-50 cursor-pointer whitespace-nowrap"
+                    >
+                      Bỏ ghim
+                    </button>
+                  </div>
+                </div>
 
                 {/* Nội dung */}
-                <p className="text-sm text-gray-700 line-clamp-3 leading-relaxed">
+                <div className="text-sm text-gray-700 line-clamp-3 leading-relaxed">
                   {msg.isRecalled ? (
                     <span className="italic text-gray-400">đã thu hồi tin nhắn</span>
                   ) : (
                     onGetContentDisplay(msg)
                   )}
-                </p>
+                </div>
+
+                {/* Link preview cho tin nhắn text */}
+                {msg.type === 'text' && !msg.isRecalled && (() => {
+                  const linkMatch = (msg.content || '').match(/(https?:\/\/|www\.)\S+/i);
+                  if (!linkMatch) return null;
+                  const raw = linkMatch[0];
+                  const href = raw.startsWith('http') ? raw : `https://${raw}`;
+                  const hostname = (() => {
+                    try {
+                      return new URL(href).hostname.replace('www.', '');
+                    } catch {
+                      return 'Website';
+                    }
+                  })();
+                  return (
+                    <div className="mt-2 rounded-xl shadow-xl bg-white overflow-hidden">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(href, '_blank');
+                        }}
+                        className="w-full text-left p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50"
+                      >
+                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white">
+                          <HiLink className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-purple-600 truncate">{raw}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{hostname}</p>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* Hiệu ứng nhấn */}
                 <div className="absolute inset-0 rounded-xl ring-2 ring-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />

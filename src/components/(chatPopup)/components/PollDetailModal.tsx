@@ -417,7 +417,7 @@ export default function PollDetailModal({ isOpen, message, onClose, onRefresh }:
   return (
     <div className="fixed inset-0 z-[9999]  flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="relative px-6 pt-6 pb-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex-shrink-0">
+        <div className="relative px-3 pt-3 pb-2 bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex-shrink-0">
           <button
             onClick={onClose}
             disabled={saving}

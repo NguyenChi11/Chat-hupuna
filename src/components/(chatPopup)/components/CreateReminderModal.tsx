@@ -6,9 +6,10 @@ interface CreateReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (payload: { content: string; dateTime: string; note?: string; repeat?: 'none' | 'daily' | 'weekly' | 'monthly' }) => Promise<void> | void;
+  createLoading: boolean;
 }
 
-export default function CreateReminderModal({ isOpen, onClose, onCreate }: CreateReminderModalProps) {
+export default function CreateReminderModal({ isOpen, onClose, onCreate, createLoading }: CreateReminderModalProps) { 
   const [content, setContent] = useState('');
   const [dateTime, setDateTime] = useState('');
   const [note, setNote] = useState('');
@@ -89,12 +90,21 @@ export default function CreateReminderModal({ isOpen, onClose, onCreate }: Creat
           </button>
           <button
             onClick={() => onCreate({ content, dateTime, note, repeat })}
-            disabled={!canSubmit}
+            disabled={createLoading}
             className={`flex-1 cursor-pointer py-3.5 font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
               ${canSubmit ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700' : 'bg-gray-400 cursor-not-allowed'}`}
           >
-            <HiCheck className="w-5 h-5" />
-            Tạo lịch hẹn
+            {createLoading ? (
+                  <div className="cursor-not-allowed flex items-center gap-2">
+                    <HiCheck className="w-5 h-5" />
+                    Đang tạo...
+                  </div>
+            ) : (
+              <div className="">
+                <HiCheck className="w-5 h-5" />
+                Tạo lịch hẹn
+              </div>
+            )}
           </button>
         </div>
       </div>

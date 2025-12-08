@@ -20,7 +20,7 @@ import {
 interface Message {
   _id: string;
   content?: string;
-  type: 'text' | 'image' | 'file' | 'sticker' | 'video';
+  type: 'text' | 'image' | 'file' | 'sticker' | 'video' | 'reminder';
   fileName?: string;
   timestamp: number;
   sender: string;

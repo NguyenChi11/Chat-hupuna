@@ -30,7 +30,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
   const [detailMsg, setDetailMsg] = useState<Message | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null); // 🔥 Track ID của menu đang mở
   const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map()); // 🔥 Refs cho các menu
-
+  const [create, setCreate] = useState(false);
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -161,6 +161,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
     note?: string;
     repeat?: 'none' | 'daily' | 'weekly' | 'monthly';
   }) => {
+    setCreate(true);
     const dt = Date.parse(dateTime);
     if (!content.trim() || Number.isNaN(dt)) {
       alert('Vui lòng nhập đầy đủ thông tin hợp lệ');
@@ -211,7 +212,7 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         }
 
         const timeStr = new Date(dt).toLocaleString('vi-VN');
-        const myName = 'Bạn';
+        const myName = currentUser.name;
         const notifyRes = await createMessageApi({
           roomId,
           sender: String(currentUser._id),
@@ -231,9 +232,11 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         }
         socket.disconnect();
         await load();
+
       } else {
         alert('Tạo lịch hẹn thất bại. Vui lòng kiểm tra kết nối máy chủ.');
       }
+      setCreate(false);
     } catch (error) {
       console.error('❌ Lỗi khi tạo lịch hẹn:', error);
       alert('Không thể tạo lịch hẹn. Vui lòng thử lại.');
@@ -426,7 +429,11 @@ export default function ReminderList({ onClose }: ReminderListProps) {
         </div>
       </div>
 
-      <CreateReminderModal isOpen={showCreate} onClose={() => setShowCreate(false)} onCreate={handleCreate} />
+      <CreateReminderModal 
+       isOpen={showCreate}
+       onClose={() => setShowCreate(false)}
+        onCreate={handleCreate}
+         createLoading={create} />
 
       <ReminderDetailModal
         isOpen={!!detailMsg}

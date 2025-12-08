@@ -821,7 +821,7 @@ export default function MessageList({
                       <div className=" border-gray-300 ">
                         {expandedOriginalId === msg._id && (
                           <div className="text-xs border-t-[1px] border-t-gray-300  text-gray-500 space-y-1 flex items-center justify-between">
-                            <p className={`p-1 m-1 whitespace-pre-wrap pt-2 pb-1 rounded ${isMe ? 'bg-white' : ''}`}>
+                            <p className={`p-1 m-1 whitespace-pre-wrap pt-2 pb-1 rounded w-full ${isMe ? 'bg-white' : ''}`}>
                               {msg.originalContent}
                             </p>
                           </div>

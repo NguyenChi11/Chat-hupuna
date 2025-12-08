@@ -6,6 +6,7 @@ import io, { type Socket } from 'socket.io-client';
 
 import { User } from '@/types/User';
 import { ChatItem, GroupConversation } from '@/types/Group';
+import type { Message } from '@/types/Message';
 import type { GlobalSearchMessage, GlobalSearchContact } from '@/components/(home)/HomeOverlays'; // Cập nhật đường dẫn nếu cần // Cập nhật đường dẫn nếu cần
 
 // Kiểu dữ liệu cho bản ghi tin nhắn trả về từ API globalSearch
@@ -55,6 +56,8 @@ export function useHomePage() {
   });
 
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
+  const reminderTimersRef = useRef<Map<string, number>>(new Map());
+  const scheduledReminderIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     allUsersRef.current = allUsers;
@@ -190,11 +193,11 @@ export function useHomePage() {
         const allMessages = (messageData.data || []) as GlobalSearchMessageApi[];
 
         const messages: GlobalSearchMessage[] = allMessages
-          .filter((msg: GlobalSearchMessageApi) => ['text', 'image', 'file', 'sticker'].includes(msg.type))
+          .filter((msg: GlobalSearchMessageApi) => ['text', 'image', 'file', 'sticker', 'video', 'reminder'].includes(msg.type))
           .map((msg: GlobalSearchMessageApi) => ({
             _id: msg._id,
             content: msg.content,
-            type: msg.type as 'text' | 'image' | 'file' | 'sticker',
+            type: msg.type as 'text' | 'image' | 'file' | 'sticker' | 'video' | 'reminder',
             fileName: msg.fileName,
             timestamp: msg.timestamp,
             sender: msg.sender,
@@ -220,6 +223,123 @@ export function useHomePage() {
     },
     [currentUser, groups, allUsers],
   );
+
+  const getSocketBaseForRoom = useCallback(
+    (roomId: string) => {
+      const isGroupChat = groups.some((g) => String(g._id) === String(roomId));
+      if (isGroupChat) {
+        const g = groups.find((x) => String(x._id) === String(roomId)) as GroupConversation | undefined;
+        const members = g ? g.members : [];
+        return {
+          roomId,
+          sender: String(currentUser?._id || ''),
+          senderName: currentUser?.name || '',
+          isGroup: true,
+          receiver: null,
+          members,
+        };
+      }
+      let receiver: string | null = null;
+      if (roomId.includes('_')) {
+        const parts = roomId.split('_');
+        receiver = parts[0] === String(currentUser?._id || '') ? parts[1] : parts[0];
+      }
+      return {
+        roomId,
+        sender: String(currentUser?._id || ''),
+        senderName: currentUser?.name || '',
+        isGroup: false,
+        receiver,
+        members: [],
+      };
+    },
+    [groups, currentUser],
+  );
+
+  const scheduleReminder = useCallback(
+    (msg: Message) => {
+      const idStr = String(msg._id);
+      if (scheduledReminderIdsRef.current.has(idStr)) return;
+      const at = (msg as Message & { reminderAt?: number }).reminderAt || msg.timestamp;
+      const now = Date.now();
+      const delay = Math.max(0, at - now);
+      scheduledReminderIdsRef.current.add(idStr);
+      const timerId = window.setTimeout(async () => {
+        try {
+          const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              action: 'fireReminder', 
+              messageId: msg._id, 
+              userId: String(currentUser?._id || '') 
+            }),
+          });
+          const json = await res.json();
+          const sockBase = getSocketBaseForRoom(String(msg.roomId));
+          if (json?.success && json?.updated && typeof json?.notifyId === 'string') {
+            socketRef.current?.emit('send_message', {
+              ...sockBase,
+              _id: json.notifyId,
+              type: 'notify',
+              content: `Đến giờ lịch hẹn: "${msg.content || ''}"`,
+              timestamp: Date.now(),
+              replyToMessageId: String(msg._id),
+            });
+          }
+          if (json?.nextAt) {
+            socketRef.current?.emit('edit_message', {
+              _id: msg._id,
+              roomId: msg.roomId,
+              content: msg.content,
+              newContent: msg.content,
+              editedAt: Date.now(),
+              originalContent: msg.originalContent || msg.content,
+              reminderAt: json.nextAt,
+              reminderNote: (msg as Message & { reminderNote?: string }).reminderNote,
+            });
+          }
+        } catch {}
+        scheduledReminderIdsRef.current.delete(idStr);
+        const t = reminderTimersRef.current.get(idStr);
+        if (t) reminderTimersRef.current.delete(idStr);
+      }, delay);
+      reminderTimersRef.current.set(idStr, timerId);
+    },
+    [currentUser, getSocketBaseForRoom],
+  );
+
+  const fetchAndScheduleReminders = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'readReminders',
+          data: { userId: currentUser._id, limit: 5000, untilTs: Date.now() + 30 * 24 * 60 * 60 * 1000 },
+        }),
+      });
+      const json = await res.json();
+      const items: Message[] = Array.isArray(json?.data) ? (json.data as Message[]) : [];
+      items.forEach((m) => scheduleReminder(m));
+    } catch {}
+  }, [currentUser, scheduleReminder]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    try {
+      (window as unknown as { [k: string]: any }).__globalReminderSchedulerActive = true;
+    } catch {}
+    void fetchAndScheduleReminders();
+    const iv = setInterval(() => void fetchAndScheduleReminders(), 60000);
+    return () => {
+      clearInterval(iv);
+      try {
+        (window as unknown as { [k: string]: any }).__globalReminderSchedulerActive = false;
+      } catch {}
+    };
+  }, [currentUser, fetchAndScheduleReminders]);
 
   // 🔥 HÀM MỞ / ĐÓNG MODAL TÌM KIẾM TOÀN CỤC (TOGGLE)
   const handleOpenGlobalSearch = useCallback(() => {

@@ -10,7 +10,7 @@ const io = new Server(
     },
   },
 );
-
+setSocketInstance(io);
 const presence = new Map();
 
 io.on('connection', (socket) => {

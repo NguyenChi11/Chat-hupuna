@@ -12,7 +12,8 @@ import {
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { GroupConversation, GroupMemberSchema, MemberInfo } from '@/types/Group';
-import { ObjectId } from 'mongodb';
+import { Filter, ObjectId } from 'mongodb';
+import { getSocketInstance } from '@/lib/socketInstance';
 
 type MongoFilters = Record<string, unknown>;
 type MemberInput = string | GroupMemberSchema | MemberInfo | { id?: string; _id?: string };
@@ -317,7 +318,12 @@ export async function POST(req: NextRequest) {
             $or: [
               { type: 'image' },
               { type: 'video' },
-              { $and: [{ type: 'file' }, { $or: [{ fileUrl: { $regex: videoRegex } }, { fileName: { $regex: videoRegex } }] }] },
+              {
+                $and: [
+                  { type: 'file' },
+                  { $or: [{ fileUrl: { $regex: videoRegex } }, { fileName: { $regex: videoRegex } }] },
+                ],
+              },
             ],
           };
         } else if (type === 'file') {
@@ -342,38 +348,39 @@ export async function POST(req: NextRequest) {
           sort: { field: 'timestamp', order: 'desc' },
         });
 
-        const items: { id: string; url?: string; fileName?: string; type?: string; timestamp: number }[] = (result.data || [])
-          .map((msg) => {
-            if (type === 'media') {
-              const isVid = msg.type === 'video' || videoRegex.test(String(msg.fileUrl || msg.fileName || ''));
-              return {
-                id: String(msg._id),
-                url: String(msg.fileUrl || ''),
-                fileName: msg.fileName,
-                type: isVid ? 'video' : 'image',
-                timestamp: Number(msg.timestamp) || Date.now(),
-              };
-            }
-            if (type === 'file') {
-              return {
-                id: String(msg._id),
-                url: String(msg.fileUrl || msg.content || ''),
-                fileName: msg.fileName || 'Tài liệu',
-                timestamp: Number(msg.timestamp) || Date.now(),
-              };
-            }
-            // link
-            {
-              const raw = String(msg.content || '');
-              const firstMatch = raw.match(linkRegex);
-              const onlyUrl = firstMatch ? String(firstMatch[0]) : '';
-              return {
-                id: String(msg._id),
-                url: onlyUrl,
-                timestamp: Number(msg.timestamp) || Date.now(),
-              };
-            }
-          });
+        const items: { id: string; url?: string; fileName?: string; type?: string; timestamp: number }[] = (
+          result.data || []
+        ).map((msg) => {
+          if (type === 'media') {
+            const isVid = msg.type === 'video' || videoRegex.test(String(msg.fileUrl || msg.fileName || ''));
+            return {
+              id: String(msg._id),
+              url: String(msg.fileUrl || ''),
+              fileName: msg.fileName,
+              type: isVid ? 'video' : 'image',
+              timestamp: Number(msg.timestamp) || Date.now(),
+            };
+          }
+          if (type === 'file') {
+            return {
+              id: String(msg._id),
+              url: String(msg.fileUrl || msg.content || ''),
+              fileName: msg.fileName || 'Tài liệu',
+              timestamp: Number(msg.timestamp) || Date.now(),
+            };
+          }
+          // link
+          {
+            const raw = String(msg.content || '');
+            const firstMatch = raw.match(linkRegex);
+            const onlyUrl = firstMatch ? String(firstMatch[0]) : '';
+            return {
+              id: String(msg._id),
+              url: onlyUrl,
+              timestamp: Number(msg.timestamp) || Date.now(),
+            };
+          }
+        });
 
         const toDateKey = (ts: number) => {
           const d = new Date(ts);
@@ -405,7 +412,8 @@ export async function POST(req: NextRequest) {
         groups.sort((a, b) => (a.dateKey < b.dateKey ? 1 : a.dateKey > b.dateKey ? -1 : 0));
         groups.forEach((g) => g.items.sort((a, b) => b.timestamp - a.timestamp));
 
-        const nextCursor = (result.data || []).length > 0 ? Math.min(...(result.data || []).map((m) => m.timestamp)) : null;
+        const nextCursor =
+          (result.data || []).length > 0 ? Math.min(...(result.data || []).map((m) => m.timestamp)) : null;
 
         return NextResponse.json({ success: true, total: result.total || items.length, groups, nextCursor });
       }
@@ -721,7 +729,9 @@ export async function POST(req: NextRequest) {
           text: enrichedMessages.filter((m) => m.type === 'text'),
           file: enrichedMessages.filter((m) => m.type === 'file'),
           image: enrichedMessages.filter((m) => m.type === 'image'),
+          video: enrichedMessages.filter((m) => m.type === 'video'),
           sticker: enrichedMessages.filter((m) => m.type === 'sticker'),
+          reminder: enrichedMessages.filter((m) => m.type === 'reminder'),
           all: enrichedMessages,
         };
 
@@ -742,7 +752,9 @@ export async function POST(req: NextRequest) {
               text: messagesByType.text.length,
               file: messagesByType.file.length,
               image: messagesByType.image.length,
+              video: messagesByType.video.length,
               sticker: messagesByType.sticker.length,
+              reminder: messagesByType.reminder.length,
             },
             bySource: {
               group: messagesBySource.group.length,
@@ -750,6 +762,180 @@ export async function POST(req: NextRequest) {
             },
           },
         });
+      }
+
+      case 'readReminders': {
+        const searchUserId = data?.userId;
+        const untilTs = typeof data?.untilTs === 'number' ? data.untilTs : undefined;
+        const fromTs = typeof data?.fromTs === 'number' ? data.fromTs : undefined;
+
+        if (!searchUserId) {
+          return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+        }
+
+        const groupRoomIds: string[] = [];
+        try {
+          const allGroupsResult = await getAllRows<GroupConversation>('Groups', {
+            filters: {},
+            limit: 9999,
+          });
+
+          const getMemberId = (m: MemberInput): string | null => {
+            if (!m) return null;
+            if (typeof m === 'string') return m;
+            if (typeof m === 'object') {
+              if ('_id' in m && m._id) return String(m._id);
+              if ('id' in m && m.id) return String(m.id);
+            }
+            return null;
+          };
+
+          const userGroups = (allGroupsResult.data || []).filter((g) => {
+            if (g.members && Array.isArray(g.members)) {
+              return (g.members as MemberInput[]).some((m) => String(getMemberId(m)) === String(searchUserId));
+            }
+            return false;
+          });
+
+          userGroups.forEach((g) => groupRoomIds.push(String(g._id)));
+        } catch {}
+
+        const oneToOneRoomIds: string[] = [];
+        try {
+          const allUsersResult = await getAllRows<User>(USERS_COLLECTION_NAME, {
+            filters: {},
+            limit: 9999,
+          });
+          const otherUsers = (allUsersResult.data || []).filter((u) => String(u._id) !== String(searchUserId));
+          otherUsers.forEach((otherUser) => {
+            const ids = [searchUserId, String(otherUser._id)].sort();
+            const roomId = `${ids[0]}_${ids[1]}`;
+            oneToOneRoomIds.push(roomId);
+          });
+        } catch {}
+
+        const allAccessibleRoomIds = [...groupRoomIds, ...oneToOneRoomIds];
+
+        const reminderFilters: MongoFilters = {
+          type: 'reminder',
+          roomId: { $in: allAccessibleRoomIds },
+          isDeleted: { $ne: true },
+          isRecalled: { $ne: true },
+          reminderFired: { $ne: true },
+        };
+        if (typeof fromTs === 'number' || typeof untilTs === 'number') {
+          (reminderFilters as MongoFilters).reminderAt = {
+            ...(typeof fromTs === 'number' ? { $gte: fromTs } : {}),
+            ...(typeof untilTs === 'number' ? { $lte: untilTs } : {}),
+          };
+        }
+
+        const searchResults = await getAllRows<Message>(collectionName, {
+          filters: reminderFilters,
+          limit: data?.limit || 5000,
+          sort: { field: 'reminderAt', order: 'asc' },
+        });
+
+        return NextResponse.json({ success: true, data: searchResults.data || [], total: searchResults.total || 0 });
+      }
+
+      case 'fireReminder': {
+        if (!messageId || !userId) {
+          return NextResponse.json({ error: 'Missing messageId or userId' }, { status: 400 });
+        }
+
+        const rowRes = await getRowByIdOrCode<Message>(collectionName, { _id: messageId });
+        const row = ((rowRes as any)?.row ?? null) as Message | null;
+
+        if (!row || row.type !== 'reminder') {
+          return NextResponse.json({ success: false, updated: false });
+        }
+
+        const latestAt = (row as any).reminderAt || row.timestamp || Date.now();
+        const repeat = (row as any).reminderRepeat || 'none';
+
+        // Tính nextAt cho recurring reminder
+        let nextAt: number | null = null;
+        if (repeat === 'daily') nextAt = latestAt + 24 * 60 * 60 * 1000;
+        else if (repeat === 'weekly') nextAt = latestAt + 7 * 24 * 60 * 60 * 1000;
+        else if (repeat === 'monthly') {
+          const d = new Date(latestAt);
+          d.setMonth(d.getMonth() + 1);
+          nextAt = d.getTime();
+        }
+
+        // Update message
+        const updateData = nextAt
+          ? { reminderAt: nextAt, reminderFired: false, editedAt: Date.now() }
+          : { reminderFired: true };
+
+        const filter: Filter<Message> = {
+          _id: ObjectId.isValid(String(messageId)) ? new ObjectId(String(messageId)) : String(messageId),
+          type: 'reminder' as const, // ✅ Thêm 'as const'
+          reminderFired: { $ne: true },
+          reminderAt: latestAt,
+        } as Filter<Message>; // ✅ Thêm type assertion
+
+        const upd = await updateMany<Message>(collectionName, filter, { $set: updateData });
+        const modified = (upd as any)?.modifiedCount ?? 0;
+
+        if (!modified) {
+          return NextResponse.json({ success: true, updated: false });
+        }
+
+        // ✅ TẠO THÔNG BÁO
+        const timeStr = new Date(latestAt).toLocaleString('vi-VN');
+        const notifyContent = `Đến giờ lịch hẹn: "${String(row.content || '')}" lúc ${timeStr}`;
+
+        const notifyId = await addRow<Partial<Message>>(collectionName, {
+          roomId: String(row.roomId),
+          sender: String(userId),
+          type: 'notify',
+          content: notifyContent,
+          timestamp: Date.now(),
+          replyToMessageId: String(row._id),
+        });
+
+        // ✅ EMIT SOCKET - CHỈ 1 LẦN DUY NHẤT
+        try {
+          const io = getSocketInstance(); // Cần implement hàm này
+
+          const roomId = String(row.roomId);
+
+          // Emit thông báo
+          io.in(roomId).emit('receive_message', {
+            _id: notifyId,
+            roomId: roomId,
+            sender: String(userId),
+            type: 'notify',
+            content: notifyContent,
+            timestamp: Date.now(),
+            replyToMessageId: String(row._id),
+          });
+
+          // Nếu có nextAt, emit update reminder
+          if (nextAt) {
+            io.in(roomId).emit('edit_message', {
+              _id: String(row._id),
+              roomId: roomId,
+              reminderAt: nextAt,
+              editedAt: Date.now(),
+            });
+          }
+        } catch (err) {
+          console.error('❌ Socket emit error:', err);
+        }
+
+        // Push notification
+        try {
+          await sendPushOnMessage({
+            roomId: String(row.roomId),
+            senderId: String(userId),
+            content: notifyContent,
+          });
+        } catch {}
+
+        return NextResponse.json({ success: true, updated: true, notifyId, nextAt });
       }
 
       case 'editMessage': {
