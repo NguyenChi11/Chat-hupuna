@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import type { ChatItem } from '@/types/Group';
 import type { Message } from '@/types/Message';
 
@@ -76,11 +76,13 @@ export function useChatInfoPopup({ selectedChat, isGroup, onChatAction }: UseCha
   const [isMediaExpanded, setIsMediaExpanded] = useState(false);
   const [isFileExpanded, setIsFileExpanded] = useState(false);
   const [isLinkExpanded, setIsLinkExpanded] = useState(false);
+  const assetsReqKeyRef = useRef(0);
 
   const flattenGroups = useCallback(<T,>(groups: { items: T[] }[]) => groups.flatMap((g) => g.items ?? []), []);
 
   const fetchAssets = useCallback(
     async (assetType: 'media' | 'file' | 'link', needAll: boolean) => {
+      const reqKey = assetsReqKeyRef.current;
       const postBody = {
         action: 'readAssets',
         roomId: currentRoomId,
@@ -94,6 +96,7 @@ export function useChatInfoPopup({ selectedChat, isGroup, onChatAction }: UseCha
           body: JSON.stringify(postBody),
         });
         const json = await res.json();
+        if (assetsReqKeyRef.current !== reqKey) return;
         const groups = Array.isArray(json.groups) ? json.groups : [];
         if (assetType === 'media') {
           const items = flattenGroups<{ id: string; url: string; fileName?: string; type: 'image' | 'video'; timestamp?: number }>(groups);
@@ -146,6 +149,24 @@ export function useChatInfoPopup({ selectedChat, isGroup, onChatAction }: UseCha
   useEffect(() => {
     if (openItems['Link'] && linkList.length === 0) void fetchAssets('link', false);
   }, [openItems, linkList.length, fetchAssets]);
+
+  useEffect(() => {
+    assetsReqKeyRef.current += 1;
+    setOpenItems({});
+    setActiveMenuId(null);
+    setMediaList([]);
+    setMediaGroups([]);
+    setFileList([]);
+    setFileGroups([]);
+    setLinkList([]);
+    setLinkGroups([]);
+    setMediaTotal(0);
+    setFileTotal(0);
+    setLinkTotal(0);
+    setIsMediaExpanded(false);
+    setIsFileExpanded(false);
+    setIsLinkExpanded(false);
+  }, [currentRoomId]);
 
   return {
     currentRoomId,

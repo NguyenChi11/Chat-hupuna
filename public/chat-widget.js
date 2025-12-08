@@ -40,8 +40,8 @@
     container.id = 'hupuna-chat-widget-container';
     Object.assign(container.style, {
       position: 'fixed',
-      bottom: '70px',
-      right: '20px',
+      bottom: '4.375rem',
+      right: '1.25rem',
       zIndex: '2147483647',
       display: 'flex',
       flexDirection: 'column',
@@ -54,13 +54,13 @@
     // Wrapper iframe (widget chat)
     const iframeWrap = document.createElement('div');
     Object.assign(iframeWrap.style, {
-      width: '400px',
+      width: '25rem',
       maxWidth: 'calc(100vw - 48px)',
-      height: '620px',
-      maxHeight: 'calc(100vh - 100px)',
-      borderRadius: '24px',
+      height: '38.75rem',
+      maxHeight: 'calc(100vh - 6.25rem)',
+      borderRadius: '1.5rem',
       overflow: 'hidden',
-      boxShadow: '0 25px 60px rgba(0, 0, 0, 0.3)',
+      boxShadow: '0 1.5625rem 3.75rem rgba(0, 0, 0, 0.3)',
       border: '1px solid rgba(0, 0, 0, 0.1)',
       background: '#fff',
       display: 'none',
@@ -87,8 +87,8 @@
     </svg>`;
 
     Object.assign(btn.style, {
-      width: '64px',
-      height: '64px',
+      width: '4rem',
+      height: '4rem',
       borderRadius: '9999px',
       border: 'none',
       cursor: 'pointer',
@@ -123,10 +123,10 @@
       right: -4px;
       background: #ef4444;
       color: white;
-      font-size: 12px;
+      font-size: 0.75rem;
       font-weight: bold;
-      min-width: 20px;
-      height: 20px;
+      min-width: 2.5rem;
+      height: 2.5rem;
       border-radius: 9999px;
       display: flex;
       align-items: center;
@@ -143,7 +143,7 @@
     btnWrap.appendChild(btn);
     Object.assign(btnWrap.style, {
       display: 'block',
-      marginTop: '12px',
+      marginTop: '1.25rem',
       transform: 'translateY(0)',
       opacity: '1',
       transition: 'all 0.4s ease',
