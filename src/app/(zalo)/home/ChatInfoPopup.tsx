@@ -35,6 +35,7 @@ interface ChatInfoPopupProps {
   reLoad?: () => void;
   onLeftGroup?: () => void;
   onRefresh?: () => void
+  sendNotifyMessage?: (text: string) => Promise<void> | void;
 }
 
 export default function ChatInfoPopup({
@@ -48,7 +49,8 @@ export default function ChatInfoPopup({
   onChatAction,
   reLoad,
   onLeftGroup,
-  onRefresh
+  onRefresh,
+  sendNotifyMessage
 }: ChatInfoPopupProps) {
   const { messages, currentUser, allUsers, chatName, isGroup, selectedChat } = useChatContext();
   const [openMember, setOpenMember] = useState(false);
@@ -218,6 +220,9 @@ export default function ChatInfoPopup({
         }),
       });
       if (!res.ok) throw new Error();
+      const name = currentUser.name || 'Một thành viên';
+      const text = `${name} đã rời nhóm`;
+      await sendNotifyMessage?.(text);
       reLoad?.();
       onLeftGroup?.();
       onClose();

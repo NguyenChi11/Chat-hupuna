@@ -1673,6 +1673,7 @@ const handleToggleReaction = useCallback(
               reLoad={reLoad}
               onLeftGroup={onBackFromChat}
               onRefresh={fetchMessages}
+              sendNotifyMessage={(text) => sendNotifyMessage(text)}
             />
           </div>
         )}
