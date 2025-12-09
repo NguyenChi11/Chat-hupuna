@@ -41,6 +41,10 @@ import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
 import { useRouter } from 'next/navigation';
+import { get } from 'http';
+import { sendError } from 'next/dist/server/api-utils';
+import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
+import ICPin from '@/components/svg/ICPin';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -59,6 +63,7 @@ interface ChatWindowProps {
   scrollToMessageId?: string | null; // 🔥 MỚI: ID tin nhắn cần scroll đến
   onScrollComplete?: () => void;
   onBackFromChat?: () => void;
+  groups: GroupConversation[];
 }
 
 declare global {
@@ -115,6 +120,7 @@ export default function ChatWindow({
   scrollToMessageId, // 🔥 Thêm
   onScrollComplete,
   onBackFromChat,
+  groups,
 }: ChatWindowProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -149,6 +155,9 @@ export default function ChatWindow({
   const reminderScheduledIdsRef = useRef<Set<string>>(new Set());
   const reminderTimersByIdRef = useRef<Map<string, number>>(new Map());
   const messagesRef = useRef<Message[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [messageToShare, setMessageToShare] = useState<Message | null>(null);
+
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
@@ -226,7 +235,6 @@ export default function ChatWindow({
     [roomId, currentUser._id, sendMessageProcess],
   );
 
-
   const { uploadingFiles, handleUploadAndSend } = useChatUpload({
     roomId,
     currentUser,
@@ -299,86 +307,71 @@ export default function ChatWindow({
     }
   };
 
- // ✅ FIXED VERSION - Đặt trong ChatWindow.tsx
+  // ✅ FIXED VERSION - Đặt trong ChatWindow.tsx
 
-const handleToggleReaction = useCallback(
-  async (msg: Message, emoji: string) => {
-    const myId = String(currentUser._id);
-    const old = (msg.reactions || {}) as Record<string, string[]>;
-    
-    // Clean up và toggle reaction
-    const cleaned: Record<string, string[]> = Object.fromEntries(
-      Object.entries(old).map(([k, arr]) => [
-        k, 
-        (Array.isArray(arr) ? arr : []).filter((id) => String(id) !== myId)
-      ])
-    );
-    
-    const had = Array.isArray(old[emoji]) && old[emoji].includes(myId);
-    const next: Record<string, string[]> = { ...cleaned };
-    const arr = Array.isArray(next[emoji]) ? next[emoji] : [];
-    next[emoji] = had ? arr.filter((id) => String(id) !== myId) : [...arr, myId];
+  const handleToggleReaction = useCallback(
+    async (msg: Message, emoji: string) => {
+      const myId = String(currentUser._id);
+      const old = (msg.reactions || {}) as Record<string, string[]>;
 
-    // 1. ✅ Optimistic Update UI ngay lập tức
-    setMessages((prev) => 
-      prev.map((m) => 
-        String(m._id) === String(msg._id) 
-          ? { ...m, reactions: next } 
-          : m
-      )
-    );
-
-    // 2. ✅ Tạo payload đầy đủ cho socket
-    const socketPayload = {
-      _id: msg._id,
-      roomId,
-      reactions: next,
-      // Thêm thông tin để server có thể broadcast đầy đủ
-      sender: currentUser._id,
-      senderName: currentUser.name,
-      isGroup: isGroup,
-      receiver: isGroup ? null : getId(selectedChat),
-      members: isGroup ? (selectedChat as GroupConversation).members : [],
-    };
-
-    // 3. ✅ Emit socket với error handling tốt hơn
-    try {
-      if (socketRef.current?.connected) {
-        socketRef.current.emit('toggle_reaction', socketPayload);
-      } else {
-        // Fallback: reconnect và emit
-        const tempSocket = io(resolveSocketUrl(), { 
-          transports: ['websocket'], 
-          withCredentials: false 
-        });
-        
-        tempSocket.on('connect', () => {
-          tempSocket.emit('toggle_reaction', socketPayload);
-          setTimeout(() => tempSocket.disconnect(), 500);
-        });
-      }
-    } catch (error) {
-      console.error('❌ Socket emit error:', error);
-    }
-
-    // 4. ✅ Gọi API để persist vào DB
-    try {
-      await updateMessageApi(String(msg._id), { reactions: next });
-    } catch (error) {
-      console.error('❌ API update error:', error);
-      
-      // Rollback nếu API fail
-      setMessages((prev) => 
-        prev.map((m) => 
-          String(m._id) === String(msg._id) 
-            ? { ...m, reactions: old } 
-            : m
-        )
+      // Clean up và toggle reaction
+      const cleaned: Record<string, string[]> = Object.fromEntries(
+        Object.entries(old).map(([k, arr]) => [k, (Array.isArray(arr) ? arr : []).filter((id) => String(id) !== myId)]),
       );
-    }
-  },
-  [currentUser._id, currentUser.name, roomId, isGroup, selectedChat]
-);
+
+      const had = Array.isArray(old[emoji]) && old[emoji].includes(myId);
+      const next: Record<string, string[]> = { ...cleaned };
+      const arr = Array.isArray(next[emoji]) ? next[emoji] : [];
+      next[emoji] = had ? arr.filter((id) => String(id) !== myId) : [...arr, myId];
+
+      // 1. ✅ Optimistic Update UI ngay lập tức
+      setMessages((prev) => prev.map((m) => (String(m._id) === String(msg._id) ? { ...m, reactions: next } : m)));
+
+      // 2. ✅ Tạo payload đầy đủ cho socket
+      const socketPayload = {
+        _id: msg._id,
+        roomId,
+        reactions: next,
+        // Thêm thông tin để server có thể broadcast đầy đủ
+        sender: currentUser._id,
+        senderName: currentUser.name,
+        isGroup: isGroup,
+        receiver: isGroup ? null : getId(selectedChat),
+        members: isGroup ? (selectedChat as GroupConversation).members : [],
+      };
+
+      // 3. ✅ Emit socket với error handling tốt hơn
+      try {
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('toggle_reaction', socketPayload);
+        } else {
+          // Fallback: reconnect và emit
+          const tempSocket = io(resolveSocketUrl(), {
+            transports: ['websocket'],
+            withCredentials: false,
+          });
+
+          tempSocket.on('connect', () => {
+            tempSocket.emit('toggle_reaction', socketPayload);
+            setTimeout(() => tempSocket.disconnect(), 500);
+          });
+        }
+      } catch (error) {
+        console.error('❌ Socket emit error:', error);
+      }
+
+      // 4. ✅ Gọi API để persist vào DB
+      try {
+        await updateMessageApi(String(msg._id), { reactions: next });
+      } catch (error) {
+        console.error('❌ API update error:', error);
+
+        // Rollback nếu API fail
+        setMessages((prev) => prev.map((m) => (String(m._id) === String(msg._id) ? { ...m, reactions: old } : m)));
+      }
+    },
+    [currentUser._id, currentUser.name, roomId, isGroup, selectedChat],
+  );
 
   const handleContextMenu = useCallback((e: React.MouseEvent, msg: Message) => {
     e.preventDefault();
@@ -496,7 +489,7 @@ const handleToggleReaction = useCallback(
 
         // Tạo nội dung thông báo dựa trên loại tin nhắn
         if (message.type === 'text') {
-          notificationText = `${senderName} ${action} một tin nhắn văn bản.`;
+          notificationText =  `${senderName} ${action} một tin nhắn văn bản.`;
         } else if (message.type === 'image') {
           notificationText = `${senderName} ${action} một hình ảnh.`;
         } else if (message.type === 'file') {
@@ -852,25 +845,23 @@ const handleToggleReaction = useCallback(
         }, 0);
       }
     });
-    socketRef.current.on('reaction_updated', (data: {
-    _id: string;
-    roomId: string;
-    reactions: Record<string, string[]>;
-  }) => {
-    if (String(data.roomId) === String(roomId)) {
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          String(msg._id) === String(data._id)
-            ? {
-                ...msg,
-                reactions: data.reactions, // ✅ Update reactions
-              }
-            : msg
-        )
-      );
-      
-    }
-  });
+    socketRef.current.on(
+      'reaction_updated',
+      (data: { _id: string; roomId: string; reactions: Record<string, string[]> }) => {
+        if (String(data.roomId) === String(roomId)) {
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              String(msg._id) === String(data._id)
+                ? {
+                    ...msg,
+                    reactions: data.reactions, // ✅ Update reactions
+                  }
+                : msg,
+            ),
+          );
+        }
+      },
+    );
 
     // 🔥 LISTENER CHO edit_message
     socketRef.current.on(
@@ -1405,7 +1396,7 @@ const handleToggleReaction = useCallback(
             className="text-blue-600 hover:underline break-all"
           >
             {url}
-          </a>
+          </a>,
         );
         lastIndex = end;
       }
@@ -1480,6 +1471,108 @@ const handleToggleReaction = useCallback(
     }
   };
 
+  const handleShareMessage = useCallback((message: Message) => {
+    setMessageToShare(message);
+    setShowShareModal(true);
+  }, []);
+
+  const handleShareToRooms = useCallback(
+    async (targetRoomIds: string[], message: Message, attachedText?: string) => {
+      try {
+        // Tạo nội dung tin nhắn share
+        let shareContent = '';
+        const originalSenderName = getSenderName(message.sender);
+
+        if (message.type === 'text') {
+          shareContent = message.content || '';
+        }
+        const safeGroups = Array.isArray(groups) ? groups : [];
+        // Gửi tin nhắn đến từng room
+        for (const targetRoomId of targetRoomIds) {
+          const isGroupChat = safeGroups.some(g => String(g._id) === String(targetRoomId));
+         
+
+          const newMsg: MessageCreate = {
+            roomId: targetRoomId,
+            sender: currentUser._id,
+            type: message.type,
+            content: message.type === 'text' ? shareContent : message.content,
+            fileUrl: message.fileUrl,
+            fileName: message.fileName,
+            timestamp: Date.now(),
+            // Thêm metadata về shared message
+            sharedFrom: {
+              messageId: String(message._id),
+              originalSender: originalSenderName,
+              originalRoomId: String(message.roomId),
+            },
+          };
+
+          // Gọi API tạo tin nhắn
+          const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create',
+              data: newMsg,
+            }),
+          });
+
+          const json = await res.json();
+
+          if (json.success && typeof json._id === 'string') {
+            // Emit socket
+            const sockBase = isGroupChat
+              ? {
+                  roomId: targetRoomId,
+                  sender: currentUser._id,
+                  senderName: currentUser.name,
+                  isGroup: true,
+                  receiver: null,
+                   members: safeGroups.find(g => String(g._id) === String(targetRoomId))?.members || [],
+                }
+              : {
+                  roomId: targetRoomId,
+                  sender: currentUser._id,
+                  senderName: currentUser.name,
+                  isGroup: false,
+                  receiver: targetRoomId.split('_').find((id) => id !== String(currentUser._id)),
+                  members: [],
+                };
+
+            socketRef.current?.emit('send_message', {
+              ...sockBase,
+              ...newMsg,
+              _id: json._id,
+            });
+            if (attachedText && attachedText.trim()) {
+              const textMsg: MessageCreate = {
+                roomId: targetRoomId,
+                sender: currentUser._id,
+                type: 'text',
+                content: attachedText,
+                timestamp: Date.now(),
+              };
+              const res2 = await fetch('/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'create', data: textMsg }),
+              });
+              const json2 = await res2.json();
+              if (json2.success && typeof json2._id === 'string') {
+                socketRef.current?.emit('send_message', { ...sockBase, ...textMsg, _id: json2._id });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Share message error:', error);
+        throw error;
+      }
+    },
+    [currentUser, groups, getSenderName],
+  );
+
   return (
     <ChatProvider value={chatContextValue}>
       <main className="flex h-full bg-gray-700 sm:overflow-y-hidden overflow-y-auto no-scrollbar">
@@ -1507,7 +1600,7 @@ const handleToggleReaction = useCallback(
             presenceText={!isGroup ? presenceInfo.text : undefined}
             presenceOnline={!isGroup ? presenceInfo.online : undefined}
           />
-             <PinnedMessagesSection
+          <PinnedMessagesSection
             allPinnedMessages={allPinnedMessages}
             showPinnedList={showPinnedList}
             onOpenPinnedList={() => setShowPinnedList(true)}
@@ -1516,7 +1609,7 @@ const handleToggleReaction = useCallback(
             getSenderName={getSenderName}
             onUnpinMessage={handlePinMessage}
           />
-         
+
           {/* Messages Area */}
           <div
             ref={messagesContainerRef}
@@ -1690,6 +1783,21 @@ const handleToggleReaction = useCallback(
           </div>
         )}
 
+        {showShareModal && messageToShare && (
+          <ShareMessageModal
+            isOpen={showShareModal}
+            onClose={() => {
+              setShowShareModal(false);
+              setMessageToShare(null);
+            }}
+            message={messageToShare}
+            currentUser={currentUser}
+            allUsers={allUsers}
+            groups={groups}
+            onShare={handleShareToRooms}
+          />
+        )}
+
         {openMember && isGroup && (
           <ModalMembers
             conversationId={selectedChat._id}
@@ -1717,6 +1825,7 @@ const handleToggleReaction = useCallback(
             setEditContent={setEditContent}
             closeContextMenu={closeContextMenu}
             onReplyMessage={handleReplyTo}
+            onShareMessage={handleShareMessage}
           />
         )}
 

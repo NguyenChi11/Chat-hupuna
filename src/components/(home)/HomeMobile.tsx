@@ -90,6 +90,7 @@ export default function HomeMobile({
             onScrollComplete={onScrollComplete}
             // Nút quay lại sẽ được render bên trong ChatHeader (mobile)
             onBackFromChat={onBackFromChat}
+            groups={groups}
           />
         </div>
       ) : (

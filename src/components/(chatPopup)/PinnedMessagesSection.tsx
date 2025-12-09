@@ -6,7 +6,8 @@ import PinnedMessageListModal from '../base/PinnedMessageListModal';
 
 import type { Message } from '@/types/Message';
 import type { User } from '@/types/User';
-import { HiMapPin } from 'react-icons/hi2';
+import { HiMapPin, HiOutlineDocumentText } from 'react-icons/hi2';
+import { getProxyUrl } from '@/utils/utils';
 
 interface PinnedMessagesSectionProps {
   allPinnedMessages: Message[];
@@ -69,7 +70,25 @@ export default function PinnedMessagesSection({
             if (msg.type === 'poll') return `Bình chọn: ${msg.pollQuestion || msg.content || ''}`;
             if (msg.type === 'reminder') return `Lịch hẹn: ${msg.content || ''}`;
             if (msg.type === 'image') return 'Ảnh';
-            if (msg.type === 'file') return `File: ${msg.fileName || 'File'}`;
+            if (msg.type === 'file')
+              return (
+                <a
+                  href={getProxyUrl(msg.fileUrl)}
+                  download={msg.fileName || 'download'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-2xl max-w-[70vw] sm:max-w-[18rem] shadow-sm hover:bg-gray-50"
+                >
+                  <div className="p-2 bg-blue-600 rounded-xl">
+                    <HiOutlineDocumentText className="w-6 h-6 text-white" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{msg.fileName || 'Tệp đính kèm'}</p>
+                    <p className="text-xs text-gray-500 truncate">Nhấn để tải xuống</p>
+                  </div>
+                </a>
+              );
             if (msg.type === 'sticker') return 'Sticker';
             return msg.content || '[Tin nhắn]';
           }}

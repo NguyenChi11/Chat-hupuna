@@ -84,6 +84,7 @@ export default function HomeDesktop({
             scrollToMessageId={scrollToMessageId}
             onScrollComplete={onScrollComplete}
             onBackFromChat={onBackFromChat}
+            groups={groups}
           />
         ) : (
           <HomeWelcomeBanner currentUser={currentUser} />

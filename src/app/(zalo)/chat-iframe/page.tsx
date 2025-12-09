@@ -60,6 +60,7 @@ export default function ChatIframe() {
             scrollToMessageId={scrollToMessageId}
             onScrollComplete={() => setScrollToMessageId(null)}
             onBackFromChat={() => setSelectedChat(null)}
+            groups={groups}
           />
         )}
       </div>

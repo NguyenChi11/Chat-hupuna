@@ -12,7 +12,7 @@ interface Props {
   onClose: () => void;
   onJumpToMessage: (messageId: string) => void;
   onGetSenderName: (sender: string | Message['sender']) => string;
-  onGetContentDisplay: (msg: Message) => string;
+  onGetContentDisplay: (msg: Message) => string | React.ReactNode;
   onUnpinMessage: (msg: Message) => void;
 }
 
@@ -125,38 +125,41 @@ export default function PinnedMessageListModal({
                 </div>
 
                 {/* Link preview cho tin nhắn text */}
-                {msg.type === 'text' && !msg.isRecalled && (() => {
-                  const linkMatch = (msg.content || '').match(/(https?:\/\/|www\.)\S+/i);
-                  if (!linkMatch) return null;
-                  const raw = linkMatch[0];
-                  const href = raw.startsWith('http') ? raw : `https://${raw}`;
-                  const hostname = (() => {
-                    try {
-                      return new URL(href).hostname.replace('www.', '');
-                    } catch {
-                      return 'Website';
-                    }
-                  })();
-                  return (
-                    <div className="mt-2 rounded-xl shadow-xl bg-white overflow-hidden">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(href, '_blank');
-                        }}
-                        className="w-full text-left p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50"
-                      >
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white">
-                          <HiLink className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-purple-600 truncate">{raw}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{hostname}</p>
-                        </div>
-                      </button>
-                    </div>
-                  );
-                })()}
+                {msg.type === 'text' &&
+                  !msg.isRecalled &&
+                  (() => {
+                    const linkMatch = (msg.content || '').match(/(https?:\/\/|www\.)\S+/i);
+                    if (!linkMatch) return null;
+                    const raw = linkMatch[0];
+                    const href = raw.startsWith('http') ? raw : `https://${raw}`;
+                    const hostname = (() => {
+                      try {
+                        return new URL(href).hostname.replace('www.', '');
+                      } catch {
+                        return 'Website';
+                      }
+                    })();
+                    return (
+                      <div className="mt-2 rounded-xl shadow-xl bg-white overflow-hidden">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(href, '_blank');
+                          }}
+                          className="w-full text-left p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50"
+                        >
+                          <div className="p-2.5 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white">
+                            <HiLink className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-purple-600 truncate">{raw}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{hostname}</p>
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })()}
+                
 
                 {/* Hiệu ứng nhấn */}
                 <div className="absolute inset-0 rounded-xl ring-2 ring-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />

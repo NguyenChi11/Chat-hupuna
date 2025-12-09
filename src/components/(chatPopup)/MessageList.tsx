@@ -137,7 +137,7 @@ export default function MessageList({
               const pillNode = (
                 <div key={`pill-${msg._id}`} id={`msg-${msg._id}`} className="flex justify-center my-3">
                   <div
-                    className={`px-4 py-1.5 rounded-full max-w-[80vw] sm:max-w-[28rem] overflow-hidden ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}
+                    className={`px-4 p-1.5 bg-white rounded-full max-w-[80vw]  sm:max-w-[28rem] overflow-hidden ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}
                   >
                     <p className="text-xs text-gray-500 truncate">{display}</p>
                   </div>
@@ -430,6 +430,7 @@ export default function MessageList({
                     )}
                   </div>
                 )}
+          
 
                 {/* Content */}
                 <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
@@ -792,6 +793,7 @@ export default function MessageList({
                     {msg.type === 'file' && msg.fileUrl && !isVideo && !isRecalled && (
                       <a
                         href={getProxyUrl(msg.fileUrl)}
+                        download={msg.fileName || 'download'}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-2xl max-w-[70vw] sm:max-w-[18rem] shadow-sm hover:bg-gray-50"

@@ -4,6 +4,7 @@ import {
   HiOutlineAcademicCap,
   HiOutlineClipboardCopy,
   HiOutlineDownload,
+  HiOutlineShare,
   HiOutlineTrash,
   HiPencil,
 } from 'react-icons/hi';
@@ -71,6 +72,7 @@ interface MessageContextMenuProps {
   setEditContent?: (content: string) => void;
   closeContextMenu?: () => void;
   onReplyMessage?: (msg: Message) => void;
+  onShareMessage: (message: Message) => void; 
 }
 
 const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
@@ -83,6 +85,7 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
   setEditContent,
   closeContextMenu,
   onReplyMessage,
+  onShareMessage,
 }) => {
   if (!contextMenu || !contextMenu.visible) return null;
 
@@ -151,6 +154,21 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({
       style={style}
       onContextMenu={(e) => e.preventDefault()}
     >
+      {!isRecalled && (
+        <MenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onShareMessage(msg);
+            onClose();
+          }}
+        >
+          <span className="flex gap-2">
+            <HiOutlineShare className="w-5 h-5" />
+            Chia sẻ tin nhắn
+          </span>
+        </MenuItem>
+      )}
       {!isRecalled && (
         <MenuItem
           onClick={(e) => {
