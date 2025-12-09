@@ -7,8 +7,19 @@ import type { User } from '@/types/User';
 import { isVideoFile, getProxyUrl } from '@/utils/utils';
 
 // Icons
-import { HiOutlineDocumentText, HiPlay, HiEllipsisVertical, HiOutlineClock } from 'react-icons/hi2';
-import { HiLink } from 'react-icons/hi';
+import {
+  HiOutlineDocumentText,
+  HiPlay,
+  HiEllipsisVertical,
+  HiOutlineClock,
+  HiMapPin,
+  HiChartBar,
+  HiUserPlus,
+  HiUserMinus,
+  HiShieldCheck,
+  HiUserGroup,
+} from 'react-icons/hi2';
+import { HiLink, HiOutlineLogout } from 'react-icons/hi';
 import ReminderDetailModal from './components/ReminderDetailModal';
 import PollDetailModal from './components/PollDetailModal';
 import ReactionButton from './components/ReactionButton';
@@ -131,23 +142,60 @@ export default function MessageList({
             if (msg.type === 'notify') {
               const related = msg.replyToMessageId ? messages.find((m) => m._id === msg.replyToMessageId) : null;
               let display = msg.content || '';
-              if (isMe && !display.trim().toLowerCase().startsWith('bạn')) {
-                display = `Bạn ${display}`;
+              if (isMe) {
+                const myName = currentUser.name || '';
+                const trimmedLower = display.trim().toLowerCase();
+                if (!trimmedLower.startsWith('bạn') && myName && display.startsWith(myName)) {
+                  display = 'Bạn' + display.slice(myName.length);
+                }
               }
+              const contentLower = (display || '').toLowerCase();
+              const isCreate = contentLower.includes('đã tạo lịch hẹn');
+              const isDue = contentLower.includes('đến giờ lịch hẹn');
+              const isEdit = contentLower.includes('đã chỉnh sửa') || contentLower.includes('chỉnh sửa');
+              const isDelete = contentLower.includes('đã xóa') || contentLower.includes('xóa');
+              const isPoll = (related?.type === 'poll') || contentLower.includes('bình chọn');
+              const isPin = contentLower.includes('ghim');
+              // Group actions
+              const isInvite = contentLower.includes('đã thêm') || (contentLower.includes('mời') && contentLower.includes('vào nhóm'));
+              const isLeave = contentLower.includes('đã rời nhóm');
+              const isPromote = contentLower.includes('bổ nhiệm') || contentLower.includes('phó nhóm');
+              const isDemote = contentLower.includes('hủy quyền phó nhóm') || contentLower.includes('bãi nhiệm');
+              const isKick = contentLower.includes('ra khỏi nhóm') || contentLower.includes('xóa khỏi nhóm');
+              const isCreateGroup = contentLower.includes('tạo nhóm');
+              const icon = isDue
+                ? <HiOutlineClock className="w-4 h-4 text-red-500" />
+                : isCreate
+                  ? <HiOutlineClock className="w-4 h-4 text-indigo-500" />
+                  : isPoll
+                    ? <HiChartBar className="w-4 h-4 text-blue-500" />
+                    : isPin
+                      ? <HiMapPin className="w-4 h-4 text-orange-500" />
+                      : isInvite
+                        ? <HiUserPlus className="w-4 h-4 text-emerald-600" />
+                        : isLeave
+                          ? <HiOutlineLogout className="w-4 h-4 text-red-600" />
+                          : isPromote
+                            ? <HiShieldCheck className="w-4 h-4 text-blue-600" />
+                            : isDemote
+                              ? <HiUserMinus className="w-4 h-4 text-yellow-600" />
+                              : isKick
+                                ? <HiUserMinus className="w-4 h-4 text-red-600" />
+                                : isCreateGroup
+                                  ? <HiUserGroup className="w-4 h-4 text-purple-600" />
+                                  : null;
               const pillNode = (
                 <div key={`pill-${msg._id}`} id={`msg-${msg._id}`} className="flex justify-center my-3">
                   <div
                     className={`px-4 p-1.5 bg-white rounded-full max-w-[80vw]  sm:max-w-[28rem] overflow-hidden ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}
                   >
-                    <p className="text-xs text-gray-500 truncate">{display}</p>
+                    <div className="flex items-center gap-2">
+                      {icon}
+                      <p className="text-xs text-gray-500 truncate">{display}</p>
+                    </div>
                   </div>
                 </div>
               );
-              const contentLower = (msg.content || '').toLowerCase();
-              const isCreate = contentLower.includes('đã tạo lịch hẹn');
-              const isDue = contentLower.includes('đến giờ lịch hẹn');
-              const isEdit = contentLower.includes('đã chỉnh sửa') || contentLower.includes('chỉnh sửa');
-              const isDelete = contentLower.includes('đã xóa') || contentLower.includes('xóa');
               if (isDue) {
                 if (related?.type === 'reminder') {
                   return (

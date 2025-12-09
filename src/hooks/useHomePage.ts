@@ -498,6 +498,7 @@ export function useHomePage() {
         timestamp?: number;
         senderName?: string;
         isGroup: boolean;
+        members?: (string | { _id: string })[];
       }) => {
         const isMyMsg = data.sender === currentUser._id;
         const activeChatId = selectedChatRef.current?._id || null;
@@ -537,6 +538,33 @@ export function useHomePage() {
           setGroups((prev) => {
             const index = prev.findIndex((g) => g._id === data.roomId);
             if (index === -1) {
+              const myId = String(currentUser._id);
+              const memberIds = Array.isArray(data.members)
+                ? data.members.map((m) => (typeof m === 'object' && m?._id ? String(m._id) : String(m))).filter(Boolean)
+                : [];
+              const iAmMember = memberIds.includes(myId);
+              if (iAmMember) {
+                const stubMembers = Array.isArray(data.members)
+                  ? data.members.map((m) =>
+                      typeof m === 'object' && m?._id
+                        ? { _id: String(m._id), role: 'MEMBER', joinedAt: Date.now() }
+                        : { _id: String(m), role: 'MEMBER', joinedAt: Date.now() },
+                    )
+                  : [];
+                const stubGroup: GroupConversation = {
+                  _id: String(data.roomId),
+                  name: (data.senderName || 'Nhóm').trim() || 'Nhóm',
+                  isGroup: true,
+                  members: stubMembers,
+                  createdBy: String(data.sender || ''),
+                  unreadCount: 0,
+                  lastMessage: contentDisplay,
+                  lastMessageAt: data.timestamp || Date.now(),
+                } as GroupConversation;
+                const next = [stubGroup, ...prev];
+                setTimeout(() => fetchAllData(), 200);
+                return next;
+              }
               fetchAllData();
               return prev;
             }
@@ -573,6 +601,23 @@ export function useHomePage() {
             newUsers.splice(index, 1);
             return [updatedUser, ...newUsers];
           });
+        }
+      },
+    );
+
+    socketRef.current.on(
+      'group_members_updated',
+      (payload: { roomId: string; members: { _id: string }[] }) => {
+        const myId = String(currentUser._id);
+        const nextMemberIds = Array.isArray(payload.members)
+          ? payload.members.map((m) => String((m as { _id: string })._id))
+          : [];
+        const stillInGroup = nextMemberIds.includes(myId);
+        if (!stillInGroup) {
+          setGroups((prev) => prev.filter((g) => String(g._id) !== String(payload.roomId)));
+          if (selectedChatRef.current && String(selectedChatRef.current._id) === String(payload.roomId)) {
+            setSelectedChat(null);
+          }
         }
       },
     );

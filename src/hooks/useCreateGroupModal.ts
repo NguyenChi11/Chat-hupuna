@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+//
 import type { User } from '@/types/User';
 import type { GroupConversation } from '@/types/Group';
 
@@ -147,10 +148,8 @@ export function useCreateGroupModal({
         if (mode === 'add' && onMembersAdded) {
           const addedUsersFullInfo = allUsers.filter((u) => newMembersOnly.includes(String(u._id)));
           onMembersAdded(addedUsersFullInfo);
-          // Với mode "add" không cần mở chat mới
           onGroupCreated();
         } else if (mode === 'create') {
-          // Khi tạo nhóm mới, backend trả về group => truyền cho callback
           const createdGroup = result.group as GroupConversation | undefined;
           onGroupCreated(createdGroup);
         }

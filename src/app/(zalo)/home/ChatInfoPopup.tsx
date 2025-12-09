@@ -22,6 +22,8 @@ import ConfirmGroupActionModal from '@/components/(chatPopup)/components/Confirm
 import { useChatContext } from '@/context/ChatContext';
 import ReminderList from '@/components/(chatPopup)/components/ReminderList';
 import PollList from '@/components/(chatPopup)/components/PollList';
+import io from 'socket.io-client';
+import { resolveSocketUrl } from '@/utils/utils';
 
 interface ChatInfoPopupProps {
   onClose: () => void;
@@ -35,7 +37,7 @@ interface ChatInfoPopupProps {
   reLoad?: () => void;
   onLeftGroup?: () => void;
   onRefresh?: () => void
-  sendNotifyMessage?: (text: string) => Promise<void> | void;
+  sendNotifyMessage?: (text: string, membersOverride?: string[]) => Promise<void> | void;
 }
 
 export default function ChatInfoPopup({
@@ -223,6 +225,23 @@ export default function ChatInfoPopup({
       const name = currentUser.name || 'Một thành viên';
       const text = `${name} đã rời nhóm`;
       await sendNotifyMessage?.(text);
+      try {
+        const roomIdStr = String((selectedChat as GroupConversation)._id);
+        const myIdStr = String(currentUser._id);
+        const nextMembers = (members || []).filter((m) => {
+          const id = String((m as MemberInfo)._id ?? (m as { id?: string }).id ?? '');
+          return id !== myIdStr;
+        });
+        const payloadMembers = nextMembers.map((m) => ({
+          _id: String((m as MemberInfo)._id ?? (m as { id?: string }).id ?? ''),
+          role: (m as MemberInfo).role,
+          name: (m as MemberInfo).name,
+          avatar: (m as MemberInfo).avatar,
+        }));
+        const sock = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
+        sock.emit('group_members_updated', { roomId: roomIdStr, members: payloadMembers, sender: myIdStr, senderName: currentUser.name });
+        setTimeout(() => sock.disconnect(), 500);
+      } catch {}
       reLoad?.();
       onLeftGroup?.();
       onClose();

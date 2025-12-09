@@ -44,7 +44,6 @@ import { useRouter } from 'next/navigation';
 import { get } from 'http';
 import { sendError } from 'next/dist/server/api-utils';
 import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
-import ICPin from '@/components/svg/ICPin';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -489,7 +488,7 @@ export default function ChatWindow({
 
         // Tạo nội dung thông báo dựa trên loại tin nhắn
         if (message.type === 'text') {
-          notificationText =  `${senderName} ${action} một tin nhắn văn bản.`;
+          notificationText = `${senderName} ${action} một tin nhắn văn bản.`;
         } else if (message.type === 'image') {
           notificationText = `${senderName} ${action} một hình ảnh.`;
         } else if (message.type === 'file') {
@@ -1477,7 +1476,7 @@ export default function ChatWindow({
   }, []);
 
   const handleShareToRooms = useCallback(
-    async (targetRoomIds: string[], message: Message, attachedText?: string) => {
+    async (targetRoomIds: string[], message: Message) => {
       try {
         // Tạo nội dung tin nhắn share
         let shareContent = '';
@@ -1545,24 +1544,6 @@ export default function ChatWindow({
               ...newMsg,
               _id: json._id,
             });
-            if (attachedText && attachedText.trim()) {
-              const textMsg: MessageCreate = {
-                roomId: targetRoomId,
-                sender: currentUser._id,
-                type: 'text',
-                content: attachedText,
-                timestamp: Date.now(),
-              };
-              const res2 = await fetch('/api/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'create', data: textMsg }),
-              });
-              const json2 = await res2.json();
-              if (json2.success && typeof json2._id === 'string') {
-                socketRef.current?.emit('send_message', { ...sockBase, ...textMsg, _id: json2._id });
-              }
-            }
           }
         }
       } catch (error) {

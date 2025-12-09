@@ -40,6 +40,45 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('group_members_updated', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('group_members_updated', {
+      roomId,
+      members: Array.isArray(data.members) ? data.members : [],
+      sender: data.sender,
+      senderName: data.senderName,
+      timestamp: Date.now(),
+    });
+
+    const sidebarData = {
+      roomId,
+      lastMessage: `${data.senderName || 'Ai đó'}: [Cập nhật thành viên]`,
+      type: 'notify',
+      timestamp: Date.now(),
+      isGroup: true,
+      members: Array.isArray(data.members) ? data.members : [],
+    };
+
+    const prevMembers = Array.isArray(data.prevMembers) ? data.prevMembers : [];
+    const nextMembers = Array.isArray(data.members) ? data.members : [];
+    const merged = [...prevMembers, ...nextMembers];
+    const recipients = new Set(
+      merged
+        .map((m) => (typeof m === 'object' && m?._id ? String(m._id) : String(m)))
+        .filter((id) => !!id),
+    );
+
+    recipients.forEach((id) => {
+      io.to(id).emit('update_sidebar', sidebarData);
+    });
+    if (data.sender) {
+      io.to(String(data.sender)).emit('update_sidebar', sidebarData);
+    }
+  });
+
+
+  
+
   socket.on('pin_message', (data) => {
     const roomId = String(data.roomId);
     io.in(roomId).emit('message_pinned', {
