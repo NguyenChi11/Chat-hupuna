@@ -43,6 +43,9 @@ export interface GroupConversation {
   isHidden?: boolean;
   isPinnedBy?: Record<string, boolean>;
   isHiddenBy?: Record<string, boolean>;
+
+  inviteCode?: string; // ✅ THÊM
+  description?: string; // ✅ THÊM (optional)
 }
 
 export interface GroupConversationCreate {

@@ -141,15 +141,18 @@ export default function MessageList({
             // Notify message
             if (msg.type === 'notify') {
               const related = msg.replyToMessageId ? messages.find((m) => m._id === msg.replyToMessageId) : null;
-              let display = msg.content || '';
-              if (isMe) {
+              const rawDisplay = msg.content || '';
+              const rawLower = rawDisplay.trim().toLowerCase();
+              const isJoinByLink = rawLower.includes('tham gia nhóm');
+              let display = rawDisplay;
+              if (!isJoinByLink && isMe) {
                 const myName = currentUser.name || '';
                 const trimmedLower = display.trim().toLowerCase();
                 if (!trimmedLower.startsWith('bạn') && myName && display.startsWith(myName)) {
                   display = 'Bạn' + display.slice(myName.length);
                 }
               }
-              const contentLower = (display || '').toLowerCase();
+              const contentLower = display.toLowerCase();
               const isCreate = contentLower.includes('đã tạo lịch hẹn');
               const isDue = contentLower.includes('đến giờ lịch hẹn');
               const isEdit = contentLower.includes('đã chỉnh sửa') || contentLower.includes('chỉnh sửa');
@@ -184,6 +187,23 @@ export default function MessageList({
                                 : isCreateGroup
                                   ? <HiUserGroup className="w-4 h-4 text-purple-600" />
                                   : null;
+              const nameLabel = senderInfo.name || '';
+              // Hiển thị rõ tên người join bằng link (clickable) — luôn ưu tiên tên thật
+              let displayNode: React.ReactNode = <p className="text-xs text-gray-500 truncate">{display}</p>;
+              if (isJoinByLink) {
+                const actualName = senderInfo._id === currentUser._id ? currentUser.name || nameLabel : nameLabel;
+                const needle = 'đã tham gia nhóm';
+                const idx = rawLower.indexOf(needle);
+                const tail = idx > -1 ? rawDisplay.slice(idx) : 'đã tham gia nhóm qua link mời';
+                displayNode = (
+                  <span className="text-xs text-gray-500 truncate">
+                    <a href={`/profile/${senderInfo._id}`} className="text-blue-600 hover:underline">
+                      {actualName || 'Một thành viên'}
+                    </a>
+                    {` ${tail}`}
+                  </span>
+                );
+              }
               const pillNode = (
                 <div key={`pill-${msg._id}`} id={`msg-${msg._id}`} className="flex justify-center my-3">
                   <div
@@ -191,7 +211,7 @@ export default function MessageList({
                   >
                     <div className="flex items-center gap-2">
                       {icon}
-                      <p className="text-xs text-gray-500 truncate">{display}</p>
+                      {displayNode}
                     </div>
                   </div>
                 </div>

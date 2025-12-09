@@ -24,6 +24,7 @@ import ReminderList from '@/components/(chatPopup)/components/ReminderList';
 import PollList from '@/components/(chatPopup)/components/PollList';
 import io from 'socket.io-client';
 import { resolveSocketUrl } from '@/utils/utils';
+import GroupInviteLinkSection from '@/components/(chatPopup)/components/GroupInviteLinkSection';
 
 interface ChatInfoPopupProps {
   onClose: () => void;
@@ -270,6 +271,53 @@ export default function ChatInfoPopup({
     }
   };
 
+  const handleGenerateInviteLink = useCallback(async (): Promise<string> => {
+  if (!isGroup) throw new Error('Not a group');
+  
+  const groupId = (selectedChat as GroupConversation)._id;
+  
+  const res = await fetch('/api/groups/invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'generate',
+      groupId,
+    }),
+  });
+
+  const data = await res.json();
+  
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Tạo link thất bại');
+  }
+
+  return data.inviteCode;
+}, [isGroup, selectedChat]);
+
+const handleRegenerateInviteLink = useCallback(async (): Promise<string> => {
+  if (!isGroup) throw new Error('Not a group');
+  
+  const groupId = (selectedChat as GroupConversation)._id;
+  
+  const res = await fetch('/api/groups/invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'regenerate',
+      groupId,
+    }),
+  });
+
+  const data = await res.json();
+  
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Tạo link mới thất bại');
+  }
+
+  reLoad?.();
+  return data.inviteCode;
+}, [isGroup, selectedChat, reLoad]);
+
   return (
     <>
     {isReminderOpen ? (
@@ -376,7 +424,14 @@ export default function ChatInfoPopup({
               onJumpToMessage={onJumpToMessage}
               closeMenu={closeMenu}
             />
-
+          {isGroup && (
+          <GroupInviteLinkSection
+            groupId={(selectedChat as GroupConversation)._id}
+            inviteCode={(selectedChat as GroupConversation).inviteCode}
+            onGenerateLink={handleGenerateInviteLink}
+            onRegenerateLink={handleRegenerateInviteLink}
+          />
+        )}  
             {isGroup && (
               <GroupDangerZone
                 isGroup={isGroup}
@@ -432,6 +487,7 @@ export default function ChatInfoPopup({
         roomId={roomId}
         onClose={() => setPreviewMedia(null)}
       />
+       
 
       {/* Loading overlay */}
       {isGroupAvatarUploading && (
