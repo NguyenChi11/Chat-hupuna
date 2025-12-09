@@ -1,7 +1,10 @@
 'use client';
 
+import { getProxyUrl } from '@/utils/utils';
+import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import { FaUserSecret } from 'react-icons/fa';
+import { HiX } from 'react-icons/hi';
 import { PiUserCircleGearDuotone } from 'react-icons/pi';
 
 // ✅ ĐỊNH NGHĨA INTERFACE RÕ RÀNG
@@ -20,12 +23,7 @@ interface JoinGroupModalProps {
   onJoin: () => Promise<void>;
 }
 
-export default function JoinGroupModal({
-  isOpen,
-  inviteCode,
-  onClose,
-  onJoin,
-}: JoinGroupModalProps) {
+export default function JoinGroupModal({ isOpen, inviteCode, onClose, onJoin }: JoinGroupModalProps) {
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
@@ -37,7 +35,7 @@ export default function JoinGroupModal({
     const fetchGroupInfo = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const res = await fetch(`/api/groups/invite/${inviteCode}`);
         const data = await res.json();
@@ -79,11 +77,8 @@ export default function JoinGroupModal({
         {/* Header */}
         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-6 py-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Tham gia nhóm</h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-full transition"
-          >
-           X
+          <button onClick={onClose} className="p-1 hover:cursor-pointer hover:bg-white/20 rounded-full transition">
+            <HiX className="w-5 h-5" />
           </button>
         </div>
 
@@ -98,9 +93,7 @@ export default function JoinGroupModal({
           ) : error ? (
             // Error state
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                X
-              </div>
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">X</div>
               <p className="text-red-600 mb-4">{error}</p>
               <button
                 onClick={onClose}
@@ -113,28 +106,26 @@ export default function JoinGroupModal({
             // Success state
             <div className="space-y-6">
               {/* Group Info */}
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center ">
                 {groupInfo.avatar ? (
-                  <img
-                    src={groupInfo.avatar}
-                    alt={groupInfo.name}
-                    className="w-24 h-24 rounded-full object-cover mb-4"
+                  <Image
+                    src={getProxyUrl(groupInfo.avatar)}
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="w-20 h-20 object-cover rounded-full"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mb-4">
-                    <FaUserSecret className="w-12 h-12 text-white" />
+                  <div className="w-[1.25rem] h-[1.25rem] bg-gradient-to-br rounded-full from-indigo-500 to-purple-600 text-white font-bold text-sm flex items-center justify-center">
+                    {groupInfo.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                
-                <h4 className="text-xl font-bold text-gray-800 mb-2">
-                  {groupInfo.name}
-                </h4>
-                
+
+                <h4 className="text-xl font-bold text-gray-800 mb-2">{groupInfo.name}</h4>
+
                 <div className="flex items-center gap-2 text-gray-600">
                   <PiUserCircleGearDuotone className="w-4 h-4" />
-                  <span className="text-sm">
-                    {groupInfo.members?.length || 0} thành viên
-                  </span>
+                  <span className="text-sm">{groupInfo.members?.length || 0} thành viên</span>
                 </div>
               </div>
 
@@ -149,7 +140,7 @@ export default function JoinGroupModal({
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="flex-1 px-4 hover:cursor-pointer py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                   disabled={isJoining}
                 >
                   Hủy
@@ -157,7 +148,7 @@ export default function JoinGroupModal({
                 <button
                   onClick={handleJoin}
                   disabled={isJoining}
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 hover:cursor-pointer bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isJoining ? 'Đang tham gia...' : 'Tham gia nhóm'}
                 </button>

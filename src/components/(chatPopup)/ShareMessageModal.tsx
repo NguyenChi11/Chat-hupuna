@@ -152,7 +152,7 @@ export default function ShareMessageModal({
         <div className="relative p-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-2xl">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-all duration-200 hover:rotate-90"
+            className="absolute top-4 right-4 hover:cursor-pointer p-2 hover:bg-white/20 rounded-full transition-all duration-200 hover:rotate-90"
           >
             <IoClose className="w-6 h-6" />
           </button>
@@ -307,7 +307,7 @@ export default function ShareMessageModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 disabled:opacity-50"
+              className="flex-1 px-4 py-2  hover:cursor-pointer border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 disabled:opacity-50"
               disabled={isSharing}
             >
               Hủy
@@ -315,7 +315,7 @@ export default function ShareMessageModal({
             <button
               onClick={handleShare}
               disabled={selectedTargets.size === 0 || isSharing}
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 hover:cursor-pointer bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center justify-center gap-2"
             >
               {isSharing ? (
                 <>
