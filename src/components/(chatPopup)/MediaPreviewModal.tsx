@@ -180,7 +180,7 @@ export default function MediaPreviewModal({ media, chatName, isGroup, onClose, r
               {groups.map((g, gi) => (
                 <div key={`${g.dateLabel}-${gi}`} className="flex items-start gap-2">
                   {g.dateLabel && (
-                    <div className="text-[10px] text-white/70 font-semibold mt-1 mr-1 min-w-max">{g.dateLabel}</div>
+                    <div className="text-[0,625rem] text-white/70 font-semibold mt-1 mr-1 min-w-max">{g.dateLabel}</div>
                   )}
                   <div className="flex items-center gap-2">
                     {g.items.map((it) => (

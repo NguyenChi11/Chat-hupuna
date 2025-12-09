@@ -281,7 +281,7 @@ export default function GroupMembersModal({
     <div className="fixed inset-0 z-50 flex items-center  justify-center bg-black/40 backdrop-blur-sm px-2 sm:px-4 py-4 sm:py-6">
       <div className="bg-white w-full h-full sm:h-auto rounded-t-2xl rounded-b-2xl max-h-[90vh] sm:max-w-2xl rounded-none sm:rounded-2xl shadow-none sm:shadow-xl border border-gray-200 flex flex-col overflow-hidden">
         {/* HEADER */}
-        <div className="flex-none px-4 py-3 border-b  bg-[#f3f6fb] flex items-center justify-between gap-3">
+        <div className="flex-none px-4 py-3   bg-[#f3f6fb] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
               <ICPeopleGroup className="w-5 h-5" stroke="#ffffff" />

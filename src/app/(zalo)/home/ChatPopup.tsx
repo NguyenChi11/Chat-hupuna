@@ -1484,7 +1484,7 @@ const handleToggleReaction = useCallback(
     <ChatProvider value={chatContextValue}>
       <main className="flex h-full bg-gray-700 sm:overflow-y-hidden overflow-y-auto no-scrollbar">
         <div
-          className={`flex flex-col h-full relative z-10 bg-gray-200 transition-all duration-300 ${showPopup ? 'sm:w-[calc(100%-21.875rem)]' : 'w-full'} border-r border-gray-200`}
+          className={`flex flex-col h-full relative z-10 bg-gray-100 transition-all duration-300 ${showPopup ? 'sm:w-[calc(100%-21.875rem)]' : 'w-full'} border-r border-gray-200`}
         >
           <ChatHeader
             chatName={chatName}
@@ -1507,7 +1507,7 @@ const handleToggleReaction = useCallback(
             presenceText={!isGroup ? presenceInfo.text : undefined}
             presenceOnline={!isGroup ? presenceInfo.online : undefined}
           />
-          <PinnedMessagesSection
+             <PinnedMessagesSection
             allPinnedMessages={allPinnedMessages}
             showPinnedList={showPinnedList}
             onOpenPinnedList={() => setShowPinnedList(true)}
@@ -1516,6 +1516,7 @@ const handleToggleReaction = useCallback(
             getSenderName={getSenderName}
             onUnpinMessage={handlePinMessage}
           />
+         
           {/* Messages Area */}
           <div
             ref={messagesContainerRef}
