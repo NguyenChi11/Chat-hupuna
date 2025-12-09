@@ -499,6 +499,7 @@ export function useHomePage() {
         senderName?: string;
         isGroup: boolean;
         members?: (string | { _id: string })[];
+        groupName?: string;
       }) => {
         const isMyMsg = data.sender === currentUser._id;
         const activeChatId = selectedChatRef.current?._id || null;
@@ -553,7 +554,7 @@ export function useHomePage() {
                   : [];
                 const stubGroup: GroupConversation = {
                   _id: String(data.roomId),
-                  name: (data.senderName || 'Nhóm').trim() || 'Nhóm',
+                  name: (data.groupName || data.senderName || 'Nhóm').trim() || 'Nhóm',
                   isGroup: true,
                   members: stubMembers,
                   createdBy: String(data.sender || ''),

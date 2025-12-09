@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-//
+import io from 'socket.io-client';
+import { resolveSocketUrl } from '@/utils/utils';
 import type { User } from '@/types/User';
 import type { GroupConversation } from '@/types/Group';
 
@@ -152,6 +153,25 @@ export function useCreateGroupModal({
         } else if (mode === 'create') {
           const createdGroup = result.group as GroupConversation | undefined;
           onGroupCreated(createdGroup);
+
+          // 🔥 Emit socket để tất cả thành viên thấy nhóm mới ngay trên sidebar
+          try {
+            const sock = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
+            const roomIdStr = String(createdGroup?._id || result?.groupId || '');
+            const membersRaw = createdGroup?.members || selectedMembers;
+            const membersPayload = Array.isArray(membersRaw)
+              ? membersRaw.map((m) => (typeof m === 'object' && m?._id ? { _id: String(m._id) } : String(m)))
+              : [];
+
+            sock.emit('group_created', {
+              roomId: roomIdStr,
+              members: membersPayload,
+              sender: currentUser._id,
+              senderName: currentUser.name,
+              groupName: createdGroup?.name || groupName,
+            });
+            setTimeout(() => sock.disconnect(), 500);
+          } catch {}
         }
 
         onClose();

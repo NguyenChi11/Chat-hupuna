@@ -42,13 +42,17 @@ io.on('connection', (socket) => {
 
   socket.on('group_members_updated', (data) => {
     const roomId = String(data.roomId);
-    io.in(roomId).emit('group_members_updated', {
+    const members = Array.isArray(data.members) ? data.members : [];
+    const payload = {
       roomId,
-      members: Array.isArray(data.members) ? data.members : [],
+      members,
       sender: data.sender,
       senderName: data.senderName,
       timestamp: Date.now(),
-    });
+    };
+
+    // Broadcast vào room (cho những client đang mở phòng)
+    io.in(roomId).emit('group_members_updated', payload);
 
     const sidebarData = {
       roomId,
@@ -56,11 +60,12 @@ io.on('connection', (socket) => {
       type: 'notify',
       timestamp: Date.now(),
       isGroup: true,
-      members: Array.isArray(data.members) ? data.members : [],
+      members,
+      groupName: data.groupName,
     };
 
     const prevMembers = Array.isArray(data.prevMembers) ? data.prevMembers : [];
-    const nextMembers = Array.isArray(data.members) ? data.members : [];
+    const nextMembers = members;
     const merged = [...prevMembers, ...nextMembers];
     const recipients = new Set(
       merged
@@ -68,6 +73,38 @@ io.on('connection', (socket) => {
         .filter((id) => !!id),
     );
 
+    recipients.forEach((id) => {
+      io.to(id).emit('update_sidebar', sidebarData);
+      io.to(id).emit('group_members_updated', payload);
+    });
+    if (data.sender) {
+      io.to(String(data.sender)).emit('update_sidebar', sidebarData);
+    }
+  });
+
+  socket.on('group_created', (data) => {
+    const roomId = String(data.roomId);
+    const members = Array.isArray(data.members) ? data.members : [];
+
+    const sidebarData = {
+      roomId,
+      lastMessage: `${data.senderName || 'Ai đó'}: [Tạo nhóm]`,
+      type: 'notify',
+      timestamp: Date.now(),
+      isGroup: true,
+      members,
+      sender: data.sender,
+      senderName: data.senderName,
+      groupName: data.groupName,
+    };
+
+    const recipients = new Set(
+      members
+        .map((m) => (typeof m === 'object' && m?._id ? String(m._id) : String(m)))
+        .filter(Boolean),
+    );
+
+    // Gửi cho tất cả thành viên (bao gồm người tạo)
     recipients.forEach((id) => {
       io.to(id).emit('update_sidebar', sidebarData);
     });

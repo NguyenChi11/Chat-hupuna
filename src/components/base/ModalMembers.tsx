@@ -8,11 +8,12 @@ import { HiX, HiSearch, HiShieldCheck, HiCheck, HiChevronDown } from 'react-icon
 import CreateGroupModal from '../../app/(zalo)/home/CreateGroupModal';
 import { User } from '../../types/User';
 import { MemberInfo, GroupRole } from '../../types/Group';
-import { getProxyUrl } from '../../utils/utils';
+import { getProxyUrl, resolveSocketUrl } from '../../utils/utils';
 import { useToast } from './toast';
 import { confirmAlert } from './alert';
 import { HiUserMinus, HiUserPlus } from 'react-icons/hi2';
 import ICPeopleGroup from '@/components/svg/ICPeopleGroup';
+import io from 'socket.io-client';
 
 interface Props {
   isOpen: boolean;
@@ -186,38 +187,9 @@ export default function GroupMembersModal({
     const targetMember = localMembers.find((m) => compareIds(m._id || m.id, targetUserId));
     const targetName = targetMember ? targetMember.name : 'Thành viên';
 
-    // type GroupActionPayload =
-    //   | {
-    //       conversationId: string;
-    //       targetUserId: string;
-    //       action: 'kickMember';
-    //       _id?: string;
-    //     }
-    //   | {
-    //       conversationId: string;
-    //       targetUserId: string;
-    //       action: 'changeRole';
-    //       data: { role: 'ADMIN' | 'MEMBER' };
-    //       _id: string;
-    //     };
-
-    // const payload: GroupActionPayload =
-    //   action === 'kick'
-    //     ? {
-    //         conversationId,
-    //         targetUserId,
-    //         action: 'kickMember',
-    //         _id: myId,
-    //       }
-    //     : {
-    //         conversationId,
-    //         targetUserId,
-    //         action: 'changeRole',
-    //         data: { role: action === 'promote' ? 'ADMIN' : 'MEMBER' },
-    //         _id: myId,
-    //       };
 
     try {
+      const prevMembersSnapshot = [...localMembers];
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,6 +210,31 @@ export default function GroupMembersModal({
         if (action === 'kick') {
           setLocalMembers((prev) => prev.filter((m) => !compareIds(m._id || m.id, targetUserId)));
           if (onMemberRemoved) onMemberRemoved(targetUserId, targetName);
+
+          // 🔥 Báo realtime để cập nhật sidebar & đóng phòng cho người bị kick
+          try {
+            const roomIdStr = String(conversationId || '');
+            const nextMembers = prevMembersSnapshot.filter((m) => !compareIds(m._id || m.id, targetUserId));
+            const payloadMembers = nextMembers.map((m) => ({
+              _id: String(m._id || m.id || ''),
+              role: m.role,
+              name: m.name,
+              avatar: m.avatar,
+            }));
+            const prevMembers = prevMembersSnapshot.map((m) => ({
+              _id: String(m._id || m.id || ''),
+            }));
+            const sock = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
+            sock.emit('group_members_updated', {
+              roomId: roomIdStr,
+              members: payloadMembers,
+              prevMembers,
+              sender: myId,
+              senderName: currentUser.name,
+              groupName,
+            });
+            setTimeout(() => sock.disconnect(), 500);
+          } catch {}
         } else if (action === 'promote' || action === 'demote') {
           const newRole: GroupRole = action === 'promote' ? 'ADMIN' : 'MEMBER';
           setLocalMembers((prev) =>
