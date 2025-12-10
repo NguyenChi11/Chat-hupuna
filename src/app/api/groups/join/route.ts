@@ -3,12 +3,13 @@ import { getAllRows, updateByField, addRow } from '@/lib/mongoDBCRUD';
 import { GroupConversation, GroupMemberSchema, GroupRole } from '@/types/Group';
 import { User, USERS_COLLECTION_NAME } from '@/types/User';
 import { Message, MESSAGES_COLLECTION_NAME } from '@/types/Message';
+import { ObjectId } from 'mongodb';
 
 const GROUPS_COLLECTION = 'Groups';
 
 export async function POST(req: NextRequest) {
   try {
-    const { inviteCode, userId } = await req.json();
+    const { inviteCode, userId, userName: userNameClient } = await req.json();
 
     if (!inviteCode || !userId) {
       return NextResponse.json({ 
@@ -50,14 +51,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ✅ 3. Get user info để lấy tên
+    // ✅ 3. Get user info để lấy tên (thử nhiều cách, có cả ObjectId và số)
+    const orFilters: Array<Record<string, unknown>> = [{ username: userId }, { id: userId }, { _id: userId }];
+    if (typeof userId === 'string' && ObjectId.isValid(userId)) {
+      orFilters.push({ _id: new ObjectId(userId) });
+    }
+    const asNum = Number(userId);
+    if (!Number.isNaN(asNum)) {
+      orFilters.push({ _id: asNum });
+      orFilters.push({ id: asNum });
+    }
     const userResult = await getAllRows<User>(USERS_COLLECTION_NAME, {
-      filters: { _id: userId },
+      filters: { $or: orFilters },
       limit: 1,
     });
 
     const user = userResult.data?.[0];
-    const userName = user?.name || 'Một thành viên';
+    const userName = (user?.name && String(user.name).trim())
+      || (user?.username && String(user.username).trim())
+      || (typeof userNameClient === 'string' && userNameClient.trim())
+      || String(userId);
 
     // ✅ 4. Add member to group
     const newMember: GroupMemberSchema = {

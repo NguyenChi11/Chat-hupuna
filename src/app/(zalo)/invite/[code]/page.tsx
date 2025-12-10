@@ -44,6 +44,7 @@ export default function InvitePage() {
       body: JSON.stringify({
         inviteCode,
         userId: currentUser._id,
+        userName: currentUser.name,
       }),
     });
 
