@@ -25,6 +25,7 @@ import PollList from '@/components/(chatPopup)/components/PollList';
 import io from 'socket.io-client';
 import { resolveSocketUrl } from '@/utils/utils';
 import GroupInviteLinkSection from '@/components/(chatPopup)/components/GroupInviteLinkSection';
+import FolderSection from '@/components/(chatPopup)/components/FolderSection';
 
 interface ChatInfoPopupProps {
   onClose: () => void;
@@ -37,7 +38,7 @@ interface ChatInfoPopupProps {
   onChatAction: (roomId: string, actionType: 'pin' | 'hide', isChecked: boolean, isGroup: boolean) => void;
   reLoad?: () => void;
   onLeftGroup?: () => void;
-  onRefresh?: () => void
+  onRefresh?: () => void;
   sendNotifyMessage?: (text: string, membersOverride?: string[]) => Promise<void> | void;
 }
 
@@ -53,7 +54,7 @@ export default function ChatInfoPopup({
   reLoad,
   onLeftGroup,
   onRefresh,
-  sendNotifyMessage
+  sendNotifyMessage,
 }: ChatInfoPopupProps) {
   const { messages, currentUser, allUsers, chatName, isGroup, selectedChat } = useChatContext();
   const [openMember, setOpenMember] = useState(false);
@@ -240,7 +241,12 @@ export default function ChatInfoPopup({
           avatar: (m as MemberInfo).avatar,
         }));
         const sock = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
-        sock.emit('group_members_updated', { roomId: roomIdStr, members: payloadMembers, sender: myIdStr, senderName: currentUser.name });
+        sock.emit('group_members_updated', {
+          roomId: roomIdStr,
+          members: payloadMembers,
+          sender: myIdStr,
+          senderName: currentUser.name,
+        });
         setTimeout(() => sock.disconnect(), 500);
       } catch {}
       reLoad?.();
@@ -272,179 +278,187 @@ export default function ChatInfoPopup({
   };
 
   const handleGenerateInviteLink = useCallback(async (): Promise<string> => {
-  if (!isGroup) throw new Error('Not a group');
-  
-  const groupId = (selectedChat as GroupConversation)._id;
-  
-  const res = await fetch('/api/groups/invite', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'generate',
-      groupId,
-    }),
-  });
+    if (!isGroup) throw new Error('Not a group');
 
-  const data = await res.json();
-  
-  if (!res.ok || !data.success) {
-    throw new Error(data.message || 'Tạo link thất bại');
-  }
+    const groupId = (selectedChat as GroupConversation)._id;
 
-  return data.inviteCode;
-}, [isGroup, selectedChat]);
+    const res = await fetch('/api/groups/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'generate',
+        groupId,
+      }),
+    });
 
-const handleRegenerateInviteLink = useCallback(async (): Promise<string> => {
-  if (!isGroup) throw new Error('Not a group');
-  
-  const groupId = (selectedChat as GroupConversation)._id;
-  
-  const res = await fetch('/api/groups/invite', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'regenerate',
-      groupId,
-    }),
-  });
+    const data = await res.json();
 
-  const data = await res.json();
-  
-  if (!res.ok || !data.success) {
-    throw new Error(data.message || 'Tạo link mới thất bại');
-  }
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Tạo link thất bại');
+    }
 
-  reLoad?.();
-  return data.inviteCode;
-}, [isGroup, selectedChat, reLoad]);
+    return data.inviteCode;
+  }, [isGroup, selectedChat]);
+
+  const handleRegenerateInviteLink = useCallback(async (): Promise<string> => {
+    if (!isGroup) throw new Error('Not a group');
+
+    const groupId = (selectedChat as GroupConversation)._id;
+
+    const res = await fetch('/api/groups/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'regenerate',
+        groupId,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Tạo link mới thất bại');
+    }
+
+    reLoad?.();
+    return data.inviteCode;
+  }, [isGroup, selectedChat, reLoad]);
 
   return (
     <>
-    {isReminderOpen ? (
-      <ReminderList onClose={() => setIsReminderOpen(false)} />
-    ) : isPollOpen ? (
-      <PollList onClose={() => setIsPollOpen(false)} onRefresh={onRefresh}/>
-    ) :
-      <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
-        {/* Header cố định */}
-        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between shadow-lg">
-          <h2 className="text-lg font-semibold">Thông tin trò chuyện</h2>
-          <button
-            onClick={onClose}
-            className="p-2 cursor-pointer rounded-full hover:bg-white/20 transition-all duration-200"
-          >
-            <HiX className="w-5 h-5" />
-          </button>
-        </div>
+      {isReminderOpen ? (
+        <ReminderList onClose={() => setIsReminderOpen(false)} />
+      ) : isPollOpen ? (
+        <PollList onClose={() => setIsPollOpen(false)} onRefresh={onRefresh} />
+      ) : (
+        <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+          {/* Header cố định */}
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between shadow-lg">
+            <h2 className="text-lg font-semibold">Thông tin trò chuyện</h2>
+            <button
+              onClick={onClose}
+              className="p-2 cursor-pointer rounded-full hover:bg-white/20 transition-all duration-200"
+            >
+              <HiX className="w-5 h-5" />
+            </button>
+          </div>
 
-        {/* Nội dung cuộn */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
-          <div className="space-y-5 p-5 pb-24">
-            {/* Avatar + Tên */}
-            {isGroup ? (
-              <GroupAvatarSection
-                isGroup={isGroup}
-                groupAvatar={groupAvatar}
-                groupName={groupName}
-                chatName={chatName}
-                isGroupAvatarUploading={isGroupAvatarUploading}
-                avatarInputRef={avatarInputRef}
-                onChangeGroupAvatar={handleChangeGroupAvatar}
-                onRenameGroup={handleRenameGroup}
+          {/* Nội dung cuộn */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
+            <div className="space-y-5 p-5 pb-24">
+              {/* Avatar + Tên */}
+              {isGroup ? (
+                <GroupAvatarSection
+                  isGroup={isGroup}
+                  groupAvatar={groupAvatar}
+                  groupName={groupName}
+                  chatName={chatName}
+                  isGroupAvatarUploading={isGroupAvatarUploading}
+                  avatarInputRef={avatarInputRef}
+                  onChangeGroupAvatar={handleChangeGroupAvatar}
+                  onRenameGroup={handleRenameGroup}
+                />
+              ) : (
+                <UserAvatarSection
+                  userName={(selectedChat as User).name || (selectedChat as User).username || 'Người dùng'}
+                  userAvatar={(selectedChat as User).avatar}
+                />
+              )}
+
+              <ChatQuickActions
+                localIsPinned={localIsPinned}
+                localIsHidden={localIsHidden}
+                onPinToggle={() => handleChatActionClick('pin')}
+                onHideToggle={() => handleChatActionClick('hide')}
+                onCreateGroup={() => {
+                  onShowCreateGroup();
+                  onClose();
+                }}
               />
-            ) : (
-              <UserAvatarSection
-                userName={(selectedChat as User).name || (selectedChat as User).username || 'Người dùng'}
-                userAvatar={(selectedChat as User).avatar}
+
+              {isGroup && (
+                <GroupMembersSection
+                  isGroup={isGroup}
+                  groupName={groupName}
+                  membersCount={(selectedChat as GroupConversation).members.length}
+                  onOpenMembers={() => setOpenMember(true)}
+                />
+              )}
+
+              <ReminderSection onOpen={() => setIsReminderOpen(true)} />
+              {isGroup && <PollSection onOpen={() => setIsPollOpen(true)} />}
+
+              <MediaSection
+                isOpen={openItems['Ảnh/Video']}
+                onToggle={() => toggleItem('Ảnh/Video')}
+                mediaList={mediaList}
+                groups={mediaGroups}
+                totalCount={mediaTotal}
+                isExpanded={isMediaExpanded}
+                onToggleExpanded={handleToggleMediaExpanded}
+                setPreviewMedia={setPreviewMedia}
+                activeMenuId={activeMenuId}
+                setActiveMenuId={setActiveMenuId}
+                onJumpToMessage={onJumpToMessage}
+                closeMenu={closeMenu}
               />
-            )}
 
-            <ChatQuickActions
-              localIsPinned={localIsPinned}
-              localIsHidden={localIsHidden}
-              onPinToggle={() => handleChatActionClick('pin')}
-              onHideToggle={() => handleChatActionClick('hide')}
-              onCreateGroup={() => {
-                onShowCreateGroup();
-                onClose();
-              }}
-            />
-
-            {isGroup && (
-              <GroupMembersSection
-                isGroup={isGroup}
-                groupName={groupName}
-                membersCount={(selectedChat as GroupConversation).members.length}
-                onOpenMembers={() => setOpenMember(true)}
+              <FileSection
+                isOpen={openItems['File']}
+                onToggle={() => toggleItem('File')}
+                fileList={fileList}
+                groups={fileGroups}
+                totalCount={fileTotal}
+                isExpanded={isFileExpanded}
+                onToggleExpanded={handleToggleFileExpanded}
+                activeMenuId={activeMenuId}
+                setActiveMenuId={setActiveMenuId}
+                onJumpToMessage={onJumpToMessage}
+                closeMenu={closeMenu}
               />
-            )}
 
-            <ReminderSection onOpen={() => setIsReminderOpen(true)} />
-            {isGroup && <PollSection onOpen={() => setIsPollOpen(true)} />}
-
-            <MediaSection
-              isOpen={openItems['Ảnh/Video']}
-              onToggle={() => toggleItem('Ảnh/Video')}
-              mediaList={mediaList}
-              groups={mediaGroups}
-              totalCount={mediaTotal}
-              isExpanded={isMediaExpanded}
-              onToggleExpanded={handleToggleMediaExpanded}
-              setPreviewMedia={setPreviewMedia}
-              activeMenuId={activeMenuId}
-              setActiveMenuId={setActiveMenuId}
-              onJumpToMessage={onJumpToMessage}
-              closeMenu={closeMenu}
-            />
-
-            <FileSection
-              isOpen={openItems['File']}
-              onToggle={() => toggleItem('File')}
-              fileList={fileList}
-              groups={fileGroups}
-              totalCount={fileTotal}
-              isExpanded={isFileExpanded}
-              onToggleExpanded={handleToggleFileExpanded}
-              activeMenuId={activeMenuId}
-              setActiveMenuId={setActiveMenuId}
-              onJumpToMessage={onJumpToMessage}
-              closeMenu={closeMenu}
-            />
-
-            <LinkSection
-              isOpen={openItems['Link']}
-              onToggle={() => toggleItem('Link')}
-              linkList={linkList}
-              groups={linkGroups}
-              totalCount={linkTotal}
-              isExpanded={isLinkExpanded}
-              onToggleExpanded={handleToggleLinkExpanded}
-              activeMenuId={activeMenuId}
-              setActiveMenuId={setActiveMenuId}
-              onJumpToMessage={onJumpToMessage}
-              closeMenu={closeMenu}
-            />
-          {isGroup && (
-          <GroupInviteLinkSection
-            groupId={(selectedChat as GroupConversation)._id}
-            inviteCode={(selectedChat as GroupConversation).inviteCode}
-            onGenerateLink={handleGenerateInviteLink}
-            onRegenerateLink={handleRegenerateInviteLink}
-          />
-        )}  
-            {isGroup && (
-              <GroupDangerZone
-                isGroup={isGroup}
-                canLeaveGroup={canLeaveGroup}
-                canDisbandGroup={canDisbandGroup}
-                onLeaveClick={() => setConfirmAction('leave')}
-                onDisbandClick={() => setConfirmAction('disband')}
+              <LinkSection
+                isOpen={openItems['Link']}
+                onToggle={() => toggleItem('Link')}
+                linkList={linkList}
+                groups={linkGroups}
+                totalCount={linkTotal}
+                isExpanded={isLinkExpanded}
+                onToggleExpanded={handleToggleLinkExpanded}
+                activeMenuId={activeMenuId}
+                setActiveMenuId={setActiveMenuId}
+                onJumpToMessage={onJumpToMessage}
+                closeMenu={closeMenu}
               />
-            )}
+              <FolderSection
+                isOpen={openItems['Folder']}
+                onToggle={() => toggleItem('Folder')}
+                roomId={roomId}
+                activeMenuId={activeMenuId}
+                setActiveMenuId={setActiveMenuId}
+                onJumpToMessage={onJumpToMessage}
+              />
+              {isGroup && (
+                <GroupInviteLinkSection
+                  groupId={(selectedChat as GroupConversation)._id}
+                  inviteCode={(selectedChat as GroupConversation).inviteCode}
+                  onGenerateLink={handleGenerateInviteLink}
+                  onRegenerateLink={handleRegenerateInviteLink}
+                />
+              )}
+              {isGroup && (
+                <GroupDangerZone
+                  isGroup={isGroup}
+                  canLeaveGroup={canLeaveGroup}
+                  canDisbandGroup={canDisbandGroup}
+                  onLeaveClick={() => setConfirmAction('leave')}
+                  onDisbandClick={() => setConfirmAction('disband')}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      }
+      )}
       {/* Modals */}
       {openMember && isGroup && (
         <ModalMembers
@@ -487,7 +501,6 @@ const handleRegenerateInviteLink = useCallback(async (): Promise<string> => {
         roomId={roomId}
         onClose={() => setPreviewMedia(null)}
       />
-       
 
       {/* Loading overlay */}
       {isGroupAvatarUploading && (

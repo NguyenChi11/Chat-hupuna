@@ -3,7 +3,7 @@ import { HiClock } from 'react-icons/hi';
 interface ReminderSectionProps {
   onOpen: () => void;
 }
-export default function ReminderSection({onOpen} :ReminderSectionProps) {
+export default function ReminderSection({ onOpen }: ReminderSectionProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <button
@@ -26,13 +26,16 @@ export default function ReminderSection({onOpen} :ReminderSectionProps) {
 
         {/* Mũi tên chỉ thị */}
         <div className="ml-auto text-gray-400 group-hover:text-amber-600 transition-colors">
-          <svg className={`w-5 h-5 transition-transform duration-200 `} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className={`w-5 h-5 transition-transform duration-200 `}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
       </button>
     </div>
-    
   );
-    
 }

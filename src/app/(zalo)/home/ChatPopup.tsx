@@ -1488,8 +1488,7 @@ export default function ChatWindow({
         const safeGroups = Array.isArray(groups) ? groups : [];
         // Gửi tin nhắn đến từng room
         for (const targetRoomId of targetRoomIds) {
-          const isGroupChat = safeGroups.some(g => String(g._id) === String(targetRoomId));
-         
+          const isGroupChat = safeGroups.some((g) => String(g._id) === String(targetRoomId));
 
           const newMsg: MessageCreate = {
             roomId: targetRoomId,
@@ -1528,7 +1527,7 @@ export default function ChatWindow({
                   senderName: currentUser.name,
                   isGroup: true,
                   receiver: null,
-                   members: safeGroups.find(g => String(g._id) === String(targetRoomId))?.members || [],
+                  members: safeGroups.find((g) => String(g._id) === String(targetRoomId))?.members || [],
                 }
               : {
                   roomId: targetRoomId,
