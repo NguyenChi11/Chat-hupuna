@@ -23,7 +23,7 @@ import { HiLink, HiOutlineLogout } from 'react-icons/hi';
 import ReminderDetailModal from './components/ReminderDetailModal';
 import PollDetailModal from './components/PollDetailModal';
 import ReactionButton from './components/ReactionButton';
-import FolderButton from './components/FolderButton';
+import FolderButton from './components/Folder/FolderButton';
 import { ContextMenuState } from './MessageContextMenu';
 
 interface SenderInfo {

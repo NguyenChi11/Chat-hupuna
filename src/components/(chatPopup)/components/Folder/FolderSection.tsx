@@ -1,5 +1,5 @@
 'use client';
-import FolderCreateModal from '@/components/(chatPopup)/components/FolderCreateModal';
+import FolderCreateModal from '@/components/(chatPopup)/components/Folder/FolderCreateModal';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   HiChevronRight,

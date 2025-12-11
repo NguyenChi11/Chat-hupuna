@@ -302,6 +302,43 @@ export default function ChatWindow({
     // Enter (không Shift) để gửi tin nhắn
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      const el = editableRef.current;
+      if (!el) return;
+      const plain = String(el.innerText || '');
+      let expanded = plain;
+      try {
+        const activeRaw = localStorage.getItem(`chatFlashActiveFolder:${roomId}`);
+        const active = activeRaw ? JSON.parse(activeRaw) : null;
+        const fid = active?.id;
+        if (fid) {
+          const kvRaw = localStorage.getItem(`chatFlashKV:${roomId}:${fid}`);
+          const arr = kvRaw ? JSON.parse(kvRaw) : [];
+          const map = new Map<string, string>(
+            (Array.isArray(arr) ? arr : []).map((x: { key: string; value: string }) => [
+              String(x.key),
+              String(x.value),
+            ]),
+          );
+          expanded = String(expanded).replace(/(^|\s)\/\s*([\w-]+)/g, (m: string, p1: string, k: string) => {
+            const v = map.get(k);
+            return v != null ? p1 + v : m;
+          });
+        }
+      } catch {}
+
+      if (expanded !== plain) {
+        el.innerText = expanded;
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        } catch {}
+        handleInputChangeEditable();
+        return;
+      }
       void handleSendMessage();
     }
   };
@@ -1207,6 +1244,23 @@ export default function ChatWindow({
     if (!plainText && !hasAtt) return;
 
     const { mentions, displayText } = parseMentions(plainText);
+    let expandedText = displayText;
+    try {
+      const activeRaw = localStorage.getItem('chatFlashActiveFolder');
+      const active = activeRaw ? JSON.parse(activeRaw) : null;
+      const fid = active?.id;
+      if (fid) {
+        const kvRaw = localStorage.getItem(`chatFlashKV:${fid}`);
+        const arr = kvRaw ? JSON.parse(kvRaw) : [];
+        const map = new Map<string, string>(
+          (Array.isArray(arr) ? arr : []).map((x: { key: string; value: string }) => [String(x.key), String(x.value)]),
+        );
+        expandedText = String(expandedText).replace(/(^|\s)\/([\w-]+)/g, (m: string, p1: string, k: string) => {
+          const v = map.get(k);
+          return v != null ? p1 + v : m;
+        });
+      }
+    } catch {}
 
     const repliedUserName = replyingTo ? getSenderName(replyingTo.sender) : undefined;
     const ALL_MENTION_ID = '__ALL__';
@@ -1234,7 +1288,7 @@ export default function ChatWindow({
       const textMsg: MessageCreate = {
         roomId,
         sender: currentUser._id,
-        content: displayText,
+        content: expandedText,
         type: 'text',
         timestamp: Date.now(),
         replyToMessageId: replyingTo?._id,

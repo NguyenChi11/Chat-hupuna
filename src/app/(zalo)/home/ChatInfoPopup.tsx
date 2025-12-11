@@ -25,7 +25,8 @@ import PollList from '@/components/(chatPopup)/components/PollList';
 import io from 'socket.io-client';
 import { resolveSocketUrl } from '@/utils/utils';
 import GroupInviteLinkSection from '@/components/(chatPopup)/components/GroupInviteLinkSection';
-import FolderSection from '@/components/(chatPopup)/components/FolderSection';
+import FolderSection from '@/components/(chatPopup)/components/Folder/FolderSection';
+import ChatFlashSection from '@/components/(chatPopup)/components/ChatFlashSection';
 
 interface ChatInfoPopupProps {
   onClose: () => void;
@@ -438,6 +439,7 @@ export default function ChatInfoPopup({
                 setActiveMenuId={setActiveMenuId}
                 onJumpToMessage={onJumpToMessage}
               />
+              <ChatFlashSection isOpen={openItems['ChatFlash']} onToggle={() => toggleItem('ChatFlash')} />
               {isGroup && (
                 <GroupInviteLinkSection
                   groupId={(selectedChat as GroupConversation)._id}
