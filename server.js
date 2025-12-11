@@ -124,7 +124,7 @@ io.on('connection', (socket) => {
       isPinned: data.isPinned,
     });
   });
-socket.on('toggle_reaction', (data) => {
+  socket.on('toggle_reaction', (data) => {
   
   const roomId = String(data.roomId);
   
@@ -216,6 +216,22 @@ socket.on('toggle_reaction', (data) => {
         io.to(String(data.sender)).emit('update_sidebar', sidebarData);
       }
     }
+  });
+  socket.on('folder_item_updated', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('folder_item_updated', data);
+  });
+  socket.on('folder_tree_updated', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('folder_tree_updated', data);
+  });
+  socket.on('chatflash_folder_updated', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('chatflash_folder_updated', data);
+  });
+  socket.on('chatflash_kv_updated', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('chatflash_kv_updated', data);
   });
 
   socket.on('recall_message', (data) => {

@@ -1,6 +1,6 @@
 'use client';
 import FolderCreateModal from '@/components/(chatPopup)/components/Folder/FolderCreateModal';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   HiChevronRight,
   HiFolder,
@@ -13,6 +13,12 @@ import {
   HiChevronDown,
 } from 'react-icons/hi';
 import { HiFolderPlus } from 'react-icons/hi2';
+import ItemDropdownMenu from '@/components/(chatPopup)/components/ItemDropdownMenu';
+import Image from 'next/image';
+import { getProxyUrl, resolveSocketUrl } from '@/utils/utils';
+import io, { type Socket } from 'socket.io-client';
+import { useChatContext } from '@/context/ChatContext';
+import { HiDocumentText, HiLink, HiPlay } from 'react-icons/hi';
 
 export interface FolderNode {
   id: string;
@@ -37,6 +43,7 @@ export default function FolderSection({
   setActiveMenuId,
   onJumpToMessage,
 }: FolderSectionProps) {
+  const { messages } = useChatContext();
   const storageKey = useMemo(() => `chatFolders:${roomId}`, [roomId]);
   const itemsKey = useMemo(() => `chatFolderItems:${roomId}`, [roomId]);
   const [folders, setFolders] = useState<FolderNode[]>([]);
@@ -50,6 +57,7 @@ export default function FolderSection({
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     try {
@@ -60,6 +68,40 @@ export default function FolderSection({
     }
     setLoaded(true);
   }, [storageKey]);
+
+  useEffect(() => {
+    const s = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
+    socketRef.current = s;
+    if (roomId) s.emit('join_room', roomId);
+    s.on(
+      'folder_item_updated',
+      (data: { roomId?: unknown; folderId?: unknown; items?: Array<{ id: string; content: string }> }) => {
+        if (String(data?.roomId) !== String(roomId)) return;
+        const fid = String(data?.folderId || '');
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        setItemsMap((prev) => ({ ...prev, [fid]: arr }));
+        try {
+          const raw = localStorage.getItem(itemsKey);
+          const map = raw ? JSON.parse(raw) : {};
+          map[fid] = arr;
+          localStorage.setItem(itemsKey, JSON.stringify(map));
+        } catch {}
+      },
+    );
+    s.on('folder_tree_updated', (data: { roomId?: unknown; folders?: FolderNode[] }) => {
+      if (String(data?.roomId) !== String(roomId)) return;
+      const next = Array.isArray(data?.folders) ? data.folders : [];
+      setFolders(next);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {}
+    });
+    return () => {
+      try {
+        s.disconnect();
+      } catch {}
+    };
+  }, [roomId]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -234,19 +276,8 @@ export default function FolderSection({
           <div className="mt-2 space-y-2">{node.children.map((c) => renderNode(c, depth + 1))}</div>
         )}
         {expanded[node.id] && (itemsMap[node.id]?.length || 0) > 0 && (
-          <div className="mt-2 space-y-1 ml-6">
-            {itemsMap[node.id]!.map((it, idx) => (
-              <button
-                key={`${node.id}-msg-${it.id ?? idx}`}
-                className="w-full text-left px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-800"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (it.id) onJumpToMessage?.(it.id);
-                }}
-              >
-                {it.content || 'Tin nhắn'}
-              </button>
-            ))}
+          <div className="mt-2 space-y-2 ml-6">
+            {itemsMap[node.id]!.map((it, idx) => renderFolderItem(it, idx, node.id))}
           </div>
         )}
       </div>
@@ -361,24 +392,241 @@ export default function FolderSection({
               <div className="mt-1">{renderList(n.children, depth + 1)}</div>
             )}
             {expanded[n.id] && (itemsMap[n.id]?.length || 0) > 0 && (
-              <div className="mt-1 space-y-1" style={{ paddingLeft: (depth + 1) * 16 }}>
-                {itemsMap[n.id]!.map((it, idx) => (
-                  <button
-                    key={`${n.id}-msg-${it.id ?? idx}`}
-                    className="w-full text-left px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-800"
-                    onClick={() => {
-                      if (it.id) onJumpToMessage?.(it.id);
-                    }}
-                  >
-                    {it.content || 'Tin nhắn'}
-                  </button>
-                ))}
+              <div className="mt-1 space-y-2" style={{ paddingLeft: (depth + 1) * 16 }}>
+                {itemsMap[n.id]!.map((it, idx) => renderFolderItem(it, idx, n.id))}
               </div>
             )}
           </div>
         ))}
       </>
     );
+  };
+
+  const renderFolderItem = (it: { id: string; content: string }, idx: number, folderId: string): React.ReactNode => {
+    const msg = messages.find((m) => String(m._id) === String(it.id));
+    if (!msg) {
+      const openMenuId = String(it.id || idx);
+      return (
+        <div
+          key={`fallback-${it.id ?? idx}`}
+          className="relative flex items-center gap-2 p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-800"
+          onClick={() => {
+            if (it.id) onJumpToMessage?.(it.id);
+          }}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="truncate">{it.content || 'Tin nhắn'}</p>
+          </div>
+          <button
+            className={`cursor-pointer p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10 ${activeMenuId === openMenuId ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'} hover:bg-white hover:scale-110`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveMenuId(activeMenuId === openMenuId ? null : openMenuId);
+            }}
+          >
+            <HiDotsVertical className="w-4 h-4 text-gray-700" />
+          </button>
+          <ItemDropdownMenu
+            itemUrl=""
+            itemId={openMenuId}
+            activeMenuId={activeMenuId}
+            onClose={() => setActiveMenuId(null)}
+            onJumpToMessage={(mid) => onJumpToMessage?.(mid)}
+            onRemoveFromFolder={(mid) => removeItemFromFolder(folderId, mid)}
+          />
+        </div>
+      );
+    }
+
+    const openMenuId = String(msg._id);
+    const fileUrl = String(msg.fileUrl || msg.previewUrl || '');
+
+    if (msg.type === 'image' || msg.type === 'video') {
+      return (
+        <div
+          key={`media-${msg._id}`}
+          className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100 w-36 h-36"
+          onClick={() => onJumpToMessage?.(String(msg._id))}
+        >
+          {msg.type === 'video' ? (
+            <video
+              src={getProxyUrl(fileUrl)}
+              className="w-36 h-36 object-cover pointer-events-none"
+              preload="metadata"
+            />
+          ) : (
+            <Image width={200} height={200} src={getProxyUrl(fileUrl)} alt="Media" className="w-36 h-36 object-cover" />
+          )}
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            {msg.type === 'video' && <HiPlay className="w-10 h-10 text-white drop-shadow-lg" />}
+          </div>
+          <button
+            className={`cursor-pointer absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg transition-all duration-200 z-10 ${activeMenuId === openMenuId ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'} hover:bg-white hover:scale-110`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveMenuId(activeMenuId === openMenuId ? null : openMenuId);
+            }}
+          >
+            <HiDotsVertical className="w-4 h-4 text-gray-700" />
+          </button>
+          <ItemDropdownMenu
+            itemUrl={fileUrl}
+            itemId={openMenuId}
+            fileName={msg.fileName}
+            activeMenuId={activeMenuId}
+            onClose={() => setActiveMenuId(null)}
+            onJumpToMessage={(mid) => onJumpToMessage?.(mid)}
+            onRemoveFromFolder={(mid) => removeItemFromFolder(folderId, mid)}
+          />
+        </div>
+      );
+    }
+
+    if (msg.type === 'file') {
+      return (
+        <div
+          key={`file-${msg._id}`}
+          className="relative flex items-center gap-2 p-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-200 group cursor-pointer border border-gray-200 hover:border-blue-300"
+          onClick={() => onJumpToMessage?.(String(msg._id))}
+        >
+          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg">
+            <HiDocumentText className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-600 transition-colors">
+              {msg.fileName || 'Tệp đính kèm'}
+            </p>
+            {msg.fileName && (
+              <p className="text-xs text-gray-500 mt-1 font-medium uppercase tracking-wider">
+                .{String(msg.fileName).split('.').pop()}
+              </p>
+            )}
+          </div>
+          <button
+            className={`cursor-pointer p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10 ${activeMenuId === openMenuId ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'} hover:bg-white hover:scale-110`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveMenuId(activeMenuId === openMenuId ? null : openMenuId);
+            }}
+          >
+            <HiDotsVertical className="w-4 h-4 text-gray-700" />
+          </button>
+          <ItemDropdownMenu
+            itemUrl={fileUrl}
+            itemId={openMenuId}
+            fileName={msg.fileName}
+            activeMenuId={activeMenuId}
+            onClose={() => setActiveMenuId(null)}
+            onJumpToMessage={(mid) => onJumpToMessage?.(mid)}
+            onRemoveFromFolder={(mid) => removeItemFromFolder(folderId, mid)}
+          />
+        </div>
+      );
+    }
+
+    if (msg.type === 'text') {
+      const linkMatch = (msg.content || '').match(/(https?:\/\/|www\.)\S+/i);
+      if (linkMatch) {
+        const raw = linkMatch[0];
+        const href = raw.startsWith('http') ? raw : `https://${raw}`;
+        let hostname = 'Website';
+        try {
+          hostname = new URL(href).hostname.replace('www.', '');
+        } catch {}
+        return (
+          <div
+            key={`link-${msg._id}`}
+            className="relative flex items-center gap-2 p-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-200 group cursor-pointer border border-gray-200 hover:border-purple-300"
+            onClick={() => window.open(href, '_blank')}
+          >
+            <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white shadow-lg">
+              <HiLink className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-purple-600 truncate group-hover:underline transition-all">
+                {raw}
+              </p>
+              <p className="text-xs text-gray-500 mt-1 font-medium">{hostname}</p>
+            </div>
+            <button
+              className={`cursor-pointer p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10 ${activeMenuId === openMenuId ? 'opacity-100 ring-2 ring-purple-500' : 'opacity-0 group-hover:opacity-100'} hover:bg-white hover:scale-110`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveMenuId(activeMenuId === openMenuId ? null : openMenuId);
+              }}
+            >
+              <HiDotsVertical className="w-4 h-4 text-gray-700" />
+            </button>
+            <ItemDropdownMenu
+              itemUrl={href}
+              itemId={openMenuId}
+              activeMenuId={activeMenuId}
+              onClose={() => setActiveMenuId(null)}
+              onJumpToMessage={(mid) => onJumpToMessage?.(mid)}
+              onRemoveFromFolder={(mid) => removeItemFromFolder(folderId, mid)}
+            />
+          </div>
+        );
+      }
+    }
+
+    const openMenuIdText = String(msg._id);
+    return (
+      <div
+        key={`text-${msg._id}`}
+        className="relative flex items-center gap-2 p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-sm text-gray-800"
+        onClick={() => onJumpToMessage?.(String(msg._id))}
+      >
+        <div className="flex-1 min-w-0">
+          <p className="truncate">{String(msg.content || it.content || 'Tin nhắn')}</p>
+        </div>
+        <button
+          className={`cursor-pointer p-2 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all duration-200 z-10 ${activeMenuId === openMenuIdText ? 'opacity-100 ring-2 ring-blue-500' : 'opacity-0 group-hover:opacity-100'} hover:bg-white hover:scale-110`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveMenuId(activeMenuId === openMenuIdText ? null : openMenuIdText);
+          }}
+        >
+          <HiDotsVertical className="w-4 h-4 text-gray-700" />
+        </button>
+        <ItemDropdownMenu
+          itemUrl=""
+          itemId={openMenuIdText}
+          activeMenuId={activeMenuId}
+          onClose={() => setActiveMenuId(null)}
+          onJumpToMessage={(mid) => onJumpToMessage?.(mid)}
+          onRemoveFromFolder={(mid) => removeItemFromFolder(folderId, mid)}
+        />
+      </div>
+    );
+  };
+
+  const removeItemFromFolder = (folderId: string, messageId: string) => {
+    try {
+      const raw = localStorage.getItem(itemsKey);
+      const map = raw ? (JSON.parse(raw) as Record<string, Array<{ id: string; content: string }>>) : {};
+      const arr = Array.isArray(map[folderId]) ? map[folderId] : [];
+      const next = arr.filter((x) => String(x.id) !== String(messageId));
+      map[folderId] = next;
+      localStorage.setItem(itemsKey, JSON.stringify(map));
+      setItemsMap((prev) => ({ ...prev, [folderId]: next }));
+      try {
+        const ev = new CustomEvent('chatFolderItemsChanged', {
+          detail: { roomId, folderId, messageId, action: 'remove' },
+        });
+        window.dispatchEvent(ev);
+      } catch {}
+      try {
+        socketRef.current?.emit('folder_item_updated', { roomId, folderId, items: next });
+      } catch {}
+      try {
+        fetch('/api/folders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'removeItem', roomId, folderId, messageId }),
+        }).catch(() => {});
+      } catch {}
+    } catch {}
   };
 
   return (
@@ -466,21 +714,32 @@ export default function FolderSection({
                 const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
                 const pid = parentId || createParentId || undefined;
                 if (pid) {
-                  setFolders((prev) =>
-                    updateNode(prev, pid, (n) => {
+                  setFolders((prev) => {
+                    const next = updateNode(prev, pid, (n) => {
                       const exists = n.children.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
                       if (exists) return n;
-                      return {
-                        ...n,
-                        children: [...n.children, { id, name: trimmed, children: [] }],
-                      };
-                    }),
-                  );
+                      return { ...n, children: [...n.children, { id, name: trimmed, children: [] }] };
+                    });
+                    try {
+                      localStorage.setItem(storageKey, JSON.stringify(next));
+                    } catch {}
+                    try {
+                      socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
+                    } catch {}
+                    return next;
+                  });
                 } else {
                   setFolders((prev) => {
                     const exists = prev.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
                     if (exists) return prev;
-                    return [...prev, { id, name: trimmed, children: [] }];
+                    const next = [...prev, { id, name: trimmed, children: [] }];
+                    try {
+                      localStorage.setItem(storageKey, JSON.stringify(next));
+                    } catch {}
+                    try {
+                      socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
+                    } catch {}
+                    return next;
                   });
                 }
                 setShowCreateModal(false);
@@ -513,7 +772,16 @@ export default function FolderSection({
                       onClick={() => {
                         const n = renameInput.trim();
                         if (!n || !renameTarget) return;
-                        setFolders((prev) => updateNode(prev, renameTarget.id, (x) => ({ ...x, name: n })));
+                        setFolders((prev) => {
+                          const next = updateNode(prev, renameTarget.id, (x) => ({ ...x, name: n }));
+                          try {
+                            localStorage.setItem(storageKey, JSON.stringify(next));
+                          } catch {}
+                          try {
+                            socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
+                          } catch {}
+                          return next;
+                        });
                         setRenameTarget(null);
                       }}
                       className="cursor-pointer px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
@@ -546,7 +814,16 @@ export default function FolderSection({
                     <button
                       onClick={() => {
                         if (!deleteTarget) return;
-                        setFolders((prev) => removeNode(prev, deleteTarget.id));
+                        setFolders((prev) => {
+                          const next = removeNode(prev, deleteTarget.id);
+                          try {
+                            localStorage.setItem(storageKey, JSON.stringify(next));
+                          } catch {}
+                          try {
+                            socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
+                          } catch {}
+                          return next;
+                        });
                         try {
                           const raw = localStorage.getItem(itemsKey);
                           const map = raw
@@ -566,6 +843,11 @@ export default function FolderSection({
                           ids.forEach((k) => delete map[k]);
                           localStorage.setItem(itemsKey, JSON.stringify(map));
                           setItemsMap(map);
+                          try {
+                            ids.forEach((fid) => {
+                              socketRef.current?.emit('folder_item_updated', { roomId, folderId: fid, items: [] });
+                            });
+                          } catch {}
                         } catch {}
                         setDeleteTarget(null);
                       }}

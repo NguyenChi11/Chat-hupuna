@@ -49,6 +49,24 @@ export async function POST(req: NextRequest) {
         }
         return NextResponse.json({ success: true });
       }
+      case 'removeItem': {
+        const folderId = String(body.folderId || '').trim();
+        const messageId = String(body.messageId || '').trim();
+        if (!roomId || !folderId || !messageId)
+          return NextResponse.json({ error: 'Missing roomId, folderId or messageId' }, { status: 400 });
+
+        const existing = await collection.findOne({ roomId });
+        const itemsMap: ItemsMap = existing?.itemsMap || {};
+        const arr = Array.isArray(itemsMap[folderId]) ? itemsMap[folderId] : [];
+        itemsMap[folderId] = arr.filter((x) => String(x.id) !== messageId);
+
+        if (!existing) {
+          await collection.insertOne({ roomId, folders: [], itemsMap });
+        } else {
+          await collection.updateOne({ roomId }, { $set: { itemsMap } });
+        }
+        return NextResponse.json({ success: true });
+      }
       case 'updateTree': {
         const folders: FolderNode[] = Array.isArray(body.folders) ? (body.folders as FolderNode[]) : [];
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });

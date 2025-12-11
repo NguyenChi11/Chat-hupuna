@@ -299,18 +299,37 @@ export default function ChatWindow({
     // Nếu mention menu đang mở, không xử lý gửi tin nhắn
     if (showMentionMenu) return;
 
+    const el = editableRef.current;
+    if (!el) return;
+    const plain = String(el.innerText || '');
+    const trimmed = plain.trim();
+
+    // Toggle Chat nhanh theo '/key'
+    if (e.key === 'Enter' && !e.shiftKey && trimmed === '/key') {
+      e.preventDefault();
+      try {
+        localStorage.setItem(`chatFlashEnabled:${roomId}`, 'true');
+      } catch {}
+      el.innerText = '';
+      handleInputChangeEditable();
+      return;
+    }
+    if (e.key === ' ' && trimmed === '/key') {
+      try {
+        localStorage.setItem(`chatFlashEnabled:${roomId}`, 'false');
+      } catch {}
+    }
+
     // Enter (không Shift) để gửi tin nhắn
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const el = editableRef.current;
-      if (!el) return;
-      const plain = String(el.innerText || '');
       let expanded = plain;
       try {
         const activeRaw = localStorage.getItem(`chatFlashActiveFolder:${roomId}`);
         const active = activeRaw ? JSON.parse(activeRaw) : null;
         const fid = active?.id;
-        if (fid) {
+        const enabled = localStorage.getItem(`chatFlashEnabled:${roomId}`) === 'true';
+        if (fid && enabled) {
           const kvRaw = localStorage.getItem(`chatFlashKV:${roomId}:${fid}`);
           const arr = kvRaw ? JSON.parse(kvRaw) : [];
           const map = new Map<string, string>(
@@ -1246,11 +1265,12 @@ export default function ChatWindow({
     const { mentions, displayText } = parseMentions(plainText);
     let expandedText = displayText;
     try {
-      const activeRaw = localStorage.getItem('chatFlashActiveFolder');
+      const activeRaw = localStorage.getItem(`chatFlashActiveFolder:${roomId}`);
       const active = activeRaw ? JSON.parse(activeRaw) : null;
       const fid = active?.id;
-      if (fid) {
-        const kvRaw = localStorage.getItem(`chatFlashKV:${fid}`);
+      const enabled = localStorage.getItem(`chatFlashEnabled:${roomId}`) === 'true';
+      if (fid && enabled) {
+        const kvRaw = localStorage.getItem(`chatFlashKV:${roomId}:${fid}`);
         const arr = kvRaw ? JSON.parse(kvRaw) : [];
         const map = new Map<string, string>(
           (Array.isArray(arr) ? arr : []).map((x: { key: string; value: string }) => [String(x.key), String(x.value)]),
