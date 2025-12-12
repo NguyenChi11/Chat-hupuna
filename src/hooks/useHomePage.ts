@@ -531,7 +531,8 @@ export function useHomePage() {
         }
         // Nếu là tin nhắn text bình thường
         else {
-          const rawContent = data.type === 'text' ? data.content || '' : `[${data.type || 'Unknown'}]`;
+          const isTextLike = data.type === 'text' || data.type === 'notify';
+          const rawContent = isTextLike ? data.content || '' : `[${data.type || 'Unknown'}]`;
           contentDisplay = `${senderName}: ${rawContent}`;
         }
         // 3. CẬP NHẬT STATE

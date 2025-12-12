@@ -161,7 +161,10 @@ export async function POST(req: NextRequest) {
                 const senderName = isMySender ? 'Bạn' : u.name  || 'Người dùng';
                 lastMessagePreview = `${senderName}: đã thu hồi tin nhắn`;
               }else{
-                const content = lastMsgObj.type === 'text' ? lastMsgObj.content : `[${lastMsgObj.type}]`;
+                const content =
+                  lastMsgObj.type === 'text' || lastMsgObj.type === 'notify'
+                    ? lastMsgObj.content
+                    : `[${lastMsgObj.type}]`;
 
                 if (String(lastMsgObj.sender) === userIdStr) {
                   lastMessagePreview = `Bạn: ${content}`;

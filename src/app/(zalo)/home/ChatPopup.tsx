@@ -42,12 +42,11 @@ import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
 import { useRouter } from 'next/navigation';
-import { get } from 'http';
-import { sendError } from 'next/dist/server/api-utils';
 import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
-import { HiX } from 'react-icons/hi';
-import { playGlobalRingTone, stopGlobalRingTone } from '@/utils/callRing';
+import { HiPhone, HiX } from 'react-icons/hi';
+import { stopGlobalRingTone } from '@/utils/callRing';
 import { useCallSession } from '@/hooks/useCallSession';
+import IncomingCallModal from '@/components/(call)/IncomingCallModal';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -251,8 +250,6 @@ export default function ChatWindow({
 
   // Local stream is managed by useCallSession
 
-
-
   // Reset is managed by useCallSession
 
   // Receivers are handled inside useCallSession
@@ -263,8 +260,6 @@ export default function ChatWindow({
     },
     [startCall_s2],
   );
-  const endingRef = useRef(false);
-  const endedRef = useRef(false);
 
   const endCall = useCallback(
     (source: 'local' | 'remote' = 'local') => {
@@ -287,6 +282,18 @@ export default function ChatWindow({
 
   const handleVideoCall = useCallback(() => {
     void startCall('video');
+  }, [startCall]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const d = (e as CustomEvent).detail || {};
+        const t = d.type === 'video' ? 'video' : 'voice';
+        void startCall(t);
+      } catch {}
+    };
+    window.addEventListener('startCall', handler as EventListener);
+    return () => window.removeEventListener('startCall', handler as EventListener);
   }, [startCall]);
 
   useEffect(() => {
@@ -1241,7 +1248,6 @@ export default function ChatWindow({
 
   // Socket call events handled inside useCallSession
 
-
   // Ring tone handled inside useCallSession
 
   useEffect(() => {
@@ -1263,10 +1269,15 @@ export default function ChatWindow({
       localStorage.removeItem('pendingIncomingCall');
 
       (async () => {
-        await acceptIncomingCallWith_s2({ from: String(data.from), type: data.type, roomId: String(data.roomId), sdp: data.sdp });
+        await acceptIncomingCallWith_s2({
+          from: String(data.from),
+          type: data.type,
+          roomId: String(data.roomId),
+          sdp: data.sdp,
+        });
       })();
     } catch {}
-  }, [roomId, currentUser._id, incomingCall, callActive, callConnecting, acceptIncomingCallWith_s2]);
+  }, [roomId, incomingCall, callActive, callConnecting, acceptIncomingCallWith_s2]);
   const handleRecallMessage = async (messageId: string) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) return;
 
@@ -1985,65 +1996,32 @@ export default function ChatWindow({
 
         {(callActive || incomingCall || callConnecting) && (
           <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-4">
-              {!callActive && incomingCall && (
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    {(() => {
-                      const caller = allUsers.find((u) => String(u._id) === String(incomingCall?.from));
-                      const avatar = caller?.avatar;
-                      const name = caller?.name || chatName;
-                      return (
-                        <>
-                          {avatar ? (
-                            <div className="w-12 h-12 rounded-full overflow-hidden">
-                              <Image
-                                src={getProxyUrl(avatar)}
-                                alt={name || ''}
-                                width={48}
-                                height={48}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
-                              {String(name || '')
-                                .trim()
-                                .charAt(0)
-                                .toUpperCase() || 'U'}
-                            </div>
-                          )}
-                          <div className="flex flex-col">
-                            <div className="font-medium">{name}</div>
-                            <div className="text-sm text-gray-600">Cuộc gọi đến</div>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg"
-                      onClick={async () => {
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-xl p-4">
+              {!callActive &&
+                incomingCall &&
+                (() => {
+                  const caller = allUsers.find((u) => String(u._id) === String(incomingCall?.from));
+                  const avatar = caller?.avatar;
+                  const name = caller?.name || chatName;
+                  return (
+                    <IncomingCallModal
+                      avatar={avatar}
+                      name={name}
+                      onAccept={async () => {
                         await acceptIncomingCall_s2();
                       }}
-                    >
-                      Chấp nhận
-                    </button>
-                    <button
-                      className="px-3 py-2 bg-gray-200 rounded-lg"
-                      onClick={() => {
+                      onReject={() => {
                         const from = incomingCall?.from;
                         socketRef.current?.emit('call_reject', { roomId, targets: from ? [String(from)] : [] });
                         setIncomingCall_s2(null);
                         stopGlobalRingTone();
+                        try {
+                          localStorage.removeItem('pendingIncomingCall');
+                        } catch {}
                       }}
-                    >
-                      Từ chối
-                    </button>
-                  </div>
-                </div>
-              )}
+                    />
+                  );
+                })()}
               {!callActive && callConnecting && (
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex items-center gap-3">
@@ -2067,12 +2045,15 @@ export default function ChatWindow({
                     )}
                     <div className="flex flex-col">
                       <div className="font-medium">{chatName}</div>
-                      <div className="text-sm text-gray-600">Đang chờ đối phương chấp nhận...</div>
+                      <div className="text-sm text-gray-600">Đang chờ...</div>
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <button className="px-3 py-2 bg-gray-200 rounded-lg" onClick={() => endCall('local')}>
-                      Hủy
+                    <button
+                      className="flex items-center px-3 py-2 hover:bg-gray-300 shadow-lg rounded-lg hover:cursor-pointer"
+                      onClick={() => endCall('local')}
+                    >
+                      <HiPhone className="w-7 h-7 text-red-600" />
                     </button>
                   </div>
                 </div>
@@ -2080,7 +2061,30 @@ export default function ChatWindow({
               {callActive && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium">Đang gọi</div>
+                    <div className="flex items-center gap-3">
+                      {chatAvatar ? (
+                        <div className="w-10 h-10 rounded-full overflow-hidden">
+                          <Image
+                            src={getProxyUrl(chatAvatar)}
+                            alt={chatName}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
+                          {String(chatName || '')
+                            .trim()
+                            .charAt(0)
+                            .toUpperCase() || 'U'}
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <div className="font-medium">{chatName}</div>
+                        <div className="text-xs text-gray-600">{callType === 'video' ? 'Video' : 'Thoại'}</div>
+                      </div>
+                    </div>
                     {callStartAt && (
                       <div className="text-sm text-gray-600">
                         {(() => {
@@ -2103,7 +2107,10 @@ export default function ChatWindow({
                       </div>
                     )}
                     {Array.from(remoteStreamsState.entries()).map(([uid, stream]) => (
-                      <div key={uid} className="bg-black rounded-lg overflow-hidden aspect-video">
+                      <div
+                        key={uid}
+                        className={callType === 'video' ? 'bg-black rounded-lg overflow-hidden aspect-video' : ''}
+                      >
                         {callType === 'video' ? (
                           <video
                             className="w-full h-full object-cover"

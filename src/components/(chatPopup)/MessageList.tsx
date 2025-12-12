@@ -19,6 +19,7 @@ import {
   HiShieldCheck,
   HiUserGroup,
 } from 'react-icons/hi2';
+import { HiPhone, HiVideoCamera, HiArrowDown, HiArrowUp } from 'react-icons/hi2';
 import { HiLink, HiOutlineLogout } from 'react-icons/hi';
 import ReminderDetailModal from './components/ReminderDetailModal';
 import PollDetailModal from './components/PollDetailModal';
@@ -141,6 +142,66 @@ export default function MessageList({
 
             // Notify message
             if (msg.type === 'notify') {
+              if ((msg as Message & { callType?: 'voice' | 'video' }).callType) {
+                const callType =
+                  (msg as Message & { callType?: 'voice' | 'video' }).callType === 'video' ? 'video' : 'voice';
+                const calleeId = (msg as Message & { calleeId?: string }).calleeId || '';
+                const status =
+                  (msg as Message & { callStatus?: 'answered' | 'rejected' | 'timeout' }).callStatus || 'answered';
+                const dur = Number((msg as Message & { callDurationSec?: number }).callDurationSec || 0);
+                const incoming = String(currentUser._id) === String(calleeId);
+                const iconType =
+                  callType === 'video' ? (
+                    status === 'rejected' || status === "timeout" ? (
+                      <HiVideoCamera className="w-4 h-4 text-red-600" />
+                    ) : (
+                      <HiVideoCamera className="w-4 h-4 text-blue-600" />
+                    )
+                  ) : status === 'rejected' || status === "timeout"  ? (
+                    <HiPhone className="w-4 h-4 text-red-600" />
+                  ) : (
+                    <HiPhone className="w-4 h-4 text-green-600" />
+                  );
+                const iconDir = incoming ? (
+                  <HiArrowDown className="w-4 h-4 text-gray-600" />
+                ) : (
+                  <HiArrowUp className="w-4 h-4 text-gray-600" />
+                );
+                const title = `Cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} ${incoming ? 'đến' : 'đi'}`;
+                const detail =
+                  status === 'answered'
+                    ? `${Math.floor(dur / 60)} phút ${Math.floor(dur % 60)} giây`
+                    : status === 'rejected'
+                      ? 'Bị từ chối'
+                      : incoming
+                        ? 'Nhỡ'
+                        : 'Không phản hồi';
+                return (
+                  <div key={msg._id} id={`msg-${msg._id}`} className="flex justify-center my-3">
+                    <div
+                      className={`px-4 p-1.5 bg-white rounded-full max-w-[80vw]  sm:max-w-[28rem] overflow-hidden ${highlightedMsgId === msg._id ? 'bg-yellow-50' : 'bg-gray-100'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {iconType}
+                        {iconDir}
+
+                        <p className="text-xs text-gray-500 truncate">{`${title} – ${detail}`}</p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const t = callType === 'video' ? 'video' : 'voice';
+                            const evt = new CustomEvent('startCall', { detail: { type: t } });
+                            window.dispatchEvent(evt);
+                          }}
+                          className="ml-2 px-2 py-1 text-xs font-semibold rounded-lg border-blue-200 text-blue-600 hover:bg-blue-50 hover:cursor-pointer"
+                        >
+                          Gọi lại
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
               const related = msg.replyToMessageId ? messages.find((m) => m._id === msg.replyToMessageId) : null;
               const rawDisplay = msg.content || '';
               const rawLower = rawDisplay.trim().toLowerCase();

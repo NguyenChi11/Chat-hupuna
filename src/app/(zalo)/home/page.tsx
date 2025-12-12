@@ -3,8 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { resolveSocketUrl } from '@/utils/utils';
-import Image from 'next/image';
-import { getProxyUrl } from '@/utils/utils';
+import IncomingCallModal from '@/components/(call)/IncomingCallModal';
 
 import HomeDesktop from '@/components/(home)/HomeDesktop';
 import HomeMobile from '@/components/(home)/HomeMobile';
@@ -224,75 +223,41 @@ export default function HomePage() {
       {incomingCallHome && (
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-4">
-            <div className="flex items-center gap-3 mb-4">
-              {(() => {
-                const caller = allUsers.find((u) => String(u._id) === String(incomingCallHome.from));
-                const avatar = caller?.avatar;
-                const name = caller?.name || 'Cuộc gọi đến';
-                return (
-                  <>
-                    {avatar ? (
-                      <div className="w-12 h-12 rounded-full overflow-hidden">
-                        <Image
-                          src={getProxyUrl(avatar)}
-                          alt={name || ''}
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
-                        {String(name || '')
-                          .trim()
-                          .charAt(0)
-                          .toUpperCase() || 'U'}
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <div className="font-medium">{name}</div>
-                      <div className="text-sm text-gray-600">Cuộc gọi đến</div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg"
-                onClick={() => {
-                  try {
-                    localStorage.setItem('pendingIncomingCall', JSON.stringify(incomingCallHome));
-                  } catch {}
-                  const group = groups.find((g) => String(g._id) === String(incomingCallHome.roomId));
-                  if (group) {
-                    setSelectedChat(group as unknown as GroupConversation);
-                  } else {
-                    const caller = allUsers.find((u) => String(u._id) === String(incomingCallHome.from));
-                    if (caller) {
-                      setSelectedChat(caller as unknown as GroupConversation);
+            {(() => {
+              const caller = allUsers.find((u) => String(u._id) === String(incomingCallHome.from));
+              const avatar = caller?.avatar;
+              const name = caller?.name || 'Cuộc gọi đến';
+              return (
+                <IncomingCallModal
+                  avatar={avatar}
+                  name={name}
+                  onAccept={() => {
+                    try {
+                      localStorage.setItem('pendingIncomingCall', JSON.stringify(incomingCallHome));
+                    } catch {}
+                    const group = groups.find((g) => String(g._id) === String(incomingCallHome.roomId));
+                    if (group) {
+                      setSelectedChat(group as unknown as GroupConversation);
+                    } else {
+                      const c = allUsers.find((u) => String(u._id) === String(incomingCallHome.from));
+                      if (c) {
+                        setSelectedChat(c as unknown as GroupConversation);
+                      }
                     }
-                  }
-                  setIncomingCallHome(null);
-                  stopGlobalRingTone();
-                }}
-              >
-                Chấp nhận
-              </button>
-              <button
-                className="px-3 py-2 bg-gray-200 rounded-lg"
-                onClick={() => {
-                  socketRef.current?.emit('call_reject', {
-                    roomId: incomingCallHome.roomId,
-                    targets: [String(incomingCallHome.from)],
-                  });
-                  setIncomingCallHome(null);
-                  stopGlobalRingTone();
-                }}
-              >
-                Từ chối
-              </button>
-            </div>
+                    setIncomingCallHome(null);
+                    stopGlobalRingTone();
+                  }}
+                  onReject={() => {
+                    socketRef.current?.emit('call_reject', {
+                      roomId: incomingCallHome.roomId,
+                      targets: [String(incomingCallHome.from)],
+                    });
+                    setIncomingCallHome(null);
+                    stopGlobalRingTone();
+                  }}
+                />
+              );
+            })()}
           </div>
         </div>
       )}
