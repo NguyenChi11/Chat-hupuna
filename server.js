@@ -19,6 +19,12 @@ io.on('connection', (socket) => {
     socket.join(roomId);
   });
 
+  socket.on('join_user', (payload) => {
+    const userId = typeof payload === 'string' ? payload : String(payload?.userId || '');
+    if (!userId) return;
+    socket.join(String(userId));
+  });
+
   socket.on('send_message', (data) => {
     const roomId = String(data.roomId);
     io.in(roomId).emit('receive_message', data);
@@ -307,5 +313,36 @@ socket.on('toggle_reaction', (data) => {
     if (!connectedUserId) return;
     const next = { online: true, lastSeen: Date.now() };
     presence.set(connectedUserId, next);
+  });
+
+  socket.on('call_offer', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('call_offer', data);
+    if (data?.target) io.to(String(data.target)).emit('call_offer', data);
+  });
+
+  socket.on('call_answer', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('call_answer', data);
+    if (data?.target) io.to(String(data.target)).emit('call_answer', data);
+  });
+
+  socket.on('call_candidate', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('call_candidate', data);
+    if (data?.target) io.to(String(data.target)).emit('call_candidate', data);
+  });
+
+  socket.on('call_end', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('call_end', { roomId });
+    const targets = Array.isArray(data?.targets) ? data.targets : [];
+    targets.forEach((t) => io.to(String(t)).emit('call_end', { roomId }));
+  });
+  socket.on('call_reject', (data) => {
+    const roomId = String(data.roomId);
+    io.in(roomId).emit('call_reject', { roomId });
+    const targets = Array.isArray(data?.targets) ? data.targets : [];
+    targets.forEach((t) => io.to(String(t)).emit('call_reject', { roomId }));
   });
 });

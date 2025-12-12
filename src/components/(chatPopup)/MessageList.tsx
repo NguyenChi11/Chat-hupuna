@@ -612,7 +612,6 @@ export default function MessageList({
                                         : `[${msg.type}]`
                           }
                           onSaved={(folderId) => {
-                            console.log('Message saved to folder:', folderId);
                             setActiveMoreId(null);
                           }}
                         />
