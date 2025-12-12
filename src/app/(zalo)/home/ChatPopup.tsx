@@ -36,7 +36,7 @@ import {
   updateMessageApi,
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
-import { isVideoFile, resolveSocketUrl } from '@/utils/utils';
+import { isVideoFile, resolveSocketUrl, getProxyUrl } from '@/utils/utils';
 import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
@@ -1667,7 +1667,7 @@ export default function ChatWindow({
           {/* Messages Area */}
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-2 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar"
+            className="flex-1 overflow-y-auto p-4 sm:p-4 bg-gray-100 flex flex-col custom-scrollbar"
           >
             {(initialLoading || loadingMore) && (
               <div className="sticky top-0 z-20 flex items-center justify-center py-2">
@@ -1778,6 +1778,24 @@ export default function ChatWindow({
                 const msgType = isVideo ? 'video' : 'file';
                 const url = URL.createObjectURL(file);
                 setAttachments((prev) => [...prev, { file, type: msgType, previewUrl: url, fileName: file.name }]);
+              }}
+              onAttachFromFolder={async (att) => {
+                try {
+                  const res = await fetch(getProxyUrl(att.url));
+                  const blob = await res.blob();
+                  const mime =
+                    blob.type ||
+                    (att.type === 'image'
+                      ? 'image/jpeg'
+                      : att.type === 'video'
+                        ? 'video/mp4'
+                        : 'application/octet-stream');
+                  const name =
+                    att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
+                  const file = new File([blob], name, { type: mime });
+                  const previewUrl = URL.createObjectURL(blob);
+                  setAttachments((prev) => [...prev, { file, type: att.type, previewUrl, fileName: name }]);
+                } catch {}
               }}
               onFocusEditable={() => setShowEmojiPicker(false)}
               attachments={attachments.map((a) => ({ previewUrl: a.previewUrl, type: a.type, fileName: a.fileName }))}

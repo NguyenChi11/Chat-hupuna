@@ -611,6 +611,10 @@ export default function MessageList({
                                         ? msg.content || '[Nhắc nhở]'
                                         : `[${msg.type}]`
                           }
+                          content={msg.content}
+                          type={msg.type}
+                          fileUrl={String(msg.fileUrl || msg.previewUrl || '')}
+                          fileName={msg.fileName}
                           onSaved={(folderId) => {
                             console.log('Message saved to folder:', folderId);
                             setActiveMoreId(null);
@@ -835,13 +839,17 @@ export default function MessageList({
                         className="relative rounded-2xl overflow-hidden cursor-pointer shadow-md max-w-[70vw] sm:max-w-[13rem]"
                         onClick={() => !isUploading && onOpenMedia(String(msg.fileUrl), 'image')}
                       >
-                        <Image
-                          src={getProxyUrl(msg.fileUrl)}
-                          alt="Ảnh"
-                          width={600}
-                          height={600}
-                          className="w-full h-auto object-cover"
-                        />
+                        {String(msg.fileUrl).startsWith('blob:') ? (
+                          <img src={String(msg.fileUrl)} alt="Ảnh" className="w-full h-auto object-cover" />
+                        ) : (
+                          <Image
+                            src={getProxyUrl(msg.fileUrl)}
+                            alt="Ảnh"
+                            width={600}
+                            height={600}
+                            className="w-full h-auto object-cover"
+                          />
+                        )}
 
                         {isUploading && (
                           <div className="absolute inset-0 bg-black/70 text-white flex items-center justify-center text-sm font-semibold">
