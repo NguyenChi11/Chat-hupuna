@@ -46,6 +46,7 @@ import { get } from 'http';
 import { sendError } from 'next/dist/server/api-utils';
 import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
 import { HiX } from 'react-icons/hi';
+import { playGlobalRingTone, stopGlobalRingTone } from '@/utils/callRing';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -163,6 +164,15 @@ export default function ChatWindow({
   const [callStartAt, setCallStartAt] = useState<number | null>(null);
   const [callTicker, setCallTicker] = useState(0);
   const [callConnecting, setCallConnecting] = useState(false);
+  const ringTimeoutRef = useRef<number | null>(null);
+  const callActiveRef = useRef<boolean>(false);
+  const callConnectingRef = useRef<boolean>(false);
+  useEffect(() => {
+    callActiveRef.current = callActive;
+  }, [callActive]);
+  useEffect(() => {
+    callConnectingRef.current = callConnecting;
+  }, [callConnecting]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
   const [remoteStreamsState, setRemoteStreamsState] = useState<Map<string, MediaStream>>(new Map());
@@ -277,6 +287,19 @@ export default function ChatWindow({
         if (!stream) return;
         remoteStreamsRef.current.set(otherUserId, stream);
         setRemoteStreamsState(new Map(remoteStreamsRef.current));
+        stopGlobalRingTone();
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+          stopGlobalRingTone();
+          setCallConnecting(false);
+        }
+      };
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          stopGlobalRingTone();
+          setCallConnecting(false);
+        }
       };
       peerConnectionsRef.current.set(otherUserId, pc);
       return pc;
@@ -287,25 +310,26 @@ export default function ChatWindow({
   const startLocalStream = useCallback(
     async (type: 'voice' | 'video') => {
       const constraints = { audio: true, video: type === 'video' };
-      const navi = typeof navigator !== 'undefined'
-        ? (navigator as Navigator & {
-            webkitGetUserMedia?: (
-              constraints: MediaStreamConstraints,
-              success: (stream: MediaStream) => void,
-              error: (err: unknown) => void,
-            ) => void;
-            mozGetUserMedia?: (
-              constraints: MediaStreamConstraints,
-              success: (stream: MediaStream) => void,
-              error: (err: unknown) => void,
-            ) => void;
-            getUserMedia?: (
-              constraints: MediaStreamConstraints,
-              success: (stream: MediaStream) => void,
-              error: (err: unknown) => void,
-            ) => void;
-          })
-        : undefined;
+      const navi =
+        typeof navigator !== 'undefined'
+          ? (navigator as Navigator & {
+              webkitGetUserMedia?: (
+                constraints: MediaStreamConstraints,
+                success: (stream: MediaStream) => void,
+                error: (err: unknown) => void,
+              ) => void;
+              mozGetUserMedia?: (
+                constraints: MediaStreamConstraints,
+                success: (stream: MediaStream) => void,
+                error: (err: unknown) => void,
+              ) => void;
+              getUserMedia?: (
+                constraints: MediaStreamConstraints,
+                success: (stream: MediaStream) => void,
+                error: (err: unknown) => void,
+              ) => void;
+            })
+          : undefined;
       if (!navi) {
         throw new Error('Navigator is unavailable in this context');
       }
@@ -324,9 +348,11 @@ export default function ChatWindow({
             }
           });
         } else {
-          const isSecure = typeof window !== 'undefined' && (window.isSecureContext || window.location.protocol === 'https:');
+          const isSecure =
+            typeof window !== 'undefined' && (window.isSecureContext || window.location.protocol === 'https:');
           const host = typeof window !== 'undefined' ? window.location.hostname : '';
-          const hint = isSecure || host === 'localhost' ? '' : ' Truy cập bằng HTTPS hoặc localhost để cấp quyền mic/camera.';
+          const hint =
+            isSecure || host === 'localhost' ? '' : ' Truy cập bằng HTTPS hoặc localhost để cấp quyền mic/camera.';
           throw new Error('MediaDevices API is unavailable.' + hint);
         }
       }
@@ -345,6 +371,8 @@ export default function ChatWindow({
     },
     [micEnabled, camEnabled],
   );
+
+
 
   const resetCallLocal = useCallback(() => {
     try {
@@ -424,11 +452,22 @@ export default function ChatWindow({
       setCallActive(false);
       setCallStartAt(null);
       setCallConnecting(true);
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+      playGlobalRingTone();
+      ringTimeoutRef.current = window.setTimeout(() => {
+        if (!callActiveRef.current && callConnectingRef.current) {
+          stopGlobalRingTone();
+          endCall('local');
+        }
+      }, 30000);
 
       try {
         // Start local media
         const stream = await startLocalStream(type);
-        
+
         // Create offers for each receiver
         for (const otherId of receivers) {
           const pc = createPeerConnection(otherId, true);
@@ -472,58 +511,66 @@ export default function ChatWindow({
   const endingRef = useRef(false);
   const endedRef = useRef(false);
 
-  const endCall = useCallback((source: 'local' | 'remote' = 'local') => {
-    if (endingRef.current || endedRef.current) return;
-    endingRef.current = true;
+  const endCall = useCallback(
+    (source: 'local' | 'remote' = 'local') => {
+      if (endingRef.current || endedRef.current) return;
+      endingRef.current = true;
 
-    if (source === 'local' && socketRef.current?.connected) {
-      socketRef.current.emit('call_end', {
-        roomId,
-        from: String(currentUser._id),
-        targets: receiversRef.current,
-      });
-    }
-
-    setCallActive(false);
-    setCallType(null);
-    setCallStartAt(null);
-    setCallConnecting(false);
-
-    remoteStreamsRef.current.forEach((stream) => {
-      stream.getTracks().forEach((track) => track.stop());
-    });
-    remoteStreamsRef.current.clear();
-    setRemoteStreamsState(new Map());
-
-    peerConnectionsRef.current.forEach((pc) => {
-      try {
-        pc.onicecandidate = null;
-        pc.ontrack = null;
-        pc.close();
-      } catch (err) {
-        console.error('❌ Error closing peer connection:', err);
+      if (source === 'local' && socketRef.current?.connected) {
+        socketRef.current.emit('call_end', {
+          roomId,
+          from: String(currentUser._id),
+          targets: receiversRef.current,
+        });
       }
-    });
-    peerConnectionsRef.current.clear();
 
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
-    }
+      setCallActive(false);
+      setCallType(null);
+      setCallStartAt(null);
+      setCallConnecting(false);
 
-    if (localVideoRef.current) {
+      remoteStreamsRef.current.forEach((stream) => {
+        stream.getTracks().forEach((track) => track.stop());
+      });
+      remoteStreamsRef.current.clear();
+      setRemoteStreamsState(new Map());
+
+      peerConnectionsRef.current.forEach((pc) => {
+        try {
+          pc.onicecandidate = null;
+          pc.ontrack = null;
+          pc.close();
+        } catch (err) {
+          console.error('❌ Error closing peer connection:', err);
+        }
+      });
+      peerConnectionsRef.current.clear();
+
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+      }
+
+      if (localVideoRef.current) {
+        try {
+          localVideoRef.current.srcObject = null;
+        } catch {}
+      }
+
+      setIncomingCall(null);
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
       try {
-        localVideoRef.current.srcObject = null;
+        if (typeof window !== 'undefined') localStorage.removeItem('pendingIncomingCall');
       } catch {}
-    }
-
-    setIncomingCall(null);
-    try {
-      if (typeof window !== 'undefined') localStorage.removeItem('pendingIncomingCall');
-    } catch {}
-    endedRef.current = true;
-    endingRef.current = false;
-  }, [roomId, currentUser._id]);
+      endedRef.current = true;
+      endingRef.current = false;
+    },
+    [roomId, currentUser._id],
+  );
 
   const toggleMic = useCallback(() => {
     const next = !micEnabled;
@@ -552,6 +599,46 @@ export default function ChatWindow({
     const id = window.setInterval(() => setCallTicker((x) => x + 1), 1000);
     return () => window.clearInterval(id);
   }, [callActive]);
+
+  useEffect(() => {
+    if (remoteStreamsState && remoteStreamsState.size > 0) {
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+    }
+  }, [remoteStreamsState]);
+
+  useEffect(() => {
+    if (callActive) {
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+    }
+  }, [callActive]);
+
+  useEffect(() => {
+    if (!callConnecting) {
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+    }
+  }, [callConnecting]);
+
+  useEffect(() => {
+    if (!incomingCall) {
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+    }
+  }, [incomingCall]);
 
   const sendNotifyMessage = useCallback(
     async (text: string, replyToMessageId?: string) => {
@@ -1217,59 +1304,6 @@ export default function ChatWindow({
       }
     });
 
-    // socketRef.current.on(
-    //   'call_offer',
-    //   async (data: {
-    //     roomId: string;
-    //     target: string;
-    //     from: string;
-    //     type: 'voice' | 'video';
-    //     sdp: RTCSessionDescriptionInit;
-    //   }) => {
-    //     if (String(data.roomId) !== String(roomId)) return;
-    //     if (String(data.target) !== String(currentUser._id)) return;
-    //     setIncomingCall({ from: String(data.from), type: data.type, roomId: data.roomId, sdp: data.sdp });
-    //   },
-    // );
-
-    // socketRef.current.on(
-    //   'call_answer',
-    //   async (data: { roomId: string; target: string; from: string; sdp: RTCSessionDescriptionInit }) => {
-    //     if (String(data.roomId) !== String(roomId)) return;
-    //     if (String(data.target) !== String(currentUser._id)) return;
-    //     const pc = peerConnectionsRef.current.get(String(data.from));
-    //     if (!pc) return;
-    //     await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    //     setCallActive(true);
-    //     setCallConnecting(false);
-    //     setCallStartAt(Date.now());
-    //   },
-    // );
-
-    // socketRef.current.on(
-    //   'call_candidate',
-    //   async (data: { roomId: string; target: string; from: string; candidate: RTCIceCandidateInit }) => {
-    //     if (String(data.roomId) !== String(roomId)) return;
-    //     if (String(data.target) !== String(currentUser._id)) return;
-    //     const pc = peerConnectionsRef.current.get(String(data.from));
-    //     if (!pc) return;
-    //     try {
-    //       await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-    //     } catch {}
-    //   },
-    // );
-
-    // socketRef.current.on('call_end', (data: { roomId: string }) => {
-    //   if (String(data.roomId) !== String(roomId)) return;
-    //   endCall();
-    //   setIncomingCall(null);
-    // });
-
-    // socketRef.current.on('call_reject', (data: { roomId: string }) => {
-    //   if (String(data.roomId) !== String(roomId)) return;
-    //   endCall();
-    //   setIncomingCall(null);
-    // });
     socketRef.current.on(
       'reaction_updated',
       (data: { _id: string; roomId: string; reactions: Record<string, string[]> }) => {
@@ -1548,12 +1582,33 @@ export default function ChatWindow({
 
   const endCallRef = useRef<((source: 'local' | 'remote') => void) | null>(null);
 
+
+
+  useEffect(() => {
+    callActiveRef.current = callActive;
+  }, [callActive]);
+
+  useEffect(() => {
+    callConnectingRef.current = callConnecting;
+  }, [callConnecting]);
+
+  // 🔥 2. SỬA LẠI USEEFFECT SOCKET LISTENERS
   useEffect(() => {
     if (!roomId) return;
 
     const socket = socketRef.current;
     if (!socket) return;
 
+    // ✅ CLEANUP CŨ TRƯỚC KHI ĐĂNG KÝ MỚI
+    socket.off('call_offer');
+    socket.off('call_answer');
+    socket.off('call_candidate');
+    socket.off('call_end');
+    socket.off('call_reject');
+
+    // ==========================================
+    // HANDLER: call_offer
+    // ==========================================
     const handleCallOffer = async (data: {
       roomId: string;
       target: string;
@@ -1569,8 +1624,12 @@ export default function ChatWindow({
         roomId: data.roomId,
         sdp: data.sdp,
       });
+      playGlobalRingTone();
     };
 
+    // ==========================================
+    // HANDLER: call_answer ✅ FIX QUAN TRỌNG
+    // ==========================================
     const handleCallAnswer = async (data: {
       roomId: string;
       target: string;
@@ -1579,20 +1638,39 @@ export default function ChatWindow({
     }) => {
       if (String(data.target) !== String(currentUser._id)) return;
 
+      // ✅ TẮT CHUÔNG NGAY LẬP TỨC
+      stopGlobalRingTone();
+
+      // ✅ Clear timeout nếu có
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+
+      setCallConnecting(false);
       endedRef.current = false;
+
       const pc = peerConnectionsRef.current.get(String(data.from));
       if (!pc) {
         console.error('❌ [CLIENT] No peer connection found for:', data.from);
         return;
       }
 
-      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
 
-      setCallActive(true);
-      setCallConnecting(false);
-      setCallStartAt(Date.now());
+        // ✅ Chỉ set callActive sau khi setRemoteDescription thành công
+        setCallActive(true);
+        setCallStartAt(Date.now());
+      } catch (err) {
+        console.error('❌ [CLIENT] Set remote description error:', err);
+        stopGlobalRingTone(); // Đảm bảo tắt chuông nếu có lỗi
+      }
     };
 
+    // ==========================================
+    // HANDLER: call_candidate
+    // ==========================================
     const handleCallCandidate = async (data: {
       roomId: string;
       target: string;
@@ -1611,26 +1689,44 @@ export default function ChatWindow({
       }
     };
 
+    // ==========================================
+    // HANDLER: call_end ✅ TẮT CHUÔNG
+    // ==========================================
     const handleCallEnd = (data: { roomId: string }) => {
+      stopGlobalRingTone(); // ✅ TẮT CHUÔNG
+
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+
       endCallRef.current?.('remote');
       setIncomingCall(null);
     };
 
+    // ==========================================
+    // HANDLER: call_reject ✅ TẮT CHUÔNG
+    // ==========================================
     const handleCallReject = (data: { roomId: string }) => {
+      stopGlobalRingTone(); // ✅ TẮT CHUÔNG
+
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+
       endCallRef.current?.('remote');
       setIncomingCall(null);
     };
 
-    // Register listeners
+    // ✅ ĐĂNG KÝ LISTENERS MỚI
     socket.on('call_offer', handleCallOffer);
     socket.on('call_answer', handleCallAnswer);
     socket.on('call_candidate', handleCallCandidate);
     socket.on('call_end', handleCallEnd);
     socket.on('call_reject', handleCallReject);
 
-    // ========================================
-    // ✅ CLEANUP CHỈ REMOVE LISTENERS
-    // ========================================
+    // ✅ CLEANUP KHI UNMOUNT
     return () => {
       socket.off('call_offer', handleCallOffer);
       socket.off('call_answer', handleCallAnswer);
@@ -1638,7 +1734,30 @@ export default function ChatWindow({
       socket.off('call_end', handleCallEnd);
       socket.off('call_reject', handleCallReject);
     };
-  }, [roomId, currentUser._id]);
+  }, [roomId, currentUser._id, stopGlobalRingTone, playGlobalRingTone]); // ✅ Chỉ depend vào những giá trị cần thiết
+
+
+  // 🔥 4. THÊM USEEFFECT ĐỂ TẮT CHUÔNG KHI callActive = true
+  useEffect(() => {
+    if (callActive) {
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+    }
+  }, [callActive, stopGlobalRingTone]);
+
+  // 🔥 5. THÊM USEEFFECT ĐỂ TẮT CHUÔNG KHI CÓ REMOTE STREAM
+  useEffect(() => {
+    if (remoteStreamsState && remoteStreamsState.size > 0) {
+      stopGlobalRingTone();
+      if (ringTimeoutRef.current) {
+        window.clearTimeout(ringTimeoutRef.current);
+        ringTimeoutRef.current = null;
+      }
+    }
+  }, [remoteStreamsState, stopGlobalRingTone]);
 
   useEffect(() => {
     endCallRef.current = endCall;
@@ -1649,7 +1768,12 @@ export default function ChatWindow({
       const raw = typeof window !== 'undefined' ? localStorage.getItem('pendingIncomingCall') : null;
       if (!raw) return;
       if (incomingCall || callActive || callConnecting) return;
-      const data = JSON.parse(raw) as { roomId: string; from: string; type: 'voice' | 'video'; sdp: RTCSessionDescriptionInit };
+      const data = JSON.parse(raw) as {
+        roomId: string;
+        from: string;
+        type: 'voice' | 'video';
+        sdp: RTCSessionDescriptionInit;
+      };
       if (!data || String(data.roomId) !== String(roomId)) return;
       localStorage.removeItem('pendingIncomingCall');
 
@@ -1676,6 +1800,7 @@ export default function ChatWindow({
             sdp: answer,
           });
           receiversRef.current = [String(from)];
+          stopGlobalRingTone();
         } catch {}
       })();
       // đã remove ở trên
@@ -2439,6 +2564,7 @@ export default function ChatWindow({
                     <button
                       className="px-3 py-2 bg-blue-600 text-white rounded-lg"
                       onClick={async () => {
+                        stopGlobalRingTone();
                         endedRef.current = false;
                         const type = incomingCall!.type;
                         const from = incomingCall!.from;
@@ -2462,13 +2588,14 @@ export default function ChatWindow({
                           socketRef.current?.emit('call_answer', {
                             roomId,
                             target: from,
-                          from: String(currentUser._id),
-                          sdp: answer,
-                        });
+                            from: String(currentUser._id),
+                            sdp: answer,
+                          });
 
-                        receiversRef.current = [String(from)];
+                          receiversRef.current = [String(from)];
 
-                        setIncomingCall(null);
+                          setIncomingCall(null);
+                          stopGlobalRingTone();
                         } catch (err) {
                           console.error('❌ [CLIENT] Accept call error:', err);
                           endCall();
@@ -2483,6 +2610,7 @@ export default function ChatWindow({
                         const from = incomingCall?.from;
                         socketRef.current?.emit('call_reject', { roomId, targets: from ? [String(from)] : [] });
                         setIncomingCall(null);
+                        stopGlobalRingTone();
                       }}
                     >
                       Từ chối
@@ -2493,34 +2621,31 @@ export default function ChatWindow({
               {!callActive && callConnecting && (
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex items-center gap-3">
-                  {chatAvatar ? (
-                    <div className="w-12 h-12 rounded-full overflow-hidden">
-                      <Image
-                        src={getProxyUrl(chatAvatar)}
-                        alt={chatName}
-                        width={48}
-                        height={48}
-                        className="w-full h-full object-cover"
-                      />
+                    {chatAvatar ? (
+                      <div className="w-12 h-12 rounded-full overflow-hidden">
+                        <Image
+                          src={getProxyUrl(chatAvatar)}
+                          alt={chatName}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
+                        {String(chatName || '')
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase() || 'U'}
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <div className="font-medium">{chatName}</div>
+                      <div className="text-sm text-gray-600">Đang chờ đối phương chấp nhận...</div>
                     </div>
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
-                      {String(chatName || '')
-                        .trim()
-                        .charAt(0)
-                        .toUpperCase() || 'U'}
-                    </div>
-                  )}
-                  <div className="flex flex-col">
-                    <div className="font-medium">{chatName}</div>
-                    <div className="text-sm text-gray-600">Đang chờ đối phương chấp nhận...</div>
-                  </div>
                   </div>
                   <div className="flex justify-end">
-                    <button
-                      className="px-3 py-2 bg-gray-200 rounded-lg"
-                      onClick={() => endCall('local')}
-                    >
+                    <button className="px-3 py-2 bg-gray-200 rounded-lg" onClick={() => endCall('local')}>
                       Hủy
                     </button>
                   </div>

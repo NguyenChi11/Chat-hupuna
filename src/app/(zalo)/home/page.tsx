@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { resolveSocketUrl } from '@/utils/utils';
 import Image from 'next/image';
@@ -11,7 +11,14 @@ import HomeMobile from '@/components/(home)/HomeMobile';
 import HomeOverlays from '@/components/(home)/HomeOverlays';
 import { useHomePage } from '@/hooks/useHomePage';
 import type { GroupConversation } from '@/types/Group';
-import { subscribeNotification, addUserTags, loginOneSignal, ensureSubscribed, waitForOneSignalReady } from '@/lib/onesignal';
+import {
+  subscribeNotification,
+  addUserTags,
+  loginOneSignal,
+  ensureSubscribed,
+  waitForOneSignalReady,
+} from '@/lib/onesignal';
+import { playGlobalRingTone, stopGlobalRingTone } from '@/utils/callRing';
 
 export default function HomePage() {
   const {
@@ -77,46 +84,81 @@ export default function HomePage() {
     void run();
   }, [currentUser]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (!currentUser || !currentUser._id) return;
-    const socket = (socketRef.current = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false }));
+    
+    const socket = (socketRef.current = io(resolveSocketUrl(), { 
+      transports: ['websocket'], 
+      withCredentials: false 
+    }));
+    
     socket.emit('join_user', { userId: String(currentUser._id) });
 
-    const handleOffer = (data: { roomId: string; target: string; from: string; type: 'voice' | 'video'; sdp: RTCSessionDescriptionInit }) => {
-      if (String(data.target) !== String(currentUser._id)) return;
-      if (selectedChat) return; // Đã mở chat, để ChatPopup xử lý
-      if (incomingCallHome) return; // Đã có overlay, tránh nhân đôi
-      setIncomingCallHome({ from: String(data.from), type: data.type, roomId: String(data.roomId), sdp: data.sdp });
-    };
-    const handleEnd = () => {
-      setIncomingCallHome(null);
-      try {
-        localStorage.removeItem('pendingIncomingCall');
-      } catch {}
-    };
-    const handleReject = () => {
-      setIncomingCallHome(null);
-      try {
-        localStorage.removeItem('pendingIncomingCall');
-      } catch {}
-    };
+    // Cleanup cũ
     socket.off('call_offer');
     socket.off('call_end');
     socket.off('call_reject');
+    socket.off('call_answer'); // ✅ THÊM LISTENER MỚI
+
+    const handleOffer = (data: { 
+      roomId: string; 
+      target: string; 
+      from: string; 
+      type: 'voice' | 'video'; 
+      sdp: RTCSessionDescriptionInit 
+    }) => {
+      if (String(data.target) !== String(currentUser._id)) return;
+      if (selectedChat) return; // Đã mở chat, để ChatPopup xử lý
+      if (incomingCallHome) return;
+      
+      setIncomingCallHome({ 
+        from: String(data.from), 
+        type: data.type, 
+        roomId: String(data.roomId), 
+        sdp: data.sdp 
+      });
+      
+      playGlobalRingTone(); // ✅ DÙNG GLOBAL
+    };
+
+    const handleEnd = () => {
+      stopGlobalRingTone(); // ✅ DÙNG GLOBAL
+      setIncomingCallHome(null);
+      try {
+        localStorage.removeItem('pendingIncomingCall');
+      } catch {}
+    };
+
+    const handleReject = () => {
+      stopGlobalRingTone(); // ✅ DÙNG GLOBAL
+      setIncomingCallHome(null);
+      try {
+        localStorage.removeItem('pendingIncomingCall');
+      } catch {}
+    };
+
+    // ✅ THÊM HANDLER call_answer
+    const handleAnswer = () => {
+      stopGlobalRingTone(); // ✅ DÙNG GLOBAL
+    };
+
     socket.on('call_offer', handleOffer);
     socket.on('call_end', handleEnd);
     socket.on('call_reject', handleReject);
+    socket.on('call_answer', handleAnswer); // ✅ LẮNG NGHE call_answer
+
     return () => {
       socket.off('call_offer', handleOffer);
       socket.off('call_end', handleEnd);
       socket.off('call_reject', handleReject);
+      socket.off('call_answer', handleAnswer);
     };
   }, [currentUser, selectedChat, incomingCallHome]);
 
   if (isLoading || !currentUser) {
     return <div className="flex h-screen items-center justify-center bg-white">Loading...</div>;
   }
-
+  
   return (
     <div className="flex h-screen w-full font-sans">
       <HomeDesktop
@@ -191,11 +233,20 @@ export default function HomePage() {
                   <>
                     {avatar ? (
                       <div className="w-12 h-12 rounded-full overflow-hidden">
-                        <Image src={getProxyUrl(avatar)} alt={name || ''} width={48} height={48} className="w-full h-full object-cover" />
+                        <Image
+                          src={getProxyUrl(avatar)}
+                          alt={name || ''}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
-                        {String(name || '').trim().charAt(0).toUpperCase() || 'U'}
+                        {String(name || '')
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase() || 'U'}
                       </div>
                     )}
                     <div className="flex flex-col">
@@ -223,6 +274,7 @@ export default function HomePage() {
                     }
                   }
                   setIncomingCallHome(null);
+                  stopGlobalRingTone();
                 }}
               >
                 Chấp nhận
@@ -230,8 +282,12 @@ export default function HomePage() {
               <button
                 className="px-3 py-2 bg-gray-200 rounded-lg"
                 onClick={() => {
-                  socketRef.current?.emit('call_reject', { roomId: incomingCallHome.roomId, targets: [String(incomingCallHome.from)] });
+                  socketRef.current?.emit('call_reject', {
+                    roomId: incomingCallHome.roomId,
+                    targets: [String(incomingCallHome.from)],
+                  });
                   setIncomingCallHome(null);
+                  stopGlobalRingTone();
                 }}
               >
                 Từ chối

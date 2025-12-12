@@ -325,6 +325,7 @@ socket.on('toggle_reaction', (data) => {
     const roomId = String(data.roomId);
     io.in(roomId).emit('call_answer', data);
     if (data?.target) io.to(String(data.target)).emit('call_answer', data);
+    if (data?.from) io.to(String(data.from)).emit('call_answer', data);
   });
 
   socket.on('call_candidate', (data) => {
