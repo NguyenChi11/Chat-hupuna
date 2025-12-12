@@ -36,14 +36,13 @@ import {
   updateMessageApi,
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
-import { isVideoFile, resolveSocketUrl, getProxyUrl } from '@/utils/utils';
-import Image from 'next/image';
+import { isVideoFile, resolveSocketUrl } from '@/utils/utils';
+import ModalCall from '@/components/(call)/ModalCall';
 import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
 import { useRouter } from 'next/navigation';
 import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
-import { HiPhone, HiX } from 'react-icons/hi';
 import { stopGlobalRingTone } from '@/utils/callRing';
 import { useCallSession } from '@/hooks/useCallSession';
 import IncomingCallModal from '@/components/(call)/IncomingCallModal';
@@ -2023,142 +2022,29 @@ export default function ChatWindow({
                   );
                 })()}
               {!callActive && callConnecting && (
-                <div className="flex flex-col gap-3 mb-4">
-                  <div className="flex items-center gap-3">
-                    {chatAvatar ? (
-                      <div className="w-12 h-12 rounded-full overflow-hidden">
-                        <Image
-                          src={getProxyUrl(chatAvatar)}
-                          alt={chatName}
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
-                        {String(chatName || '')
-                          .trim()
-                          .charAt(0)
-                          .toUpperCase() || 'U'}
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <div className="font-medium">{chatName}</div>
-                      <div className="text-sm text-gray-600">Đang chờ...</div>
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      className="flex items-center px-3 py-2 hover:bg-gray-300 shadow-lg rounded-lg hover:cursor-pointer"
-                      onClick={() => endCall('local')}
-                    >
-                      <HiPhone className="w-7 h-7 text-red-600" />
-                    </button>
-                  </div>
-                </div>
+                <ModalCall
+                  avatar={chatAvatar}
+                  name={chatName}
+                  mode="connecting"
+                  callType={callType === 'video' ? 'video' : 'voice'}
+                  onEndCall={() => endCall('local')}
+                />
               )}
               {callActive && (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {chatAvatar ? (
-                        <div className="w-10 h-10 rounded-full overflow-hidden">
-                          <Image
-                            src={getProxyUrl(chatAvatar)}
-                            alt={chatName}
-                            width={40}
-                            height={40}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
-                          {String(chatName || '')
-                            .trim()
-                            .charAt(0)
-                            .toUpperCase() || 'U'}
-                        </div>
-                      )}
-                      <div className="flex flex-col">
-                        <div className="font-medium">{chatName}</div>
-                        <div className="text-xs text-gray-600">{callType === 'video' ? 'Video' : 'Thoại'}</div>
-                      </div>
-                    </div>
-                    {callStartAt && (
-                      <div className="text-sm text-gray-600">
-                        {(() => {
-                          const now = Date.now();
-                          const ms = now - (callStartAt || now);
-                          const s = Math.floor(ms / 1000);
-                          const m = Math.floor(s / 60);
-                          const ss = s % 60;
-                          const mm = String(m).padStart(2, '0');
-                          const sss = String(ss).padStart(2, '0');
-                          return `${mm}:${sss}`;
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {callType === 'video' && (
-                      <div className="bg-black rounded-lg overflow-hidden aspect-video">
-                        <video ref={localVideoRef} className="w-full h-full object-cover" muted playsInline />
-                      </div>
-                    )}
-                    {Array.from(remoteStreamsState.entries()).map(([uid, stream]) => (
-                      <div
-                        key={uid}
-                        className={callType === 'video' ? 'bg-black rounded-lg overflow-hidden aspect-video' : ''}
-                      >
-                        {callType === 'video' ? (
-                          <video
-                            className="w-full h-full object-cover"
-                            autoPlay
-                            playsInline
-                            ref={(el) => {
-                              if (el) {
-                                el.srcObject = stream;
-                                try {
-                                  el.play();
-                                } catch {}
-                              }
-                            }}
-                          />
-                        ) : (
-                          <audio
-                            autoPlay
-                            ref={(el) => {
-                              if (el) {
-                                el.srcObject = stream;
-                                try {
-                                  el.play();
-                                } catch {}
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-center gap-3 mt-2">
-                    <button className="px-4 py-2 rounded-full bg-gray-200" onClick={toggleMic}>
-                      {micEnabled ? 'Tắt mic' : 'Bật mic'}
-                    </button>
-                    {callType === 'video' && (
-                      <button className="px-4 py-2 rounded-full bg-gray-200" onClick={toggleCamera}>
-                        {camEnabled ? 'Tắt video' : 'Bật video'}
-                      </button>
-                    )}
-                    <button
-                      className="px-4 py-2 rounded-full bg-red-600 text-white flex items-center gap-2"
-                      onClick={() => endCall('local')}
-                    >
-                      <HiX className="w-5 h-5" />
-                      Kết thúc
-                    </button>
-                  </div>
-                </div>
+                <ModalCall
+                  avatar={chatAvatar}
+                  name={chatName}
+                  mode="active"
+                  callType={callType === 'video' ? 'video' : 'voice'}
+                  callStartAt={callStartAt}
+                  localVideoRef={localVideoRef}
+                  remoteStreams={Array.from(remoteStreamsState.values())}
+                  micEnabled={micEnabled}
+                  camEnabled={camEnabled}
+                  onToggleMic={toggleMic}
+                  onToggleCamera={toggleCamera}
+                  onEndCall={() => endCall('local')}
+                />
               )}
             </div>
           </div>
