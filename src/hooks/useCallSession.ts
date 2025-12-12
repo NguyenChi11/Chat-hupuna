@@ -178,6 +178,11 @@ export function useCallSession({
     [micEnabled, camEnabled],
   );
 
+  const shouldInitiateTo = useCallback(
+    (otherId: string) => String(currentUserId) < String(otherId),
+    [currentUserId],
+  );
+
   const resetCallLocal = useCallback(() => {
     try {
       setCallActive(false);
@@ -355,8 +360,10 @@ export function useCallSession({
       const type = payload.type;
       const from = payload.from;
       setCallType(type);
-      setCallActive(true);
-      setCallStartAt(Date.now());
+      if (!callActiveRef.current) {
+        setCallActive(true);
+        setCallStartAt(Date.now());
+      }
       try {
         const stream = await startLocalStream(type);
         const pc = createPeerConnection(from, true);
@@ -370,13 +377,30 @@ export function useCallSession({
           from: String(currentUserId),
           sdp: answer,
         });
-        receiversRef.current = [String(from)];
+        const allReceivers = getReceiverIds();
+        receiversRef.current = allReceivers;
+        const others = allReceivers.filter((id) => String(id) !== String(from));
+        for (const otherId of others) {
+          if (shouldInitiateTo(otherId)) {
+            const pc2 = createPeerConnection(otherId, true);
+            stream.getTracks().forEach((track) => pc2.addTrack(track, stream));
+            const offer2 = await pc2.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === 'video' });
+            await pc2.setLocalDescription(offer2);
+            socketRef.current?.emit('call_offer', {
+              roomId,
+              target: otherId,
+              from: String(currentUserId),
+              type,
+              sdp: offer2,
+            });
+          }
+        }
         setIncomingCall(null);
       } catch (err) {
         endCall();
       }
     },
-    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef],
+    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, getReceiverIds, shouldInitiateTo],
   );
 
   const acceptIncomingCall = useCallback(async () => {
@@ -401,6 +425,10 @@ export function useCallSession({
       sdp: RTCSessionDescriptionInit;
     }) => {
       if (String(data.target) !== String(currentUserId)) return;
+      if (callActiveRef.current || callConnectingRef.current) {
+        await acceptIncomingCallWith({ from: String(data.from), type: data.type, roomId: data.roomId, sdp: data.sdp });
+        return;
+      }
       try {
         const raw = typeof window !== 'undefined' ? localStorage.getItem('pendingIncomingCall') : null;
         if (raw) {

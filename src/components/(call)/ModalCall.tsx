@@ -6,6 +6,7 @@ import MicOffIcon from '../svg/MicOffIcon';
 import ICVideoOff from '../svg/ICVideoOff';
 import ICVideo from '../svg/ICVideo';
 
+type RemotePeer = { userId: string; stream: MediaStream; name?: string; avatar?: string };
 type Props = {
   avatar?: string;
   name: string;
@@ -13,7 +14,9 @@ type Props = {
   callType: 'voice' | 'video';
   callStartAt?: number | null;
   localVideoRef?: React.RefObject<HTMLVideoElement | null>;
-  remoteStreams?: MediaStream[];
+  currentUserName?: string;
+  currentUserAvatar?: string;
+  remotePeers?: RemotePeer[];
   micEnabled?: boolean;
   camEnabled?: boolean;
   onToggleMic?: () => void;
@@ -28,7 +31,9 @@ export default function ModalCall({
   callType,
   callStartAt,
   localVideoRef,
-  remoteStreams = [],
+  currentUserName,
+  currentUserAvatar,
+  remotePeers = [],
   micEnabled = true,
   camEnabled = true,
   onToggleMic,
@@ -116,12 +121,24 @@ export default function ModalCall({
       </div>
       <div className="grid grid-cols-2 gap-2">
         {callType === 'video' && (
-          <div className="bg-black rounded-lg overflow-hidden aspect-video">
+          <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
             <video ref={localVideoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
+            <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-2">
+              {currentUserAvatar ? (
+                <span className="inline-block w-5 h-5 rounded-full overflow-hidden">
+                  <Image src={getProxyUrl(currentUserAvatar)} alt={currentUserName || ''} width={20} height={20} />
+                </span>
+              ) : (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-500 text-white text-[10px]">
+                  {(currentUserName || 'U').trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="truncate max-w-[8rem]">{currentUserName || 'Bạn'}</span>
+            </div>
           </div>
         )}
-        {remoteStreams.map((stream, idx) => (
-          <div key={idx} className={callType === 'video' ? 'bg-black rounded-lg overflow-hidden aspect-video' : ''}>
+        {remotePeers.map((peer) => (
+          <div key={peer.userId} className={callType === 'video' ? 'relative bg-black rounded-lg overflow-hidden aspect-video' : ''}>
             {callType === 'video' ? (
               <video
                 className="w-full h-full object-cover"
@@ -130,7 +147,7 @@ export default function ModalCall({
                 ref={(el) => {
                   if (el) {
                     const v = el as HTMLVideoElement & { srcObject?: MediaStream };
-                    v.srcObject = stream;
+                    v.srcObject = peer.stream;
                     try {
                       v.play();
                     } catch {}
@@ -143,13 +160,27 @@ export default function ModalCall({
                 ref={(el) => {
                   if (el) {
                     const a = el as HTMLAudioElement & { srcObject?: MediaStream };
-                    a.srcObject = stream;
+                    a.srcObject = peer.stream;
                     try {
                       a.play();
                     } catch {}
                   }
                 }}
               />
+            )}
+            {callType === 'video' && (
+              <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-2">
+                {peer.avatar ? (
+                  <span className="inline-block w-5 h-5 rounded-full overflow-hidden">
+                    <Image src={getProxyUrl(peer.avatar)} alt={peer.name || ''} width={20} height={20} />
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-500 text-white text-[10px]">
+                    {(peer.name || 'U').trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="truncate max-w-[8rem]">{peer.name || 'Thành viên'}</span>
+              </div>
             )}
           </div>
         ))}

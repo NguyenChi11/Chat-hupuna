@@ -2038,7 +2038,12 @@ export default function ChatWindow({
                   callType={callType === 'video' ? 'video' : 'voice'}
                   callStartAt={callStartAt}
                   localVideoRef={localVideoRef}
-                  remoteStreams={Array.from(remoteStreamsState.values())}
+                  currentUserName={currentUser.name}
+                  currentUserAvatar={currentUser.avatar}
+                  remotePeers={Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
+                    const u = allUsers.find((x) => String(x._id) === String(uid));
+                    return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
+                  })}
                   micEnabled={micEnabled}
                   camEnabled={camEnabled}
                   onToggleMic={toggleMic}
