@@ -117,7 +117,7 @@ export default function ModalCall({
       <div className="grid grid-cols-2 gap-2">
         {callType === 'video' && (
           <div className="bg-black rounded-lg overflow-hidden aspect-video">
-            <video ref={localVideoRef} className="w-full h-full object-cover" muted playsInline />
+            <video ref={localVideoRef} className="w-full h-full object-cover" muted playsInline autoPlay />
           </div>
         )}
         {remoteStreams.map((stream, idx) => (

@@ -48,6 +48,7 @@ export function useCallSession({
   const callConnectingRef = useRef<boolean>(false);
   const endingRef = useRef(false);
   const endedRef = useRef(false);
+  const callTypeRef = useRef<CallType | null>(null);
 
   useEffect(() => {
     callActiveRef.current = callActive;
@@ -55,6 +56,9 @@ export function useCallSession({
   useEffect(() => {
     callConnectingRef.current = callConnecting;
   }, [callConnecting]);
+  useEffect(() => {
+    callTypeRef.current = callType;
+  }, [callType]);
 
   const createPeerConnection = useCallback(
     (otherUserId: string, forceNew = false) => {
@@ -159,6 +163,11 @@ export function useCallSession({
       const v = stream!.getVideoTracks()[0];
       if (v) v.enabled = camEnabled;
       if (localVideoRef.current && type === 'video') {
+        try {
+          // Ensure autoplay policy allows playing
+          localVideoRef.current.muted = true;
+          (localVideoRef.current as HTMLVideoElement & { autoplay?: boolean }).autoplay = true;
+        } catch {}
         localVideoRef.current.srcObject = stream!;
         try {
           await localVideoRef.current.play();
@@ -476,6 +485,21 @@ export function useCallSession({
       if (ringTimeoutRef.current) {
         window.clearTimeout(ringTimeoutRef.current);
         ringTimeoutRef.current = null;
+      }
+      if (callTypeRef.current === 'video') {
+        const el = localVideoRef.current;
+        const s = localStreamRef.current;
+        if (el && s) {
+          try {
+            el.muted = true;
+            (el as HTMLVideoElement & { autoplay?: boolean }).autoplay = true;
+          } catch {}
+          try {
+            // Always rebind in case element mounted after stream started
+            (el as HTMLVideoElement & { srcObject?: MediaStream }).srcObject = s;
+            void el.play().catch(() => {});
+          } catch {}
+        }
       }
     }
   }, [callActive]);

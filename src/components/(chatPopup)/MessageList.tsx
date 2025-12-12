@@ -152,12 +152,12 @@ export default function MessageList({
                 const incoming = String(currentUser._id) === String(calleeId);
                 const iconType =
                   callType === 'video' ? (
-                    status === 'rejected' || status === "timeout" ? (
+                    status === 'rejected' || status === 'timeout' ? (
                       <HiVideoCamera className="w-4 h-4 text-red-600" />
                     ) : (
                       <HiVideoCamera className="w-4 h-4 text-blue-600" />
                     )
-                  ) : status === 'rejected' || status === "timeout"  ? (
+                  ) : status === 'rejected' || status === 'timeout' ? (
                     <HiPhone className="w-4 h-4 text-red-600" />
                   ) : (
                     <HiPhone className="w-4 h-4 text-green-600" />
@@ -176,6 +176,18 @@ export default function MessageList({
                       : incoming
                         ? 'Nhỡ'
                         : 'Không phản hồi';
+                const dt = new Date(msg.timestamp);
+                const today = new Date();
+                const yesterday = new Date();
+                yesterday.setDate(today.getDate() - 1);
+                const sameDate = (a: Date, b: Date) =>
+                  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+                const dateLabel = sameDate(dt, today)
+                  ? 'Hôm nay'
+                  : sameDate(dt, yesterday)
+                    ? 'Hôm qua'
+                    : dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const timeLabel = dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                 return (
                   <div key={msg._id} id={`msg-${msg._id}`} className="flex justify-center my-3">
                     <div
@@ -184,8 +196,11 @@ export default function MessageList({
                       <div className="flex items-center gap-2">
                         {iconType}
                         {iconDir}
+                        <div>
+                          <p className="text-xs text-gray-500 truncate">{`${title} – ${detail}`}</p>
+                          <p className="text-xs text-gray-500 truncate">{` ${dateLabel} • ${timeLabel}`}</p>
+                        </div>
 
-                        <p className="text-xs text-gray-500 truncate">{`${title} – ${detail}`}</p>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
