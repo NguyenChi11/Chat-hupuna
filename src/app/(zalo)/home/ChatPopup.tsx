@@ -2010,15 +2010,19 @@ export default function ChatWindow({
           onClose={() => setPreviewMedia(null)}
         />
 
-        {(callActive || incomingCall || callConnecting) && (
+        {(callActive || incomingCall || callConnecting) && !isGroup && (
           <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
             <div className="bg-white rounded-xl shadow-lg w-full max-w-xl p-4">
               {!callActive &&
                 incomingCall &&
                 (() => {
+                  const rid = String(incomingCall.roomId || '');
+                  const parts = rid.split('_').filter(Boolean);
+                  const isOneToOneIncoming = parts.length === 2;
+                  const group = !isOneToOneIncoming ? groups.find((g) => String(g._id) === rid) : null;
                   const caller = allUsers.find((u) => String(u._id) === String(incomingCall?.from));
-                  const avatar = caller?.avatar;
-                  const name = caller?.name || chatName;
+                  const avatar = isOneToOneIncoming ? caller?.avatar : group?.avatar;
+                  const name = isOneToOneIncoming ? (caller?.name || chatName) : (group?.name || chatName);
                   return (
                     <IncomingCallModal
                       avatar={avatar}
@@ -2070,11 +2074,21 @@ export default function ChatWindow({
                 const isOneToOneCall = counterpartId ? true : (roomParticipants && roomParticipants.length > 0
                   ? roomParticipants.length === 2
                   : remoteIds.length <= 1);
-                const avatar = isOneToOneCall ? other?.avatar : chatAvatar;
-                const name = isOneToOneCall ? (other?.name || chatName) : chatName;
+                const currentCallRoomId = String(activeRoomId || roomId);
+                const currentGroup = groups.find((g) => String(g._id) === currentCallRoomId);
+                const avatar = isOneToOneCall ? other?.avatar : (currentGroup?.avatar || chatAvatar);
+                const name = isOneToOneCall ? (other?.name || chatName) : (currentGroup?.name || chatName);
                 const remotePeers = Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
                   const u = allUsers.find((x) => String(x._id) === String(uid));
                   return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
+                });
+                const participantIds = new Set<string>();
+                roomParticipants.forEach((id) => participantIds.add(String(id)));
+                remoteIds.forEach((id) => participantIds.add(String(id)));
+                participantIds.delete(String(currentUser._id));
+                const participants = Array.from(participantIds).map((uid) => {
+                  const u = allUsers.find((x) => String(x._id) === String(uid));
+                  return { userId: uid, name: u?.name, avatar: u?.avatar };
                 });
                 return (
                   <ModalCall
@@ -2087,6 +2101,7 @@ export default function ChatWindow({
                     currentUserName={currentUser.name}
                     currentUserAvatar={currentUser.avatar}
                     remotePeers={remotePeers}
+                    participants={participants}
                     micEnabled={micEnabled}
                     camEnabled={camEnabled}
                     onToggleMic={toggleMic}

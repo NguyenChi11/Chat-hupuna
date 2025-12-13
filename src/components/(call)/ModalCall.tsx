@@ -7,6 +7,7 @@ import ICVideoOff from '../svg/ICVideoOff';
 import ICVideo from '../svg/ICVideo';
 
 type RemotePeer = { userId: string; stream: MediaStream; name?: string; avatar?: string };
+type Participant = { userId: string; name?: string; avatar?: string };
 type Props = {
   avatar?: string;
   name: string;
@@ -17,6 +18,7 @@ type Props = {
   currentUserName?: string;
   currentUserAvatar?: string;
   remotePeers?: RemotePeer[];
+  participants?: Participant[];
   micEnabled?: boolean;
   camEnabled?: boolean;
   onToggleMic?: () => void;
@@ -34,6 +36,7 @@ export default function ModalCall({
   currentUserName,
   currentUserAvatar,
   remotePeers = [],
+  participants = [],
   micEnabled = true,
   camEnabled = true,
   onToggleMic,
@@ -135,18 +138,18 @@ export default function ModalCall({
               )}
               <span className="text-sm text-gray-800">{currentUserName || 'Bạn'}</span>
             </div>
-            {remotePeers.map((peer) => (
-              <div key={`chip-${peer.userId}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100">
-                {peer.avatar ? (
+            {participants.map((p) => (
+              <div key={`chip-${p.userId}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100">
+                {p.avatar ? (
                   <span className="inline-block w-5 h-5 rounded-full overflow-hidden">
-                    <Image src={getProxyUrl(peer.avatar)} alt={peer.name || ''} width={20} height={20} />
+                    <Image src={getProxyUrl(p.avatar)} alt={p.name || ''} width={20} height={20} />
                   </span>
                 ) : (
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-400 text-white text-[10px]">
-                    {(peer.name || 'U').trim().charAt(0).toUpperCase()}
+                    {(p.name || 'U').trim().charAt(0).toUpperCase()}
                   </span>
                 )}
-                <span className="text-sm text-gray-800">{peer.name || 'Thành viên'}</span>
+                <span className="text-sm text-gray-800">{p.name || 'Thành viên'}</span>
               </div>
             ))}
           </div>

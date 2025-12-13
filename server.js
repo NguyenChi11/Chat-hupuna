@@ -409,16 +409,18 @@ socket.on('toggle_reaction', (data) => {
           io.in(roomId).emit('call_end', { roomId });
           rc.active = false;
           rc.participants.clear();
+          rc.startAt = null;
         } else {
           if (rc.participants.size === 0) {
             io.in(roomId).emit('call_end', { roomId });
             rc.active = false;
+            rc.startAt = null;
           } else {
             io.in(roomId).emit('call_leave', { roomId, userId: connectedUserId });
           }
         }
         roomCalls.set(roomId, rc);
-        io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active });
+        io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active, startAt: rc.startAt || null });
       }
     });
   });
@@ -429,11 +431,11 @@ socket.on('toggle_reaction', (data) => {
     if (data?.target) io.to(String(data.target)).emit('call_offer', data);
     const key = `${roomId}|${String(data.from)}|${String(data.target)}`;
     callSessions.set(key, { roomId, callerId: String(data.from), calleeId: String(data.target), type: data.type, offerAt: Date.now() });
-    const rc = roomCalls.get(roomId) || { type: data.type || 'voice', participants: new Set(), active: false };
+    const rc = roomCalls.get(roomId) || { type: data.type || 'voice', participants: new Set(), active: false, startAt: null };
     rc.type = data.type || rc.type;
     rc.participants.add(String(data.from));
     roomCalls.set(roomId, rc);
-    io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active });
+    io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active, startAt: rc.startAt || null });
   });
 
   socket.on('call_answer', (data) => {
@@ -444,13 +446,16 @@ socket.on('toggle_reaction', (data) => {
     const key = `${roomId}|${String(data.target)}|${String(data.from)}`;
     const s = callSessions.get(key);
     if (s) callSessions.set(key, { ...s, startAt: Date.now() });
-    const rc = roomCalls.get(roomId) || { type: s?.type || 'voice', participants: new Set(), active: false };
+    const rc = roomCalls.get(roomId) || { type: s?.type || 'voice', participants: new Set(), active: false, startAt: null };
     rc.type = (s?.type || rc.type);
     rc.active = true;
     rc.participants.add(String(data.target));
     rc.participants.add(String(data.from));
+    if (!rc.startAt) {
+      rc.startAt = s?.startAt || Date.now();
+    }
     roomCalls.set(roomId, rc);
-    io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active });
+    io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active, startAt: rc.startAt || null });
   });
 
   socket.on('call_candidate', (data) => {
@@ -464,7 +469,7 @@ socket.on('toggle_reaction', (data) => {
     const fromId = String(data?.from || connectedUserId || '');
     const targets = Array.isArray(data?.targets) ? data.targets : [];
     const isOneToOne = roomId.includes('_') && roomId.split('_').filter(Boolean).length === 2;
-    const rc = roomCalls.get(roomId) || { type: 'voice', participants: new Set(), active: false };
+    const rc = roomCalls.get(roomId) || { type: 'voice', participants: new Set(), active: false, startAt: null };
     rc.participants.delete(fromId);
     roomCalls.set(roomId, rc);
     if (isOneToOne) {
@@ -486,18 +491,20 @@ socket.on('toggle_reaction', (data) => {
       }
       rc.active = false;
       rc.participants.clear();
+      rc.startAt = null;
       roomCalls.set(roomId, rc);
-      io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active });
+      io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active, startAt: rc.startAt });
     } else {
       if (rc.participants.size === 0) {
         io.in(roomId).emit('call_end', { roomId });
         targets.forEach((t) => io.to(String(t)).emit('call_end', { roomId }));
         rc.active = false;
+        rc.startAt = null;
         roomCalls.set(roomId, rc);
-        io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: [], active: false });
+        io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: [], active: false, startAt: rc.startAt });
       } else {
         io.in(roomId).emit('call_leave', { roomId, userId: fromId });
-        io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: true });
+        io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: true, startAt: rc.startAt || null });
       }
     }
   });
@@ -521,13 +528,14 @@ socket.on('toggle_reaction', (data) => {
       await createCallNotify({ roomId, sender: fromId, callerId, calleeId, type, status: 'rejected', durationSec: 0 });
       callSessions.delete(key);
     }
-    const rc = roomCalls.get(roomId) || { type: 'voice', participants: new Set(), active: false };
+    const rc = roomCalls.get(roomId) || { type: 'voice', participants: new Set(), active: false, startAt: null };
     rc.participants.delete(fromId);
     if (isOneToOne) {
       rc.active = false;
       rc.participants.clear();
+      rc.startAt = null;
     }
     roomCalls.set(roomId, rc);
-    io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active });
+    io.in(roomId).emit('call_state', { roomId, type: rc.type, participants: Array.from(rc.participants), active: rc.active, startAt: rc.startAt || null });
   });
 });

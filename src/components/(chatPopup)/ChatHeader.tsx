@@ -107,24 +107,32 @@ export default function ChatHeader({
       </div>
 
       <div className="flex items-center gap-1">
-        {typeof onVoiceCall === 'function' && (
-          <button
-            onClick={onVoiceCall}
-            className="p-2.5 rounded-full cursor-pointer transition-all duration-200 hover:bg-gray-100 text-gray-600"
-            title="Gọi thoại"
-          >
-            <HiPhone className="w-5 h-5" />
-          </button>
-        )}
-        {typeof onVideoCall === 'function' && (
-          <button
-            onClick={onVideoCall}
-            className="p-2.5 rounded-full cursor-pointer transition-all duration-200 hover:bg-gray-100 text-gray-600"
-            title="Gọi video"
-          >
-            <HiVideoCamera className="w-5 h-5" />
-          </button>
-        )}
+        
+        {!isGroup && (
+          <>
+            {typeof onVoiceCall === 'function' && (
+              <button
+                onClick={onVoiceCall}
+                className="p-2.5 rounded-full cursor-pointer transition-all duration-200 hover:bg-gray-100 text-gray-600"
+                title="Gọi thoại"
+              >
+                <HiPhone className="w-5 h-5" />
+              </button>
+            )}
+            {typeof onVideoCall === 'function' && (
+              <button
+                onClick={onVideoCall}
+                className="p-2.5 rounded-full cursor-pointer transition-all duration-200 hover:bg-gray-100 text-gray-600"
+                title="Gọi video"
+              >
+                <HiVideoCamera className="w-5 h-5" />
+              </button>
+            )}
+          </>
+        )
+        
+        }
+        
         {/* Nút tìm kiếm */}
         <button
           onClick={() => {

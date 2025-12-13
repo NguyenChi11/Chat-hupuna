@@ -262,7 +262,12 @@ export function useCallSession({
           socketRef.current.emit('join_user', { userId: String(currentUserId) });
         }
       } catch {}
-      const receivers = getReceiverIds();
+      const receivers = (() => {
+        if (isGroup && roomCallActive && roomParticipants && roomParticipants.length > 0) {
+          return roomParticipants.filter((id) => String(id) !== String(currentUserId));
+        }
+        return getReceiverIds();
+      })();
       receiversRef.current = receivers;
       if (receivers.length === 0) return;
       setCallType(type);
@@ -393,7 +398,6 @@ export function useCallSession({
       setCallType(type);
       if (!callActiveRef.current) {
         setCallActive(true);
-        setCallStartAt(Date.now());
       }
       try {
         if (socketRef.current && socketRef.current.connected) {
@@ -401,7 +405,12 @@ export function useCallSession({
           socketRef.current.emit('join_room', activeRoomIdRef.current);
         }
         setActiveRoomId(activeRoomIdRef.current);
-        setCounterpartId(String(from));
+        const parts = String(activeRoomIdRef.current).split('_').filter(Boolean);
+        if (parts.length === 2) {
+          setCounterpartId(String(from));
+        } else {
+          setCounterpartId(null);
+        }
         const stream = await startLocalStream(type);
         const pc = createPeerConnection(from, true);
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -414,32 +423,14 @@ export function useCallSession({
           from: String(currentUserId),
           sdp: answer,
         });
-        if (String(payload.roomId) === String(roomId) && isGroup) {
-          const allReceivers = getReceiverIds();
-          receiversRef.current = allReceivers;
-          const others = allReceivers.filter((id) => String(id) !== String(from));
-          for (const otherId of others) {
-            if (shouldInitiateTo(otherId)) {
-              const pc2 = createPeerConnection(otherId, true);
-              stream.getTracks().forEach((track) => pc2.addTrack(track, stream));
-              const offer2 = await pc2.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === 'video' });
-              await pc2.setLocalDescription(offer2);
-              socketRef.current?.emit('call_offer', {
-                roomId: activeRoomIdRef.current,
-                target: otherId,
-                from: String(currentUserId),
-                type,
-                sdp: offer2,
-              });
-            }
-          }
-        }
+        // Không gọi lại những thành viên chưa tham gia khi Accept trong nhóm
+        // Việc kết nối bổ sung sẽ dựa vào danh sách participants từ server
         setIncomingCall(null);
       } catch (err) {
         setIncomingCall(null);
       }
     },
-    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, getReceiverIds, shouldInitiateTo, isGroup],
+    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, isGroup],
   );
 
   const acceptIncomingCall = useCallback(async () => {
@@ -494,7 +485,10 @@ export function useCallSession({
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
         setCallActive(true);
-        setCallStartAt(Date.now());
+        const isDirect = String(data.roomId).split('_').filter(Boolean).length === 2;
+        if (isDirect) {
+          setCallStartAt(Date.now());
+        }
       } catch (err) {
         stopGlobalRingTone();
       }
@@ -528,15 +522,19 @@ export function useCallSession({
         ringTimeoutRef.current = null;
       }
       setIncomingCall(null);
-      endCall('remote');
-      if (String(data.roomId) === String(roomId)) {
-        setRoomCallActive(false);
-        setRoomCallType(null);
-        setRoomParticipants([]);
+      const isDirect = String(data.roomId).split('_').filter(Boolean).length === 2;
+      if (isDirect) {
+        endCall('remote');
+        if (String(data.roomId) === String(roomId)) {
+          setRoomCallActive(false);
+          setRoomCallType(null);
+          setRoomParticipants([]);
+        }
       }
+      // Nhóm: giữ cuộc gọi tiếp tục, server sẽ gửi 'call_leave' và 'call_state' để cập nhật danh sách tham gia
     };
     const handleCallLeave = (data: { roomId: string; userId: string }) => {
-      if (String(data.roomId) !== String(activeRoomIdRef.current)) return;
+      if (String(data.roomId) !== String(roomId)) return;
       const uid = String(data.userId);
       const pc = peerConnectionsRef.current.get(uid);
       if (pc) {
@@ -558,11 +556,12 @@ export function useCallSession({
         setRemoteStreamsState(new Map(remoteStreamsRef.current));
       }
     };
-    const handleCallState = (data: { roomId: string; type: CallType; participants: string[]; active: boolean }) => {
-      if (String(data.roomId) !== String(activeRoomIdRef.current)) return;
+    const handleCallState = (data: { roomId: string; type: CallType; participants: string[]; active: boolean; startAt?: number | null }) => {
+      if (String(data.roomId) !== String(roomId)) return;
       setRoomCallActive(!!data.active);
       setRoomCallType(data.type);
       setRoomParticipants(Array.isArray(data.participants) ? data.participants.map((x) => String(x)) : []);
+      setCallStartAt(typeof data.startAt === 'number' ? data.startAt : null);
     };
     socket.on('call_offer', handleCallOffer);
     socket.on('call_answer', handleCallAnswer);
@@ -581,6 +580,13 @@ export function useCallSession({
       socket.off('call_state', handleCallState);
     };
   }, [roomId, currentUserId, socketRef.current, endCall]);
+
+  useEffect(() => {
+    setRoomCallActive(false);
+    setRoomCallType(null);
+    setRoomParticipants([]);
+    setCallStartAt(null);
+  }, [roomId]);
 
   useEffect(() => {
     if (remoteStreamsState && remoteStreamsState.size > 0) {
