@@ -43,12 +43,18 @@ export function useCallSession({
   const [callType, setCallType] = useState<CallType | null>(null);
   const [callStartAt, setCallStartAt] = useState<number | null>(null);
   const [callConnecting, setCallConnecting] = useState(false);
+  const [roomCallActive, setRoomCallActive] = useState(false);
+  const [roomCallType, setRoomCallType] = useState<CallType | null>(null);
+  const [roomParticipants, setRoomParticipants] = useState<string[]>([]);
+  const [activeRoomId, setActiveRoomId] = useState<string>(roomId);
+  const [counterpartId, setCounterpartId] = useState<string | null>(null);
   const ringTimeoutRef = useRef<number | null>(null);
   const callActiveRef = useRef<boolean>(false);
   const callConnectingRef = useRef<boolean>(false);
   const endingRef = useRef(false);
   const endedRef = useRef(false);
   const callTypeRef = useRef<CallType | null>(null);
+  const activeRoomIdRef = useRef<string>(roomId);
 
   useEffect(() => {
     callActiveRef.current = callActive;
@@ -155,7 +161,24 @@ export function useCallSession({
           throw new Error('MediaDevices API is unavailable.' + hint);
         }
       } catch (err) {
-        throw err;
+        if (type === 'video') {
+          try {
+            if (md && typeof md.getUserMedia === 'function') {
+              stream = await md.getUserMedia({ audio: true, video: false });
+            } else if (navi && typeof navi.webkitGetUserMedia === 'function') {
+              stream = await new Promise<MediaStream>((resolve, reject) => {
+                navi.webkitGetUserMedia!({ audio: true, video: false }, resolve, reject);
+              });
+            } else if (navi && typeof navi.mozGetUserMedia === 'function') {
+              stream = await new Promise<MediaStream>((resolve, reject) => {
+                navi.mozGetUserMedia!({ audio: true, video: false }, resolve, reject);
+              });
+            }
+          } catch {}
+        }
+        if (!stream) {
+          stream = new MediaStream();
+        }
       }
       localStreamRef.current = stream;
       const a = stream!.getAudioTracks()[0];
@@ -246,6 +269,9 @@ export function useCallSession({
       setCallActive(false);
       setCallStartAt(null);
       setCallConnecting(true);
+      activeRoomIdRef.current = roomId;
+      setActiveRoomId(roomId);
+      setCounterpartId(!isGroup && receivers.length > 0 ? String(receivers[0]) : null);
       if (ringTimeoutRef.current) {
         window.clearTimeout(ringTimeoutRef.current);
         ringTimeoutRef.current = null;
@@ -265,7 +291,7 @@ export function useCallSession({
           const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === 'video' });
           await pc.setLocalDescription(offer);
           socketRef.current?.emit('call_offer', {
-            roomId,
+            roomId: activeRoomIdRef.current,
             target: otherId,
             from: String(currentUserId),
             type,
@@ -294,7 +320,7 @@ export function useCallSession({
       endingRef.current = true;
       if (source === 'local' && socketRef.current?.connected) {
         socketRef.current.emit('call_end', {
-          roomId,
+          roomId: activeRoomIdRef.current,
           from: String(currentUserId),
           targets: receiversRef.current,
         });
@@ -303,6 +329,9 @@ export function useCallSession({
       setCallType(null);
       setCallStartAt(null);
       setCallConnecting(false);
+      setRoomCallActive(false);
+      setRoomCallType(null);
+      setRoomParticipants([]);
       remoteStreamsRef.current.forEach((stream) => stream.getTracks().forEach((track) => track.stop()));
       remoteStreamsRef.current.clear();
       setRemoteStreamsState(new Map());
@@ -324,6 +353,8 @@ export function useCallSession({
         } catch {}
       }
       setIncomingCall(null);
+      setCounterpartId(null);
+      setActiveRoomId('');
       stopGlobalRingTone();
       if (ringTimeoutRef.current) {
         window.clearTimeout(ringTimeoutRef.current);
@@ -365,6 +396,12 @@ export function useCallSession({
         setCallStartAt(Date.now());
       }
       try {
+        if (socketRef.current && socketRef.current.connected) {
+          activeRoomIdRef.current = String(payload.roomId || roomId);
+          socketRef.current.emit('join_room', activeRoomIdRef.current);
+        }
+        setActiveRoomId(activeRoomIdRef.current);
+        setCounterpartId(String(from));
         const stream = await startLocalStream(type);
         const pc = createPeerConnection(from, true);
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -372,35 +409,37 @@ export function useCallSession({
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socketRef.current?.emit('call_answer', {
-          roomId,
+          roomId: activeRoomIdRef.current,
           target: from,
           from: String(currentUserId),
           sdp: answer,
         });
-        const allReceivers = getReceiverIds();
-        receiversRef.current = allReceivers;
-        const others = allReceivers.filter((id) => String(id) !== String(from));
-        for (const otherId of others) {
-          if (shouldInitiateTo(otherId)) {
-            const pc2 = createPeerConnection(otherId, true);
-            stream.getTracks().forEach((track) => pc2.addTrack(track, stream));
-            const offer2 = await pc2.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === 'video' });
-            await pc2.setLocalDescription(offer2);
-            socketRef.current?.emit('call_offer', {
-              roomId,
-              target: otherId,
-              from: String(currentUserId),
-              type,
-              sdp: offer2,
-            });
+        if (String(payload.roomId) === String(roomId) && isGroup) {
+          const allReceivers = getReceiverIds();
+          receiversRef.current = allReceivers;
+          const others = allReceivers.filter((id) => String(id) !== String(from));
+          for (const otherId of others) {
+            if (shouldInitiateTo(otherId)) {
+              const pc2 = createPeerConnection(otherId, true);
+              stream.getTracks().forEach((track) => pc2.addTrack(track, stream));
+              const offer2 = await pc2.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: type === 'video' });
+              await pc2.setLocalDescription(offer2);
+              socketRef.current?.emit('call_offer', {
+                roomId: activeRoomIdRef.current,
+                target: otherId,
+                from: String(currentUserId),
+                type,
+                sdp: offer2,
+              });
+            }
           }
         }
         setIncomingCall(null);
       } catch (err) {
-        endCall();
+        setIncomingCall(null);
       }
     },
-    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, getReceiverIds, shouldInitiateTo],
+    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, getReceiverIds, shouldInitiateTo, isGroup],
   );
 
   const acceptIncomingCall = useCallback(async () => {
@@ -417,6 +456,8 @@ export function useCallSession({
     socket.off('call_candidate');
     socket.off('call_end');
     socket.off('call_reject');
+    socket.off('call_leave');
+    socket.off('call_state');
     const handleCallOffer = async (data: {
       roomId: string;
       target: string;
@@ -474,6 +515,11 @@ export function useCallSession({
       }
       setIncomingCall(null);
       endCall('remote');
+      if (String(data.roomId) === String(roomId)) {
+        setRoomCallActive(false);
+        setRoomCallType(null);
+        setRoomParticipants([]);
+      }
     };
     const handleCallReject = (data: { roomId: string }) => {
       stopGlobalRingTone();
@@ -483,18 +529,56 @@ export function useCallSession({
       }
       setIncomingCall(null);
       endCall('remote');
+      if (String(data.roomId) === String(roomId)) {
+        setRoomCallActive(false);
+        setRoomCallType(null);
+        setRoomParticipants([]);
+      }
+    };
+    const handleCallLeave = (data: { roomId: string; userId: string }) => {
+      if (String(data.roomId) !== String(activeRoomIdRef.current)) return;
+      const uid = String(data.userId);
+      const pc = peerConnectionsRef.current.get(uid);
+      if (pc) {
+        try {
+          pc.onicecandidate = null;
+          pc.ontrack = null;
+          pc.close();
+        } catch {}
+        peerConnectionsRef.current.delete(uid);
+      }
+      const s = remoteStreamsRef.current.get(uid);
+      if (s) {
+        s.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+        });
+        remoteStreamsRef.current.delete(uid);
+        setRemoteStreamsState(new Map(remoteStreamsRef.current));
+      }
+    };
+    const handleCallState = (data: { roomId: string; type: CallType; participants: string[]; active: boolean }) => {
+      if (String(data.roomId) !== String(activeRoomIdRef.current)) return;
+      setRoomCallActive(!!data.active);
+      setRoomCallType(data.type);
+      setRoomParticipants(Array.isArray(data.participants) ? data.participants.map((x) => String(x)) : []);
     };
     socket.on('call_offer', handleCallOffer);
     socket.on('call_answer', handleCallAnswer);
     socket.on('call_candidate', handleCallCandidate);
     socket.on('call_end', handleCallEnd);
     socket.on('call_reject', handleCallReject);
+    socket.on('call_leave', handleCallLeave);
+    socket.on('call_state', handleCallState);
     return () => {
       socket.off('call_offer', handleCallOffer);
       socket.off('call_answer', handleCallAnswer);
       socket.off('call_candidate', handleCallCandidate);
       socket.off('call_end', handleCallEnd);
       socket.off('call_reject', handleCallReject);
+      socket.off('call_leave', handleCallLeave);
+      socket.off('call_state', handleCallState);
     };
   }, [roomId, currentUserId, socketRef.current, endCall]);
 
@@ -567,5 +651,10 @@ export function useCallSession({
     setIncomingCall,
     micEnabled,
     camEnabled,
+    roomCallActive,
+    roomCallType,
+    roomParticipants,
+    activeRoomId,
+    counterpartId,
   };
 }

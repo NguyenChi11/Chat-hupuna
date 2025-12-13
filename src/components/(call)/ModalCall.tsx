@@ -119,6 +119,39 @@ export default function ModalCall({
         </div>
         {timer && <div className="text-sm text-gray-600">{timer}</div>}
       </div>
+      {callType === 'voice' && (
+        <div className="mt-2">
+          <div className="text-sm font-medium text-gray-700 mb-2">Thành viên đang tham gia</div>
+          <div className="flex flex-wrap gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100">
+              {currentUserAvatar ? (
+                <span className="inline-block w-5 h-5 rounded-full overflow-hidden">
+                  <Image src={getProxyUrl(currentUserAvatar)} alt={currentUserName || ''} width={20} height={20} />
+                </span>
+              ) : (
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-400 text-white text-[10px]">
+                  {(currentUserName || 'U').trim().charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="text-sm text-gray-800">{currentUserName || 'Bạn'}</span>
+            </div>
+            {remotePeers.map((peer) => (
+              <div key={`chip-${peer.userId}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100">
+                {peer.avatar ? (
+                  <span className="inline-block w-5 h-5 rounded-full overflow-hidden">
+                    <Image src={getProxyUrl(peer.avatar)} alt={peer.name || ''} width={20} height={20} />
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-400 text-white text-[10px]">
+                    {(peer.name || 'U').trim().charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="text-sm text-gray-800">{peer.name || 'Thành viên'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         {callType === 'video' && (
           <div className="relative bg-black rounded-lg overflow-hidden aspect-video">

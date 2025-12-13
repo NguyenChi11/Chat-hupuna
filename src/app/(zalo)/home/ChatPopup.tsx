@@ -180,6 +180,11 @@ export default function ChatWindow({
     setIncomingCall: setIncomingCall_s2,
     micEnabled,
     camEnabled,
+    roomCallActive,
+    roomCallType,
+    roomParticipants,
+    activeRoomId,
+    counterpartId,
   } = useCallSession({
     socketRef,
     roomId,
@@ -1766,6 +1771,18 @@ export default function ChatWindow({
             onUnpinMessage={handlePinMessage}
           />
 
+          {isGroup && !callActive && !callConnecting && roomCallActive && (
+            <div className="mx-2 mt-2 mb-0 px-3 py-2 bg-yellow-100 border border-yellow-200 text-yellow-800 rounded flex items-center justify-between">
+              <span>Cuộc gọi đang diễn ra</span>
+              <button
+                className="px-3 py-1 rounded bg-yellow-300 hover:bg-yellow-400 hover:cursor-pointer"
+                onClick={() => void startCall(roomCallType === 'video' ? 'video' : 'voice')}
+              >
+                Tham gia
+              </button>
+            </div>
+          )}
+
           {/* Messages Area */}
           <div
             ref={messagesContainerRef}
@@ -2011,7 +2028,8 @@ export default function ChatWindow({
                       }}
                       onReject={() => {
                         const from = incomingCall?.from;
-                        socketRef.current?.emit('call_reject', { roomId, targets: from ? [String(from)] : [] });
+                        const targetRoom = incomingCall?.roomId || roomId;
+                        socketRef.current?.emit('call_reject', { roomId: String(targetRoom), targets: from ? [String(from)] : [] });
                         setIncomingCall_s2(null);
                         stopGlobalRingTone();
                         try {
@@ -2021,36 +2039,62 @@ export default function ChatWindow({
                     />
                   );
                 })()}
-              {!callActive && callConnecting && (
-                <ModalCall
-                  avatar={chatAvatar}
-                  name={chatName}
-                  mode="connecting"
-                  callType={callType === 'video' ? 'video' : 'voice'}
-                  onEndCall={() => endCall('local')}
-                />
-              )}
-              {callActive && (
-                <ModalCall
-                  avatar={chatAvatar}
-                  name={chatName}
-                  mode="active"
-                  callType={callType === 'video' ? 'video' : 'voice'}
-                  callStartAt={callStartAt}
-                  localVideoRef={localVideoRef}
-                  currentUserName={currentUser.name}
-                  currentUserAvatar={currentUser.avatar}
-                  remotePeers={Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
-                    const u = allUsers.find((x) => String(x._id) === String(uid));
-                    return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
-                  })}
-                  micEnabled={micEnabled}
-                  camEnabled={camEnabled}
-                  onToggleMic={toggleMic}
-                  onToggleCamera={toggleCamera}
-                  onEndCall={() => endCall('local')}
-                />
-              )}
+              {!callActive && callConnecting && (() => {
+                const parts = String(roomId).split('_');
+                const otherId = isGroup ? null : parts.find((p) => p && p !== String(currentUser._id)) || getId(selectedChat);
+                const other = !isGroup ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
+                const avatar = isGroup ? chatAvatar : other?.avatar;
+                const name = isGroup ? chatName : other?.name || chatName;
+                return (
+                  <ModalCall
+                    avatar={avatar}
+                    name={name}
+                    mode="connecting"
+                    callType={callType === 'video' ? 'video' : 'voice'}
+                    onEndCall={() => endCall('local')}
+                  />
+                );
+              })()}
+              {callActive && (() => {
+                const remoteIds = Array.from(remoteStreamsState.keys());
+                const participantOtherId = roomParticipants && roomParticipants.length > 0
+                  ? roomParticipants.find((id) => String(id) !== String(currentUser._id))
+                  : undefined;
+                const otherId = counterpartId
+                  || participantOtherId
+                  || (remoteIds[0]
+                      || incomingCall?.from
+                      || String(activeRoomId || roomId).split('_').find((p) => p && p !== String(currentUser._id))
+                      || (!isGroup ? getId(selectedChat) : null));
+                const other = otherId ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
+                const isOneToOneCall = counterpartId ? true : (roomParticipants && roomParticipants.length > 0
+                  ? roomParticipants.length === 2
+                  : remoteIds.length <= 1);
+                const avatar = isOneToOneCall ? other?.avatar : chatAvatar;
+                const name = isOneToOneCall ? (other?.name || chatName) : chatName;
+                const remotePeers = Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
+                  const u = allUsers.find((x) => String(x._id) === String(uid));
+                  return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
+                });
+                return (
+                  <ModalCall
+                    avatar={avatar}
+                    name={name}
+                    mode="active"
+                    callType={callType === 'video' ? 'video' : 'voice'}
+                    callStartAt={callStartAt}
+                    localVideoRef={localVideoRef}
+                    currentUserName={currentUser.name}
+                    currentUserAvatar={currentUser.avatar}
+                    remotePeers={remotePeers}
+                    micEnabled={micEnabled}
+                    camEnabled={camEnabled}
+                    onToggleMic={toggleMic}
+                    onToggleCamera={toggleCamera}
+                    onEndCall={() => endCall('local')}
+                  />
+                );
+              })()}
             </div>
           </div>
         )}
