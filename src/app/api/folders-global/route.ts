@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongoDBCRUD';
+import { verifyJWT } from '@/lib/auth';
+import { getSession, fingerprintFromHeaders } from '@/lib/session';
 export const runtime = 'nodejs';
 
-const CHAT_FOLDER_COLLECTION = 'ChatFolders';
+const CHAT_GLOBAL_FOLDER_COLLECTION = 'ChatGlobalFolders';
 
 type ItemType = 'video' | 'image' | 'file' | 'text';
 type Item = {
@@ -23,17 +25,17 @@ type FolderNode = {
   createdAt?: number;
   updatedAt?: number;
 };
-type ChatFlashDoc = {
+type GlobalFolderDoc = {
   _id?: string;
-  roomId: string;
+  ownerId: string;
   root: FolderNode;
 };
 
-function buildRoomIdQuery(roomId: string): Record<string, unknown> {
-  const variants: unknown[] = [roomId];
-  const num = Number(roomId);
+function buildOwnerIdQuery(ownerId: string): Record<string, unknown> {
+  const variants: unknown[] = [ownerId];
+  const num = Number(ownerId);
   if (!Number.isNaN(num)) variants.push(num);
-  return { $or: variants.map((v) => ({ roomId: v })) };
+  return { $or: variants.map((v) => ({ ownerId: v })) };
 }
 
 function findFolder(root: FolderNode, folderId: string): FolderNode | null {
@@ -68,15 +70,38 @@ function updateFolderById(root: FolderNode, folderId: string, updater: (f: Folde
   return { ...root, children: root.children.map((c) => updateFolderById(c, folderId, updater)) };
 }
 
+async function resolveOwnerId(req: NextRequest, fallback?: string): Promise<string> {
+  const provided = String(fallback || '').trim();
+  if (provided) return provided;
+  const fp = fingerprintFromHeaders({
+    'user-agent': req.headers.get('user-agent') || '',
+    'accept-language': req.headers.get('accept-language') || '',
+  });
+  const sid = req.cookies.get('sid')?.value || '';
+  if (sid) {
+    const session = await getSession(sid);
+    if (session && session.deviceFingerprint === fp) return session.userId;
+  }
+  const token = req.cookies.get('session_token')?.value || '';
+  if (token) {
+    const payload = await verifyJWT(token);
+    const pid = payload && typeof payload['_id'] === 'string' ? (payload['_id'] as string) : '';
+    const tfp = payload && typeof payload['fp'] === 'string' ? (payload['fp'] as string) : '';
+    if (pid && tfp && tfp === fp) return pid;
+  }
+  return `anon:${fp}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const action = String(body.action || '').trim();
-    const roomId = String(body.roomId || '').trim();
-
+    const ownerIdInput = String(body.ownerId || '').trim();
     if (!action) return NextResponse.json({ error: 'Missing action' }, { status: 400 });
 
-    const collection = await getCollection<ChatFlashDoc>(CHAT_FOLDER_COLLECTION);
+    const ownerId = await resolveOwnerId(req, ownerIdInput);
+
+    const collection = await getCollection<GlobalFolderDoc>(CHAT_GLOBAL_FOLDER_COLLECTION);
 
     const toUiFolder = (
       n: FolderNode,
@@ -123,8 +148,7 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case 'read': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
-        const row = await collection.findOne(buildRoomIdQuery(roomId));
+        const row = await collection.findOne(buildOwnerIdQuery(ownerId));
         if (!row) {
           const now = Date.now();
           const root: FolderNode = {
@@ -137,7 +161,7 @@ export async function POST(req: NextRequest) {
           };
           return NextResponse.json({
             success: true,
-            data: { roomId, root },
+            data: { ownerId, root },
             folders: root.children.map(toUiFolder),
             itemsMap: buildItemsMap(root),
           });
@@ -150,12 +174,11 @@ export async function POST(req: NextRequest) {
         });
       }
       case 'createFolder': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const parentId = String(body.parentId || 'root').trim();
         const name = String(body.name || '').trim();
         if (!name) return NextResponse.json({ error: 'Missing name' }, { status: 400 });
 
-        const existing = await collection.findOne(buildRoomIdQuery(roomId));
+        const existing = await collection.findOne(buildOwnerIdQuery(ownerId));
         const now = Date.now();
         const baseRoot: FolderNode = existing?.root || {
           id: 'root',
@@ -177,7 +200,7 @@ export async function POST(req: NextRequest) {
           ],
         }));
 
-        await collection.updateOne(buildRoomIdQuery(roomId), { $set: { roomId, root: nextRoot } }, { upsert: true });
+        await collection.updateOne(buildOwnerIdQuery(ownerId), { $set: { ownerId, root: nextRoot } }, { upsert: true });
         return NextResponse.json({
           success: true,
           folder: { id: newId, name, parentId },
@@ -186,12 +209,11 @@ export async function POST(req: NextRequest) {
         });
       }
       case 'renameFolder': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const folderId = String(body.folderId || '').trim();
         const name = String(body.name || '').trim();
         if (!folderId || !name) return NextResponse.json({ error: 'Missing folderId or name' }, { status: 400 });
 
-        const existing = await collection.findOne(buildRoomIdQuery(roomId));
+        const existing = await collection.findOne(buildOwnerIdQuery(ownerId));
         const now = Date.now();
         const baseRoot: FolderNode = existing?.root || {
           id: 'root',
@@ -205,8 +227,8 @@ export async function POST(req: NextRequest) {
         const nextRootWithTs = updateFolderById(nextRoot, folderId, (f) => ({ ...f, updatedAt: now }));
 
         await collection.updateOne(
-          buildRoomIdQuery(roomId),
-          { $set: { roomId, root: nextRootWithTs } },
+          buildOwnerIdQuery(ownerId),
+          { $set: { ownerId, root: nextRootWithTs } },
           { upsert: true },
         );
         return NextResponse.json({
@@ -216,11 +238,10 @@ export async function POST(req: NextRequest) {
         });
       }
       case 'deleteFolder': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const folderId = String(body.folderId || '').trim();
         if (!folderId) return NextResponse.json({ error: 'Missing folderId' }, { status: 400 });
 
-        const existing = await collection.findOne(buildRoomIdQuery(roomId));
+        const existing = await collection.findOne(buildOwnerIdQuery(ownerId));
         const now = Date.now();
         const baseRoot: FolderNode = existing?.root || {
           id: 'root',
@@ -232,7 +253,7 @@ export async function POST(req: NextRequest) {
         };
         const nextRoot = updateFolderById(deleteFolder(baseRoot, folderId), 'root', (f) => ({ ...f, updatedAt: now }));
 
-        await collection.updateOne(buildRoomIdQuery(roomId), { $set: { roomId, root: nextRoot } }, { upsert: true });
+        await collection.updateOne(buildOwnerIdQuery(ownerId), { $set: { ownerId, root: nextRoot } }, { upsert: true });
         return NextResponse.json({
           success: true,
           folders: nextRoot.children.map(toUiFolder),
@@ -240,11 +261,10 @@ export async function POST(req: NextRequest) {
         });
       }
       case 'listItems': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const folderId = String(body.folderId || '').trim();
         if (!folderId) return NextResponse.json({ error: 'Missing folderId' }, { status: 400 });
 
-        const existing = await collection.findOne(buildRoomIdQuery(roomId));
+        const existing = await collection.findOne(buildOwnerIdQuery(ownerId));
         const baseRoot: FolderNode = existing?.root || {
           id: 'root',
           name: 'root',
@@ -271,7 +291,6 @@ export async function POST(req: NextRequest) {
       case 'updateImage':
       case 'updateVideo':
       case 'updateFile': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const folderId = String(body.folderId || '').trim();
         const itemId = String(body.itemId || '').trim() || `i-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const type: ItemType = (
@@ -285,7 +304,7 @@ export async function POST(req: NextRequest) {
         const fileName = typeof body.fileName === 'string' ? body.fileName : undefined;
         const content = typeof body.content === 'string' ? body.content : undefined;
 
-        const existing = await collection.findOne(buildRoomIdQuery(roomId));
+        const existing = await collection.findOne(buildOwnerIdQuery(ownerId));
         const now = Date.now();
         const baseRoot: FolderNode = existing?.root || {
           id: 'root',
@@ -304,7 +323,7 @@ export async function POST(req: NextRequest) {
           updatedAt: now,
         }));
 
-        await collection.updateOne(buildRoomIdQuery(roomId), { $set: { roomId, root: nextRoot } }, { upsert: true });
+        await collection.updateOne(buildOwnerIdQuery(ownerId), { $set: { ownerId, root: nextRoot } }, { upsert: true });
         const updatedFolder = findFolder(nextRoot, folderId)!;
         return NextResponse.json({
           success: true,
@@ -319,12 +338,11 @@ export async function POST(req: NextRequest) {
         });
       }
       case 'deleteItem': {
-        if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const folderId = String(body.folderId || '').trim();
         const itemId = String(body.itemId || '').trim();
         if (!folderId || !itemId) return NextResponse.json({ error: 'Missing folderId or itemId' }, { status: 400 });
 
-        const existing = await collection.findOne(buildRoomIdQuery(roomId));
+        const existing = await collection.findOne(buildOwnerIdQuery(ownerId));
         const now = Date.now();
         const baseRoot: FolderNode = existing?.root || {
           id: 'root',
@@ -343,7 +361,7 @@ export async function POST(req: NextRequest) {
           updatedAt: now,
         }));
 
-        await collection.updateOne(buildRoomIdQuery(roomId), { $set: { roomId, root: nextRoot } }, { upsert: true });
+        await collection.updateOne(buildOwnerIdQuery(ownerId), { $set: { ownerId, root: nextRoot } }, { upsert: true });
         const updatedFolder = findFolder(nextRoot, folderId)!;
         return NextResponse.json({
           success: true,

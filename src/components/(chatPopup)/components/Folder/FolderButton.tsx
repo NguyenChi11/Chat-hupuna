@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HiFolder } from 'react-icons/hi';
+import { useChatContext } from '@/context/ChatContext';
 
 type FolderNode = { id: string; name: string; children: FolderNode[] };
 
@@ -41,6 +42,7 @@ export default function FolderButton({
   fileUrl,
   fileName,
 }: Props) {
+  const { currentUser } = useChatContext();
   const [open, setOpen] = useState(false);
   const [folders, setFolders] = useState<FolderNode[]>([]);
   const [itemsMap, setItemsMap] = useState<Record<string, FolderItem[]>>({});
@@ -53,8 +55,27 @@ export default function FolderButton({
 
   const storageKey = useMemo(() => `chatFolders:${roomId}`, [roomId]);
   const itemsKey = useMemo(() => `chatFolderItems:${roomId}`, [roomId]);
-  const globalStorageKey = useMemo(() => `chatFolders:__global__`, []);
-  const globalItemsKey = useMemo(() => `chatFolderItems:__global__`, []);
+  const globalStorageKey = useMemo(
+    () => `chatFolders:__global__:${String(currentUser?._id || '')}`,
+    [currentUser?._id],
+  );
+  const globalItemsKey = useMemo(
+    () => `chatFolderItems:__global__:${String(currentUser?._id || '')}`,
+    [currentUser?._id],
+  );
+
+  const postFoldersGlobal = async (payload: Record<string, unknown>) => {
+    try {
+      const res = await fetch('/api/folders-global', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     try {
@@ -149,32 +170,56 @@ export default function FolderButton({
   const sideCls = isMine ? 'right-full mr-3' : 'left-full ml-3';
   const pickerSideCls = isMine ? 'left-1/2 -translate-x-1/2' : 'left-1/2 -translate-x-3/4';
 
-  const handleSave = (folderId: string) => {
+  const handleSave = async (folderId: string) => {
     try {
       const isGlobal = scope === 'global';
-      const key = isGlobal ? globalItemsKey : itemsKey;
-      const raw = localStorage.getItem(key);
-      const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-      const arr = Array.isArray(map[folderId]) ? map[folderId] : [];
-      const item: FolderItem = {
-        id: messageId,
-        content: content ?? preview ?? '',
-        type: type as FolderItem['type'],
-        fileUrl: fileUrl,
-        fileName: fileName,
-      };
-      if (!arr.some((x) => String(x.id) === String(messageId))) arr.push(item);
-      map[folderId] = arr;
-      localStorage.setItem(key, JSON.stringify(map));
-      try {
-        const ev = new CustomEvent('chatFolderItemsChanged', {
-          detail: { roomId: isGlobal ? '__global__' : roomId, folderId, messageId },
-        });
-        window.dispatchEvent(ev);
-      } catch {}
-      if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [folderId]: arr }));
-      else setItemsMap((prev) => ({ ...prev, [folderId]: arr }));
-      // no server call for global; keep local-only
+      if (isGlobal) {
+        const ownerId = String(currentUser?._id || '');
+        const kind = String(type || '').toLowerCase();
+        let payload: Record<string, unknown> = { ownerId, folderId, itemId: messageId };
+        if (kind === 'image') {
+          payload = { ...payload, action: 'updateImage', url: fileUrl, fileName };
+        } else if (kind === 'video') {
+          payload = { ...payload, action: 'updateVideo', url: fileUrl, fileName };
+        } else if (kind === 'file') {
+          payload = { ...payload, action: 'updateFile', url: fileUrl, fileName };
+        } else {
+          payload = { ...payload, action: 'updateText', content: content ?? preview ?? '' };
+        }
+        const json = await postFoldersGlobal(payload);
+        if (json && json.success) {
+          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+          setItemsMapGlobal((prev) => ({ ...prev, [folderId]: arr }));
+          try {
+            const raw = localStorage.getItem(globalItemsKey);
+            const map = raw ? JSON.parse(raw) : {};
+            map[folderId] = arr;
+            localStorage.setItem(globalItemsKey, JSON.stringify(map));
+          } catch {}
+        }
+      } else {
+        const key = itemsKey;
+        const raw = localStorage.getItem(key);
+        const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
+        const arr = Array.isArray(map[folderId]) ? map[folderId] : [];
+        const item: FolderItem = {
+          id: messageId,
+          content: content ?? preview ?? '',
+          type: type as FolderItem['type'],
+          fileUrl: fileUrl,
+          fileName: fileName,
+        };
+        if (!arr.some((x) => String(x.id) === String(messageId))) arr.push(item);
+        map[folderId] = arr;
+        localStorage.setItem(key, JSON.stringify(map));
+        try {
+          const ev = new CustomEvent('chatFolderItemsChanged', {
+            detail: { roomId, folderId, messageId },
+          });
+          window.dispatchEvent(ev);
+        } catch {}
+        setItemsMap((prev) => ({ ...prev, [folderId]: arr }));
+      }
       onSaved?.(folderId);
       setOpen(false);
     } catch {

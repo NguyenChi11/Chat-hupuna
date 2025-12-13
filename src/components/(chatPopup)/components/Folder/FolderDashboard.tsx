@@ -45,8 +45,14 @@ export default function FolderDashboard({
   const GLOBAL_ID = '__global__';
   const storageKey = useMemo(() => `chatFolders:${roomId}`, [roomId]);
   const itemsKey = useMemo(() => `chatFolderItems:${roomId}`, [roomId]);
-  const globalStorageKey = useMemo(() => `chatFolders:${GLOBAL_ID}`, []);
-  const globalItemsKey = useMemo(() => `chatFolderItems:${GLOBAL_ID}`, []);
+  const globalStorageKey = useMemo(
+    () => `chatFolders:${GLOBAL_ID}:${String(currentUser?._id || '')}`,
+    [currentUser?._id],
+  );
+  const globalItemsKey = useMemo(
+    () => `chatFolderItems:${GLOBAL_ID}:${String(currentUser?._id || '')}`,
+    [currentUser?._id],
+  );
   const [folders, setFolders] = useState<FolderNode[]>([]);
   const [itemsMap, setItemsMap] = useState<Record<string, FolderItem[]>>({});
   const [foldersGlobal, setFoldersGlobal] = useState<FolderNode[]>([]);
@@ -73,6 +79,31 @@ export default function FolderDashboard({
 
   const [compact, setCompact] = useState(false);
   const [activeTab, setActiveTab] = useState<'sidebar' | 'content'>('sidebar');
+
+  const postFolders = async (payload: Record<string, unknown>) => {
+    try {
+      const res = await fetch('/api/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+  const postFoldersGlobal = async (payload: Record<string, unknown>) => {
+    try {
+      const res = await fetch('/api/folders-global', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     const update = () => {
@@ -221,6 +252,62 @@ export default function FolderDashboard({
   }, [storageKey, itemsKey, globalStorageKey, globalItemsKey]);
 
   useEffect(() => {
+    const run = async () => {
+      if (!roomId) return;
+      const json = await postFolders({ action: 'read', roomId });
+      if (json && json.success) {
+        const nextFolders: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+        const nextItemsMap: Record<string, FolderItem[]> =
+          typeof json.itemsMap === 'object' && json.itemsMap ? json.itemsMap : {};
+        setFolders(nextFolders);
+        setItemsMap(nextItemsMap);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(nextFolders));
+          localStorage.setItem(itemsKey, JSON.stringify(nextItemsMap));
+        } catch {}
+      }
+    };
+    run();
+  }, [roomId]);
+  useEffect(() => {
+    const run = async () => {
+      const ownerId = String(currentUser?._id || '');
+      const json = await postFoldersGlobal({ action: 'read', ownerId });
+      if (json && json.success) {
+        const nextFolders: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+        const nextItemsMap: Record<string, FolderItem[]> =
+          typeof json.itemsMap === 'object' && json.itemsMap ? json.itemsMap : {};
+        setFoldersGlobal(nextFolders);
+        setItemsMapGlobal(nextItemsMap);
+        try {
+          localStorage.setItem(globalStorageKey, JSON.stringify(nextFolders));
+          localStorage.setItem(globalItemsKey, JSON.stringify(nextItemsMap));
+        } catch {}
+      }
+    };
+    run();
+  }, [currentUser]);
+  useEffect(() => {
+    const run = async () => {
+      if (selectedScope !== 'global') return;
+      const ownerId = String(currentUser?._id || '');
+      if (!selectedFolderId) return;
+      const json = await postFoldersGlobal({ action: 'listItems', ownerId, folderId: selectedFolderId });
+      if (json && json.success) {
+        const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+        setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId]: arr }));
+        try {
+          const raw = localStorage.getItem(globalItemsKey);
+          const map = raw ? JSON.parse(raw) : {};
+          map[selectedFolderId] = arr;
+          localStorage.setItem(globalItemsKey, JSON.stringify(map));
+        } catch {}
+      }
+    };
+    run();
+  }, [selectedScope, selectedFolderId, currentUser?._id, globalItemsKey]);
+
+  useEffect(() => {
     const s = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
     socketRef.current = s;
     if (roomId) s.emit('join_room', roomId);
@@ -279,28 +366,42 @@ export default function FolderDashboard({
   const removeItemFromFolder = (folderId: string, messageId: string) => {
     try {
       const isGlobal = selectedScope === 'global';
-      const key = isGlobal ? globalItemsKey : itemsKey;
-      const raw = localStorage.getItem(key);
-      const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-      const arr = Array.isArray(map[folderId]) ? map[folderId] : [];
-      const next = arr.filter((x) => String(x.id) !== String(messageId));
-      map[folderId] = next;
-      localStorage.setItem(key, JSON.stringify(map));
       if (isGlobal) {
-        setItemsMapGlobal((prev) => ({ ...prev, [folderId]: next }));
+        (async () => {
+          const json = await postFoldersGlobal({
+            action: 'deleteItem',
+            ownerId: String(currentUser?._id || ''),
+            folderId,
+            itemId: messageId,
+          });
+          if (json && json.success) {
+            const next: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+            setItemsMapGlobal((prev) => ({ ...prev, [folderId]: next }));
+            try {
+              const raw = localStorage.getItem(globalItemsKey);
+              const map = raw ? JSON.parse(raw) : {};
+              map[folderId] = next;
+              localStorage.setItem(globalItemsKey, JSON.stringify(map));
+            } catch {}
+          }
+        })();
       } else {
-        setItemsMap((prev) => ({ ...prev, [folderId]: next }));
-      }
-      try {
-        const ev = new CustomEvent('chatFolderItemsChanged', {
-          detail: { roomId: isGlobal ? GLOBAL_ID : roomId, folderId, messageId, action: 'remove' },
-        });
-        window.dispatchEvent(ev);
-      } catch {}
-      if (!isGlobal) {
-        try {
-          socketRef.current?.emit('folder_item_updated', { roomId, folderId, items: next });
-        } catch {}
+        (async () => {
+          const json = await postFolders({ action: 'deleteItem', roomId, folderId, itemId: messageId });
+          if (json && json.success) {
+            const next: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+            setItemsMap((prev) => ({ ...prev, [folderId]: next }));
+            try {
+              const raw = localStorage.getItem(itemsKey);
+              const map = raw ? JSON.parse(raw) : {};
+              map[folderId] = next;
+              localStorage.setItem(itemsKey, JSON.stringify(map));
+            } catch {}
+            try {
+              socketRef.current?.emit('folder_item_updated', { roomId, folderId, items: next });
+            } catch {}
+          }
+        })();
       }
     } catch {}
   };
@@ -566,30 +667,47 @@ export default function FolderDashboard({
                   try {
                     if (selectedFolderId) {
                       const isGlobal = selectedScope === 'global';
-                      const key = isGlobal ? globalItemsKey : itemsKey;
-                      const raw = localStorage.getItem(key);
-                      const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                      const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                      const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                      arr.push({ id, content: url, type: 'text' });
-                      map[selectedFolderId] = arr;
-                      localStorage.setItem(key, JSON.stringify(map));
-                      if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      try {
-                        const ev = new CustomEvent('chatFolderItemsChanged', {
-                          detail: { roomId, folderId: selectedFolderId },
+                      if (isGlobal) {
+                        const json = await postFoldersGlobal({
+                          action: 'updateText',
+                          ownerId: String(currentUser?._id || ''),
+                          folderId: selectedFolderId,
+                          content: url,
                         });
-                        window.dispatchEvent(ev);
-                      } catch {}
-                      if (!isGlobal) {
-                        try {
-                          socketRef.current?.emit('folder_item_updated', {
-                            roomId,
-                            folderId: selectedFolderId,
-                            items: arr,
-                          });
-                        } catch {}
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(globalItemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                          } catch {}
+                        }
+                      } else {
+                        const json = await postFolders({
+                          action: 'updateText',
+                          roomId,
+                          folderId: selectedFolderId,
+                          content: url,
+                        });
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(itemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(itemsKey, JSON.stringify(map));
+                          } catch {}
+                          try {
+                            socketRef.current?.emit('folder_item_updated', {
+                              roomId,
+                              folderId: selectedFolderId,
+                              items: arr,
+                            });
+                          } catch {}
+                        }
                       }
                     }
                   } catch {}
@@ -603,30 +721,47 @@ export default function FolderDashboard({
                   try {
                     if (selectedFolderId) {
                       const isGlobal = selectedScope === 'global';
-                      const key = isGlobal ? globalItemsKey : itemsKey;
-                      const raw = localStorage.getItem(key);
-                      const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                      const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                      const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                      arr.push({ id, content, type: 'text' });
-                      map[selectedFolderId] = arr;
-                      localStorage.setItem(key, JSON.stringify(map));
-                      if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      try {
-                        const ev = new CustomEvent('chatFolderItemsChanged', {
-                          detail: { roomId, folderId: selectedFolderId },
+                      if (isGlobal) {
+                        const json = await postFoldersGlobal({
+                          action: 'updateText',
+                          ownerId: String(currentUser?._id || ''),
+                          folderId: selectedFolderId,
+                          content,
                         });
-                        window.dispatchEvent(ev);
-                      } catch {}
-                      if (!isGlobal) {
-                        try {
-                          socketRef.current?.emit('folder_item_updated', {
-                            roomId,
-                            folderId: selectedFolderId,
-                            items: arr,
-                          });
-                        } catch {}
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(globalItemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                          } catch {}
+                        }
+                      } else {
+                        const json = await postFolders({
+                          action: 'updateText',
+                          roomId,
+                          folderId: selectedFolderId,
+                          content,
+                        });
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(itemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(itemsKey, JSON.stringify(map));
+                          } catch {}
+                          try {
+                            socketRef.current?.emit('folder_item_updated', {
+                              roomId,
+                              folderId: selectedFolderId,
+                              items: arr,
+                            });
+                          } catch {}
+                        }
                       }
                     }
                   } catch {}
@@ -655,35 +790,51 @@ export default function FolderDashboard({
                           fileName?: string;
                         };
                         const isGlobal = selectedScope === 'global';
-                        const key = isGlobal ? globalItemsKey : itemsKey;
-                        const raw = localStorage.getItem(key);
-                        const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                        const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                        const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                        arr.push({
-                          id,
-                          type: isVideo ? 'video' : 'image',
-                          fileUrl: payload.fileUrl,
-                          fileName: payload.fileName,
-                        });
-                        map[selectedFolderId] = arr;
-                        localStorage.setItem(key, JSON.stringify(map));
-                        if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                        else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                        try {
-                          const ev = new CustomEvent('chatFolderItemsChanged', {
-                            detail: { roomId, folderId: selectedFolderId },
+                        if (isGlobal) {
+                          const action = isVideo ? 'updateVideo' : 'updateImage';
+                          const json = await postFoldersGlobal({
+                            action,
+                            ownerId: String(currentUser?._id || ''),
+                            folderId: selectedFolderId,
+                            url: payload.fileUrl,
+                            fileName: payload.fileName,
                           });
-                          window.dispatchEvent(ev);
-                        } catch {}
-                        if (!isGlobal) {
-                          try {
-                            socketRef.current?.emit('folder_item_updated', {
-                              roomId,
-                              folderId: selectedFolderId,
-                              items: arr,
-                            });
-                          } catch {}
+                          if (json && json.success) {
+                            const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                            setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                            try {
+                              const raw = localStorage.getItem(globalItemsKey);
+                              const map = raw ? JSON.parse(raw) : {};
+                              map[selectedFolderId!] = arr;
+                              localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                            } catch {}
+                          }
+                        } else {
+                          const action = isVideo ? 'updateVideo' : 'updateImage';
+                          const json = await postFolders({
+                            action,
+                            roomId,
+                            folderId: selectedFolderId,
+                            url: payload.fileUrl,
+                            fileName: payload.fileName,
+                          });
+                          if (json && json.success) {
+                            const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                            setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                            try {
+                              const raw = localStorage.getItem(itemsKey);
+                              const map = raw ? JSON.parse(raw) : {};
+                              map[selectedFolderId!] = arr;
+                              localStorage.setItem(itemsKey, JSON.stringify(map));
+                            } catch {}
+                            try {
+                              socketRef.current?.emit('folder_item_updated', {
+                                roomId,
+                                folderId: selectedFolderId,
+                                items: arr,
+                              });
+                            } catch {}
+                          }
                         }
                       }
                     } catch {}
@@ -712,35 +863,51 @@ export default function FolderDashboard({
                           fileName?: string;
                         };
                         const isGlobal = selectedScope === 'global';
-                        const key = isGlobal ? globalItemsKey : itemsKey;
-                        const raw = localStorage.getItem(key);
-                        const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                        const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                        const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                        arr.push({
-                          id,
-                          type: isVideo ? 'video' : 'file',
-                          fileUrl: payload.fileUrl,
-                          fileName: payload.fileName,
-                        });
-                        map[selectedFolderId] = arr;
-                        localStorage.setItem(key, JSON.stringify(map));
-                        if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                        else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                        try {
-                          const ev = new CustomEvent('chatFolderItemsChanged', {
-                            detail: { roomId, folderId: selectedFolderId },
+                        if (isGlobal) {
+                          const action = isVideo ? 'updateVideo' : 'updateFile';
+                          const json = await postFoldersGlobal({
+                            action,
+                            ownerId: String(currentUser?._id || ''),
+                            folderId: selectedFolderId,
+                            url: payload.fileUrl,
+                            fileName: payload.fileName,
                           });
-                          window.dispatchEvent(ev);
-                        } catch {}
-                        if (!isGlobal) {
-                          try {
-                            socketRef.current?.emit('folder_item_updated', {
-                              roomId,
-                              folderId: selectedFolderId,
-                              items: arr,
-                            });
-                          } catch {}
+                          if (json && json.success) {
+                            const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                            setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                            try {
+                              const raw = localStorage.getItem(globalItemsKey);
+                              const map = raw ? JSON.parse(raw) : {};
+                              map[selectedFolderId!] = arr;
+                              localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                            } catch {}
+                          }
+                        } else {
+                          const action = isVideo ? 'updateVideo' : 'updateFile';
+                          const json = await postFolders({
+                            action,
+                            roomId,
+                            folderId: selectedFolderId,
+                            url: payload.fileUrl,
+                            fileName: payload.fileName,
+                          });
+                          if (json && json.success) {
+                            const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                            setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                            try {
+                              const raw = localStorage.getItem(itemsKey);
+                              const map = raw ? JSON.parse(raw) : {};
+                              map[selectedFolderId!] = arr;
+                              localStorage.setItem(itemsKey, JSON.stringify(map));
+                            } catch {}
+                            try {
+                              socketRef.current?.emit('folder_item_updated', {
+                                roomId,
+                                folderId: selectedFolderId,
+                                items: arr,
+                              });
+                            } catch {}
+                          }
                         }
                       }
                     } catch {}
@@ -1053,30 +1220,47 @@ export default function FolderDashboard({
                 try {
                   if (selectedFolderId) {
                     const isGlobal = selectedScope === 'global';
-                    const key = isGlobal ? globalItemsKey : itemsKey;
-                    const raw = localStorage.getItem(key);
-                    const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                    const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                    const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                    arr.push({ id, content: url, type: 'text' });
-                    map[selectedFolderId] = arr;
-                    localStorage.setItem(key, JSON.stringify(map));
-                    if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                    else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                    try {
-                      const ev = new CustomEvent('chatFolderItemsChanged', {
-                        detail: { roomId, folderId: selectedFolderId },
+                    if (isGlobal) {
+                      const json = await postFoldersGlobal({
+                        action: 'updateText',
+                        ownerId: String(currentUser?._id || ''),
+                        folderId: selectedFolderId,
+                        content: url,
                       });
-                      window.dispatchEvent(ev);
-                    } catch {}
-                    if (!isGlobal) {
-                      try {
-                        socketRef.current?.emit('folder_item_updated', {
-                          roomId,
-                          folderId: selectedFolderId,
-                          items: arr,
-                        });
-                      } catch {}
+                      if (json && json.success) {
+                        const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                        setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                        try {
+                          const raw = localStorage.getItem(globalItemsKey);
+                          const map = raw ? JSON.parse(raw) : {};
+                          map[selectedFolderId!] = arr;
+                          localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                        } catch {}
+                      }
+                    } else {
+                      const json = await postFolders({
+                        action: 'updateText',
+                        roomId,
+                        folderId: selectedFolderId,
+                        content: url,
+                      });
+                      if (json && json.success) {
+                        const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                        setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                        try {
+                          const raw = localStorage.getItem(itemsKey);
+                          const map = raw ? JSON.parse(raw) : {};
+                          map[selectedFolderId!] = arr;
+                          localStorage.setItem(itemsKey, JSON.stringify(map));
+                        } catch {}
+                        try {
+                          socketRef.current?.emit('folder_item_updated', {
+                            roomId,
+                            folderId: selectedFolderId,
+                            items: arr,
+                          });
+                        } catch {}
+                      }
                     }
                   }
                 } catch {}
@@ -1090,30 +1274,47 @@ export default function FolderDashboard({
                 try {
                   if (selectedFolderId) {
                     const isGlobal = selectedScope === 'global';
-                    const key = isGlobal ? globalItemsKey : itemsKey;
-                    const raw = localStorage.getItem(key);
-                    const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                    const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                    const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                    arr.push({ id, content, type: 'text' });
-                    map[selectedFolderId] = arr;
-                    localStorage.setItem(key, JSON.stringify(map));
-                    if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                    else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                    try {
-                      const ev = new CustomEvent('chatFolderItemsChanged', {
-                        detail: { roomId, folderId: selectedFolderId },
+                    if (isGlobal) {
+                      const json = await postFoldersGlobal({
+                        action: 'updateText',
+                        ownerId: String(currentUser?._id || ''),
+                        folderId: selectedFolderId,
+                        content,
                       });
-                      window.dispatchEvent(ev);
-                    } catch {}
-                    if (!isGlobal) {
-                      try {
-                        socketRef.current?.emit('folder_item_updated', {
-                          roomId,
-                          folderId: selectedFolderId,
-                          items: arr,
-                        });
-                      } catch {}
+                      if (json && json.success) {
+                        const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                        setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                        try {
+                          const raw = localStorage.getItem(globalItemsKey);
+                          const map = raw ? JSON.parse(raw) : {};
+                          map[selectedFolderId!] = arr;
+                          localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                        } catch {}
+                      }
+                    } else {
+                      const json = await postFolders({
+                        action: 'updateText',
+                        roomId,
+                        folderId: selectedFolderId,
+                        content,
+                      });
+                      if (json && json.success) {
+                        const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                        setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                        try {
+                          const raw = localStorage.getItem(itemsKey);
+                          const map = raw ? JSON.parse(raw) : {};
+                          map[selectedFolderId!] = arr;
+                          localStorage.setItem(itemsKey, JSON.stringify(map));
+                        } catch {}
+                        try {
+                          socketRef.current?.emit('folder_item_updated', {
+                            roomId,
+                            folderId: selectedFolderId,
+                            items: arr,
+                          });
+                        } catch {}
+                      }
                     }
                   }
                 } catch {}
@@ -1142,35 +1343,51 @@ export default function FolderDashboard({
                         fileName?: string;
                       };
                       const isGlobal = selectedScope === 'global';
-                      const key = isGlobal ? globalItemsKey : itemsKey;
-                      const raw = localStorage.getItem(key);
-                      const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                      const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                      const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                      arr.push({
-                        id,
-                        type: isVideo ? 'video' : 'image',
-                        fileUrl: payload.fileUrl,
-                        fileName: payload.fileName,
-                      });
-                      map[selectedFolderId] = arr;
-                      localStorage.setItem(key, JSON.stringify(map));
-                      if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      try {
-                        const ev = new CustomEvent('chatFolderItemsChanged', {
-                          detail: { roomId, folderId: selectedFolderId },
+                      if (isGlobal) {
+                        const action = isVideo ? 'updateVideo' : 'updateImage';
+                        const json = await postFoldersGlobal({
+                          action,
+                          ownerId: String(currentUser?._id || ''),
+                          folderId: selectedFolderId,
+                          url: payload.fileUrl,
+                          fileName: payload.fileName,
                         });
-                        window.dispatchEvent(ev);
-                      } catch {}
-                      if (!isGlobal) {
-                        try {
-                          socketRef.current?.emit('folder_item_updated', {
-                            roomId,
-                            folderId: selectedFolderId,
-                            items: arr,
-                          });
-                        } catch {}
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(globalItemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                          } catch {}
+                        }
+                      } else {
+                        const action = isVideo ? 'updateVideo' : 'updateImage';
+                        const json = await postFolders({
+                          action,
+                          roomId,
+                          folderId: selectedFolderId,
+                          url: payload.fileUrl,
+                          fileName: payload.fileName,
+                        });
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(itemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(itemsKey, JSON.stringify(map));
+                          } catch {}
+                          try {
+                            socketRef.current?.emit('folder_item_updated', {
+                              roomId,
+                              folderId: selectedFolderId,
+                              items: arr,
+                            });
+                          } catch {}
+                        }
                       }
                     }
                   } catch {}
@@ -1199,42 +1416,58 @@ export default function FolderDashboard({
                         fileName?: string;
                       };
                       const isGlobal = selectedScope === 'global';
-                      const key = isGlobal ? globalItemsKey : itemsKey;
-                      const raw = localStorage.getItem(key);
-                      const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-                      const arr = Array.isArray(map[selectedFolderId]) ? map[selectedFolderId] : [];
-                      const id = `fi_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                      arr.push({
-                        id,
-                        type: isVideo ? 'video' : 'file',
-                        fileUrl: payload.fileUrl,
-                        fileName: payload.fileName,
-                      });
-                      map[selectedFolderId] = arr;
-                      localStorage.setItem(key, JSON.stringify(map));
-                      if (isGlobal) setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      else setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
-                      try {
-                        const ev = new CustomEvent('chatFolderItemsChanged', {
-                          detail: { roomId, folderId: selectedFolderId },
+                      if (isGlobal) {
+                        const action = isVideo ? 'updateVideo' : 'updateFile';
+                        const json = await postFoldersGlobal({
+                          action,
+                          ownerId: String(currentUser?._id || ''),
+                          folderId: selectedFolderId,
+                          url: payload.fileUrl,
+                          fileName: payload.fileName,
                         });
-                        window.dispatchEvent(ev);
-                      } catch {}
-                      if (!isGlobal) {
-                        try {
-                          socketRef.current?.emit('folder_item_updated', {
-                            roomId,
-                            folderId: selectedFolderId,
-                            items: arr,
-                          });
-                        } catch {}
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMapGlobal((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(globalItemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(globalItemsKey, JSON.stringify(map));
+                          } catch {}
+                        }
+                      } else {
+                        const action = isVideo ? 'updateVideo' : 'updateFile';
+                        const json = await postFolders({
+                          action,
+                          roomId,
+                          folderId: selectedFolderId,
+                          url: payload.fileUrl,
+                          fileName: payload.fileName,
+                        });
+                        if (json && json.success) {
+                          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+                          setItemsMap((prev) => ({ ...prev, [selectedFolderId!]: arr }));
+                          try {
+                            const raw = localStorage.getItem(itemsKey);
+                            const map = raw ? JSON.parse(raw) : {};
+                            map[selectedFolderId!] = arr;
+                            localStorage.setItem(itemsKey, JSON.stringify(map));
+                          } catch {}
+                          try {
+                            socketRef.current?.emit('folder_item_updated', {
+                              roomId,
+                              folderId: selectedFolderId,
+                              items: arr,
+                            });
+                          } catch {}
+                        }
                       }
                     }
                   } catch {}
                 }
               }}
             />
-            <div className="flex flex-col w-full h-[68vh] overflow-auto custom-scrollbar">
+            <div className="flex flex-col w-full h-[67vh] overflow-auto custom-scrollbar">
               {selectedFolderId && selectedChildren.length > 0 && (
                 <div className="mt-3 p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
@@ -1476,59 +1709,44 @@ export default function FolderDashboard({
             const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
             const pid = parentId || createParentId || undefined;
             if (selectedScope === 'global') {
-              if (pid) {
-                setFoldersGlobal((prev) => {
-                  const next = updateNode(prev, pid, (n) => {
-                    const exists = n.children.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
-                    if (exists) return n;
-                    return { ...n, children: [...n.children, { id, name: trimmed, children: [] }] };
-                  });
+              const targetParent = pid || 'root';
+              (async () => {
+                const json = await postFoldersGlobal({
+                  action: 'createFolder',
+                  ownerId: String(currentUser?._id || ''),
+                  parentId: targetParent,
+                  name: trimmed,
+                });
+                if (json && json.success) {
+                  const next: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+                  setFoldersGlobal(next);
+                  if (json.itemsMap) setItemsMapGlobal(json.itemsMap as Record<string, FolderItem[]>);
                   try {
                     localStorage.setItem(globalStorageKey, JSON.stringify(next));
                   } catch {}
-                  return next;
-                });
-              } else {
-                setFoldersGlobal((prev) => {
-                  const exists = prev.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
-                  if (exists) return prev;
-                  const next = [...prev, { id, name: trimmed, children: [] }];
-                  try {
-                    localStorage.setItem(globalStorageKey, JSON.stringify(next));
-                  } catch {}
-                  return next;
-                });
-              }
+                }
+              })();
             } else {
-              if (pid) {
-                setFolders((prev) => {
-                  const next = updateNode(prev, pid, (n) => {
-                    const exists = n.children.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
-                    if (exists) return n;
-                    return { ...n, children: [...n.children, { id, name: trimmed, children: [] }] };
-                  });
+              const targetParent = pid || 'root';
+              (async () => {
+                const json = await postFolders({
+                  action: 'createFolder',
+                  roomId,
+                  parentId: targetParent,
+                  name: trimmed,
+                });
+                if (json && json.success) {
+                  const next: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+                  setFolders(next);
+                  if (json.itemsMap) setItemsMap(json.itemsMap as Record<string, FolderItem[]>);
                   try {
                     localStorage.setItem(storageKey, JSON.stringify(next));
                   } catch {}
                   try {
                     socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
                   } catch {}
-                  return next;
-                });
-              } else {
-                setFolders((prev) => {
-                  const exists = prev.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase());
-                  if (exists) return prev;
-                  const next = [...prev, { id, name: trimmed, children: [] }];
-                  try {
-                    localStorage.setItem(storageKey, JSON.stringify(next));
-                  } catch {}
-                  try {
-                    socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
-                  } catch {}
-                  return next;
-                });
-              }
+                }
+              })();
             }
             setShowCreateModal(false);
             setCreateParentId(null);
@@ -1545,24 +1763,37 @@ export default function FolderDashboard({
           const name = renameInput.trim();
           if (!name || !renameTarget) return;
           if (renameTarget.scope === 'global') {
-            setFoldersGlobal((prev) => {
-              const next = prev.map((f) => (f.id === renameTarget.id ? { ...f, name } : f));
-              try {
-                localStorage.setItem(globalStorageKey, JSON.stringify(next));
-              } catch {}
-              return next;
-            });
+            (async () => {
+              const json = await postFoldersGlobal({
+                action: 'renameFolder',
+                ownerId: String(currentUser?._id || ''),
+                folderId: renameTarget.id,
+                name,
+              });
+              if (json && json.success) {
+                const next: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+                setFoldersGlobal(next);
+                if (json.itemsMap) setItemsMapGlobal(json.itemsMap as Record<string, FolderItem[]>);
+                try {
+                  localStorage.setItem(globalStorageKey, JSON.stringify(next));
+                } catch {}
+              }
+            })();
           } else {
-            setFolders((prev) => {
-              const next = prev.map((f) => (f.id === renameTarget.id ? { ...f, name } : f));
-              try {
-                localStorage.setItem(storageKey, JSON.stringify(next));
-              } catch {}
-              try {
-                socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
-              } catch {}
-              return next;
-            });
+            (async () => {
+              const json = await postFolders({ action: 'renameFolder', roomId, folderId: renameTarget.id, name });
+              if (json && json.success) {
+                const next: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+                setFolders(next);
+                if (json.itemsMap) setItemsMap(json.itemsMap as Record<string, FolderItem[]>);
+                try {
+                  localStorage.setItem(storageKey, JSON.stringify(next));
+                } catch {}
+                try {
+                  socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
+                } catch {}
+              }
+            })();
           }
           setRenameTarget(null);
           setRenameInput('');
@@ -1575,41 +1806,43 @@ export default function FolderDashboard({
         onConfirm={() => {
           if (!deleteTarget) return;
           if (deleteTarget.scope === 'global') {
-            setFoldersGlobal((prev) => {
-              const next = prev.filter((f) => f.id !== deleteTarget.id);
-              try {
-                localStorage.setItem(globalStorageKey, JSON.stringify(next));
-              } catch {}
-              return next;
-            });
-            try {
-              const raw = localStorage.getItem(globalItemsKey);
-              const map = raw ? (JSON.parse(raw) as Record<string, Array<{ id: string; content: string }>>) : {};
-              delete map[deleteTarget.id];
-              localStorage.setItem(globalItemsKey, JSON.stringify(map));
-              setItemsMapGlobal(map);
-            } catch {}
+            (async () => {
+              const json = await postFoldersGlobal({
+                action: 'deleteFolder',
+                ownerId: String(currentUser?._id || ''),
+                folderId: deleteTarget.id,
+              });
+              if (json && json.success) {
+                const next: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+                setFoldersGlobal(next);
+                const nextItems: Record<string, FolderItem[]> =
+                  typeof json.itemsMap === 'object' && json.itemsMap ? json.itemsMap : {};
+                setItemsMapGlobal(nextItems);
+                try {
+                  localStorage.setItem(globalStorageKey, JSON.stringify(next));
+                  localStorage.setItem(globalItemsKey, JSON.stringify(nextItems));
+                } catch {}
+              }
+            })();
           } else {
-            setFolders((prev) => {
-              const next = prev.filter((f) => f.id !== deleteTarget.id);
-              try {
-                localStorage.setItem(storageKey, JSON.stringify(next));
-              } catch {}
-              try {
-                socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
-              } catch {}
-              return next;
-            });
-            try {
-              const raw = localStorage.getItem(itemsKey);
-              const map = raw ? (JSON.parse(raw) as Record<string, Array<{ id: string; content: string }>>) : {};
-              delete map[deleteTarget.id];
-              localStorage.setItem(itemsKey, JSON.stringify(map));
-              setItemsMap(map);
-              try {
-                socketRef.current?.emit('folder_item_updated', { roomId, folderId: deleteTarget.id, items: [] });
-              } catch {}
-            } catch {}
+            (async () => {
+              const json = await postFolders({ action: 'deleteFolder', roomId, folderId: deleteTarget.id });
+              if (json && json.success) {
+                const next: FolderNode[] = Array.isArray(json.folders) ? json.folders : [];
+                setFolders(next);
+                const nextItems: Record<string, FolderItem[]> =
+                  typeof json.itemsMap === 'object' && json.itemsMap ? json.itemsMap : {};
+                setItemsMap(nextItems);
+                try {
+                  localStorage.setItem(storageKey, JSON.stringify(next));
+                  localStorage.setItem(itemsKey, JSON.stringify(nextItems));
+                } catch {}
+                try {
+                  socketRef.current?.emit('folder_tree_updated', { roomId, folders: next });
+                  socketRef.current?.emit('folder_item_updated', { roomId, folderId: deleteTarget.id, items: [] });
+                } catch {}
+              }
+            })();
           }
           setDeleteTarget(null);
         }}

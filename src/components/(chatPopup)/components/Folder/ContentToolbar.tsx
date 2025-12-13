@@ -25,9 +25,9 @@ export default function ContentToolbar({
   onSelectAnyFiles,
 }: Props) {
   return (
-    <div className="flex items-start justify-between px-4 py-4 border-b border-gray-200 bg-white">
+    <div className="flex flex-col items-start justify-between px-2 py-2 border-b border-gray-200 bg-white">
       {/* Tiêu đề */}
-      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nội dung</h3>
+      <h3 className="text-xs my-2 font-bold text-gray-500 uppercase tracking-wider">Nội dung</h3>
 
       {/* Các nút hành động - chỉ hiện khi đã chọn thư mục */}
       {selectedFolderId && (
