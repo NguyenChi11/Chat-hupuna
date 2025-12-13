@@ -2010,7 +2010,7 @@ export default function ChatWindow({
           onClose={() => setPreviewMedia(null)}
         />
 
-        {(callActive || incomingCall || callConnecting) && !isGroup && (
+        {(callActive || incomingCall || callConnecting)  && (
           <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
             <div className="bg-white rounded-xl shadow-lg w-full max-w-xl p-4">
               {!callActive &&
