@@ -120,7 +120,7 @@ export default function ContentList({
       return (
         <div
           key={`media-${id}`}
-          className="relative w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white cursor-pointer"
+          className="relative w-44 overflow-hidden rounded-2xl border border-gray-200 bg-white cursor-pointer"
           onClick={() => onToggleSelect(id)}
         >
           <div className="relative aspect-square w-full">

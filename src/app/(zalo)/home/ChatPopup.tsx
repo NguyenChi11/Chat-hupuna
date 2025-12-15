@@ -362,6 +362,12 @@ export default function ChatWindow({
     isGroup,
     sendMessageProcess,
     setMessages,
+    onScrollBottom: () => {
+      const el = messagesContainerRef.current;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+    },
   });
   const uploadingValues = Object.values(uploadingFiles);
   const hasUploading = uploadingValues.length > 0;

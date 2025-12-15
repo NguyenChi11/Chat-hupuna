@@ -13,6 +13,7 @@ interface UseChatUploadParams {
   isGroup: boolean;
   sendMessageProcess: (msgData: MessageCreate) => Promise<void>;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onScrollBottom?: () => void;
 }
 
 export function useChatUpload({
@@ -22,17 +23,12 @@ export function useChatUpload({
   isGroup,
   sendMessageProcess,
   setMessages,
+  onScrollBottom,
 }: UseChatUploadParams) {
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, number>>({});
 
   const handleUploadAndSend = useCallback(
-    async (
-      file: File,
-      type: MessageType,
-      caption?: string,
-      replyToMessageId?: string,
-      mentions?: string[],
-    ) => {
+    async (file: File, type: MessageType, caption?: string, replyToMessageId?: string, mentions?: string[]) => {
       const sanitizeName = (name: string) => {
         return name
           .normalize('NFD')
@@ -81,15 +77,22 @@ export function useChatUpload({
 
       setMessages((prev) => [...prev, tempMsg]);
       setUploadingFiles((prev) => ({ ...prev, [tempId]: 0 }));
+      try {
+        onScrollBottom?.();
+      } catch {}
 
       let success = false;
       let lastMessage = '';
       for (let attempt = 0; attempt < 2 && !success; attempt++) {
         try {
-          const res = (await uploadFileWithProgress(`/api/upload?uploadId=${uploadId}`, formData, (clientRawPercent) => {
-            const displayed = Math.min(clientRawPercent, 95);
-            setUploadingFiles((prev) => ({ ...prev, [tempId]: displayed }));
-          })) as UploadResponse;
+          const res = (await uploadFileWithProgress(
+            `/api/upload?uploadId=${uploadId}`,
+            formData,
+            (clientRawPercent) => {
+              const displayed = Math.min(clientRawPercent, 95);
+              setUploadingFiles((prev) => ({ ...prev, [tempId]: displayed }));
+            },
+          )) as UploadResponse;
 
           if (res.success) {
             success = true;
@@ -135,7 +138,7 @@ export function useChatUpload({
         return newState;
       });
     },
-    [roomId, currentUser, isGroup, selectedChat, sendMessageProcess, setMessages],
+    [roomId, currentUser, isGroup, selectedChat, sendMessageProcess, setMessages, onScrollBottom],
   );
 
   return {
