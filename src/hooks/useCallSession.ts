@@ -18,12 +18,21 @@ export function useCallSession({
   currentUserId,
   isGroup,
   selectedChat,
+  onCallNotify,
 }: {
   socketRef: React.MutableRefObject<Socket | null>;
   roomId: string;
   currentUserId: string;
   isGroup: boolean;
   selectedChat?: { _id?: string; members?: Member[] } | null;
+  onCallNotify?: (payload: {
+    status: 'answered' | 'timeout';
+    type: CallType;
+    durationSec?: number;
+    wasIncoming: boolean;
+    roomId: string;
+    counterpartId?: string | null;
+  }) => void;
 }) {
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
@@ -55,6 +64,8 @@ export function useCallSession({
   const endedRef = useRef(false);
   const callTypeRef = useRef<CallType | null>(null);
   const activeRoomIdRef = useRef<string>(roomId);
+  const callStartAtRef = useRef<number | null>(null);
+  const incomingFlagRef = useRef<boolean>(false);
 
   useEffect(() => {
     callActiveRef.current = callActive;
@@ -65,6 +76,9 @@ export function useCallSession({
   useEffect(() => {
     callTypeRef.current = callType;
   }, [callType]);
+  useEffect(() => {
+    callStartAtRef.current = callStartAt;
+  }, [callStartAt]);
 
   const createPeerConnection = useCallback(
     (otherUserId: string, forceNew = false) => {
@@ -248,6 +262,7 @@ export function useCallSession({
     async (type: CallType) => {
       resetCallLocal();
       endedRef.current = false;
+      incomingFlagRef.current = false;
       try {
         if (!socketRef.current || !socketRef.current.connected) {
           socketRef.current = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
@@ -325,10 +340,28 @@ export function useCallSession({
           from: String(currentUserId),
           targets: receiversRef.current,
         });
+        const parts = String(activeRoomIdRef.current).split('_').filter(Boolean);
+        const isDirect = parts.length === 2;
+        if (isDirect && onCallNotify) {
+          const started = typeof callStartAtRef.current === 'number' ? callStartAtRef.current : null;
+          const ended = Date.now();
+          const status: 'answered' | 'timeout' = started ? 'answered' : 'timeout';
+          const durationSec = started ? Math.max(0, Math.floor((ended - started) / 1000)) : undefined;
+          const type = (callTypeRef.current ?? 'voice') as CallType;
+          onCallNotify({
+            status,
+            type,
+            durationSec,
+            wasIncoming: !!incomingFlagRef.current,
+            roomId: activeRoomIdRef.current,
+            counterpartId,
+          });
+        }
       }
       setCallActive(false);
       setCallType(null);
       setCallStartAt(null);
+      callStartAtRef.current = null;
       setCallConnecting(false);
       setRoomCallActive(false);
       setRoomCallType(null);
@@ -367,7 +400,7 @@ export function useCallSession({
       endedRef.current = true;
       endingRef.current = false;
     },
-    [currentUserId, socketRef],
+    [currentUserId, socketRef, onCallNotify, counterpartId],
   );
 
   const toggleMic = useCallback(() => {
@@ -389,6 +422,7 @@ export function useCallSession({
       if (!payload) return;
       stopGlobalRingTone();
       endedRef.current = false;
+      incomingFlagRef.current = true;
       const type = payload.type;
       const from = payload.from;
       setCallType(type);
@@ -484,6 +518,7 @@ export function useCallSession({
         const isDirect = String(data.roomId).split('_').filter(Boolean).length === 2;
         if (isDirect) {
           setCallStartAt(Date.now());
+          callStartAtRef.current = Date.now();
         }
       } catch  {
         stopGlobalRingTone();
@@ -558,6 +593,7 @@ export function useCallSession({
       setRoomCallType(data.type);
       setRoomParticipants(Array.isArray(data.participants) ? data.participants.map((x) => String(x)) : []);
       setCallStartAt(typeof data.startAt === 'number' ? data.startAt : null);
+      callStartAtRef.current = typeof data.startAt === 'number' ? data.startAt : null;
     };
     socket.on('call_offer', handleCallOffer);
     socket.on('call_answer', handleCallAnswer);
