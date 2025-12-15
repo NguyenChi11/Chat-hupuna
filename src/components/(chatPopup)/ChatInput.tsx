@@ -202,10 +202,10 @@ export default function ChatInput({
         {/* Emoji */}
         <button
           onClick={onToggleEmojiPicker}
-          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+          className="group p-3 rounded-2xl cursor-pointer bg-gradient-to-br from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Chọn emoji"
         >
-          <HiFaceSmile className="w-5 h-5 text-purple-600 group-hover:scale-110 transition-transform" />
+          <HiFaceSmile className="w-6 h-6 text-purple-600 group-hover:scale-110 transition-transform" />
         </button>
 
         {/* <button
@@ -223,21 +223,21 @@ export default function ChatInput({
 
         <button
           onClick={() => setShowFolderDashboard(true)}
-          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-yellow-100 to-orange-100 hover:from-yellow-200 hover:to-orange-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+          className="group p-3 rounded-2xl cursor-pointer bg-gradient-to-br from-yellow-100 to-orange-100 hover:from-yellow-200 hover:to-orange-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Mở dashboard Folder"
         >
           <div className="flex items-center gap-1">
-            <HiFolder className="w-5 h-5 text-orange-600 group-hover:scale-110 transition-transform" />
+            <HiFolder className="w-6 h-6 text-orange-600 group-hover:scale-110 transition-transform" />
             <span className="text-xs text-gray-700 max-w-[9rem] truncate">Folder</span>
           </div>
         </button>
 
         {/* Ảnh/Video */}
         <label
-          className="group relative p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+          className="group relative p-3 rounded-2xl cursor-pointer bg-gradient-to-br from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Gửi ảnh hoặc video"
         >
-          <HiPhoto className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
+          <HiPhoto className="w-6 h-6 text-blue-600 group-hover:scale-110 transition-transform" />
           <input
             type="file"
             accept="image/*,video/*"
@@ -253,10 +253,10 @@ export default function ChatInput({
 
         {/* File */}
         <label
-          className="group relative p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+          className="group relative p-3 rounded-2xl cursor-pointer bg-gradient-to-br from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Gửi file"
         >
-          <HiPaperClip className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform rotate-12" />
+          <HiPaperClip className="w-6 h-6 text-green-600 group-hover:scale-110 transition-transform rotate-12" />
           <input
             type="file"
             className="sr-only"
@@ -272,14 +272,14 @@ export default function ChatInput({
         {/* Voice – Hiệu ứng pulse đỏ đẹp hơn Zalo */}
         <button
           onClick={onVoiceInput}
-          className={`relative p-2 rounded-3xl cursor-pointer transition-all duration-500 shadow-2xl ${
+          className={`relative p-3 rounded-3xl cursor-pointer transition-all duration-500 shadow-2xl ${
             isListening
               ? 'bg-gradient-to-br from-red-500 to-pink-600 text-white animate-pulse ring-4 ring-red-300/50 scale-110'
               : 'bg-gradient-to-br from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 hover:scale-105'
           }`}
           aria-label="Nhập bằng giọng nói"
         >
-          <HiMicrophone className="w-5 h-5" />
+          <HiMicrophone className="w-6 h-6" />
           {isListening && <div className="absolute inset-0 rounded-3xl bg-red-500/30 animate-ping" />}
         </button>
       </div>
@@ -350,7 +350,7 @@ export default function ChatInput({
               onPasteEditable(e);
               updateSlashState();
             }}
-            className="min-h-10 max-h-40 px-6 py-2 bg-white/90 rounded-3xl shadow-xl border border-gray-200/50 focus:outline-none  transition-all duration-300 text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 w-full max-w-full break-words whitespace-pre-wrap"
+            className="min-h-10 max-h-40 px-6 py-4 bg-white/90 rounded-3xl shadow-xl border border-gray-200/50 focus:outline-none  transition-all duration-300 text-base text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 w-full max-w-full break-words whitespace-pre-wrap"
             data-placeholder="Nhập tin nhắn..."
           />
 
@@ -366,10 +366,10 @@ export default function ChatInput({
         {/* Send Button – Gradient + hover scale */}
         <button
           onClick={onSendMessage}
-          className="mb-1 p-2 rounded-3xl cursor-pointer bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 active:scale-90 group"
+          className=" p-4 rounded-3xl cursor-pointer bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 active:scale-90 group"
           aria-label="Gửi tin nhắn"
         >
-          <HiPaperAirplane className="w-5 h-5 -rotate-12 group-hover:rotate-0 transition-transform duration-300" />
+          <HiPaperAirplane className="w-7 h-7 -rotate-12 group-hover:rotate-0 transition-transform duration-300" />
         </button>
       </div>
 
@@ -464,7 +464,7 @@ export default function ChatInput({
       {showFolderDashboard &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
+            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[85vh]">
               <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
@@ -472,7 +472,10 @@ export default function ChatInput({
                   </div>
                   <h3 className="text-lg font-bold">Folder</h3>
                 </div>
-                <button onClick={() => setShowFolderDashboard(false)} className="p-2 rounded-full hover:bg-white/20">
+                <button
+                  onClick={() => setShowFolderDashboard(false)}
+                  className="p-2 rounded-full hover:bg-white/20 cursor-pointer"
+                >
                   <HiX className="w-5 h-5" />
                 </button>
               </div>
@@ -501,7 +504,7 @@ export default function ChatInput({
               </div>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {showChatFlashDashboard && (
@@ -514,7 +517,10 @@ export default function ChatInput({
                 </div>
                 <h3 className="text-lg font-bold">Chat nhanh</h3>
               </div>
-              <button onClick={() => setShowChatFlashDashboard(false)} className="p-2 rounded-full hover:bg-white/20">
+              <button
+                onClick={() => setShowChatFlashDashboard(false)}
+                className="p-2 rounded-full hover:bg-white/20 cursor-pointer"
+              >
                 <HiX className="w-5 h-5" />
               </button>
             </div>

@@ -510,7 +510,7 @@ function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; 
 
   const modal = (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
+      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[85vh]">
         <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">
@@ -518,7 +518,7 @@ function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; 
             </div>
             <h3 className="text-lg font-bold">Folder dùng chung</h3>
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20">
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 cursor-pointer">
             <HiXMark className="w-5 h-5" />
           </button>
         </div>
