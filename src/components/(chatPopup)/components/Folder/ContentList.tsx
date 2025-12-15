@@ -33,8 +33,6 @@ export default function ContentList({
   activeMenuId,
   setActiveMenuId,
   onJumpToMessage,
-  onInsertToInput,
-  onAttachFromFolder,
   selectedIds,
   onToggleSelect,
   removeItemFromFolder,
@@ -68,7 +66,7 @@ export default function ContentList({
             {kind === 'video' ? (
               <video src={getProxyUrl(url)} className="w-36 h-36 object-cover pointer-events-none" preload="metadata" />
             ) : String(url).startsWith('blob:') ? (
-              <img src={String(url)} alt="Media" className="w-36 h-36 object-cover" />
+              <Image width={200} height={200} src={String(url)} alt="Media" className="w-36 h-36 object-cover" />
             ) : (
               <Image width={200} height={200} src={getProxyUrl(url)} alt="Media" className="w-36 h-36 object-cover" />
             )}
@@ -224,7 +222,7 @@ export default function ContentList({
               preload="metadata"
             />
           ) : String(fileUrl).startsWith('blob:') ? (
-            <img src={String(fileUrl)} alt="Media" className="w-36 h-36 object-cover" />
+            <Image width={200} height={200} src={String(fileUrl)} alt="Media" className="w-36 h-36 object-cover" />
           ) : (
             <Image width={200} height={200} src={getProxyUrl(fileUrl)} alt="Media" className="w-36 h-36 object-cover" />
           )}

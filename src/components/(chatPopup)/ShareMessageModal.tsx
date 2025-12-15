@@ -8,7 +8,6 @@ import { GroupConversation } from '@/types/Group';
 import Image from 'next/image';
 import { getProxyUrl } from '@/utils/utils';
 import { Message } from '@/types/Message';
-import { HiLink } from 'react-icons/hi';
 
 // Mock types
 

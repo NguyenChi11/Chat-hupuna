@@ -43,6 +43,7 @@ export default function FolderDashboard({
     } else if (initialScope === 'room') {
       controller.setSelectedScope('room');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScope]);
 
   return (

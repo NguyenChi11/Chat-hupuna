@@ -93,8 +93,6 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
 
     linkInput,
     setLinkInput,
-    textInput,
-    setTextInput,
     nameInput,
     setNameInput,
     searchInput,
@@ -111,7 +109,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
     onDeleteFolder,
 
     onAddLink,
-    onAddText,
+
     onSelectMediaFiles,
     onSelectAnyFiles,
     removeItemFromFolder,
@@ -172,7 +170,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
       setActiveNav('file');
       return;
     }
-  }, [selectedFolderId, currentItems, messages]);
+  }, [selectedFolderId, currentItems, messages, activeNav]);
 
   const filteredItems = useMemo(() => {
     const kw = (searchInput || '').toLowerCase().trim();

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useRef, useState } from 'react';
 import { HiLink } from 'react-icons/hi';
 
@@ -172,7 +173,13 @@ export default function ContentToolbar({
                               {isVideo ? (
                                 <video src={url} className="h-full w-full object-cover" muted />
                               ) : (
-                                <img src={url} alt={f.name} className="h-full w-full object-cover" />
+                                <Image
+                                  width={100}
+                                  height={100}
+                                  src={url}
+                                  alt={f.name}
+                                  className="h-full w-full object-cover"
+                                />
                               )}
                             </div>
                           );

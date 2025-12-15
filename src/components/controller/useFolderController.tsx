@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FolderItem, FolderNode, Scope } from '@/types/folderTypes';
 import { findNodeById, findPath } from '@/utils/folderHelpers';
 import { folderRoomApi } from '@/services/folderRoom.service';

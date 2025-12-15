@@ -103,17 +103,10 @@ export default function MobileLayout(props: MobileLayoutProps) {
 
     linkInput,
     setLinkInput,
-    textInput,
-    setTextInput,
     nameInput,
     setNameInput,
     searchInput,
     setSearchInput,
-
-    showCreateModal,
-    setShowCreateModal,
-    createParentId,
-    setCreateParentId,
 
     activeMenuId,
     setActiveMenuId,
@@ -127,7 +120,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
     onDeleteFolder,
 
     onAddLink,
-    onAddText,
+
     onSelectMediaFiles,
     onSelectAnyFiles,
     removeItemFromFolder,
@@ -195,7 +188,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
       setActiveNav('file');
       return;
     }
-  }, [selectedFolderId, currentItems, messages]);
+  }, [selectedFolderId, currentItems, messages, activeNav]);
 
   const filteredItems = useMemo(() => {
     const kw = (searchInput || '').toLowerCase().trim();

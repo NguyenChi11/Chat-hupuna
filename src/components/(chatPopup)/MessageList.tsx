@@ -840,7 +840,13 @@ export default function MessageList({
                         onClick={() => !isUploading && onOpenMedia(String(msg.fileUrl), 'image')}
                       >
                         {String(msg.fileUrl).startsWith('blob:') ? (
-                          <img src={String(msg.fileUrl)} alt="Ảnh" className="w-full h-auto object-cover" />
+                          <Image
+                            width={600}
+                            height={600}
+                            src={String(msg.fileUrl)}
+                            alt="Ảnh"
+                            className="w-full h-auto object-cover"
+                          />
                         ) : (
                           <Image
                             src={getProxyUrl(msg.fileUrl)}

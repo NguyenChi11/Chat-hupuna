@@ -380,6 +380,7 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }

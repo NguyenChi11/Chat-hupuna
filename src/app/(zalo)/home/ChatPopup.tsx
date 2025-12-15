@@ -41,8 +41,7 @@ import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
 import { useRouter } from 'next/navigation';
-import { get } from 'http';
-import { sendError } from 'next/dist/server/api-utils';
+
 import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
 
 const STICKERS = [
@@ -1239,6 +1238,7 @@ export default function ChatWindow({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMentionMenu, mentionMenuRef, setShowMentionMenu]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const getSenderName = (sender: User | string): string => {
     if (typeof sender === 'object' && sender && 'name' in sender && (sender as User).name) {
       return (sender as User).name as string;
@@ -1785,7 +1785,10 @@ export default function ChatWindow({
                   att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
                 const placeholder = new File([new Blob([])], name, { type: 'application/octet-stream' });
                 const index = attachments.length;
-                setAttachments((prev) => [...prev, { file: placeholder, type: att.type, previewUrl: remoteUrl, fileName: name }]);
+                setAttachments((prev) => [
+                  ...prev,
+                  { file: placeholder, type: att.type, previewUrl: remoteUrl, fileName: name },
+                ]);
                 try {
                   const res = await fetch(remoteUrl);
                   const blob = await res.blob();

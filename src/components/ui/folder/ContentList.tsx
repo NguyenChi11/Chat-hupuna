@@ -46,14 +46,9 @@ export default function ContentList({
   selectedFolderId,
   items,
   messages,
-  activeMenuId,
   setActiveMenuId,
-  onJumpToMessage,
-  onInsertToInput,
-  onAttachFromFolder,
   selectedIds,
   onToggleSelect,
-  removeItemFromFolder,
   onRenameItem,
 }: Props) {
   // expose setter for ItemDropdownMenu
@@ -106,7 +101,6 @@ export default function ContentList({
     const msg = messages.find((m) => String(m._id) === String(it.id));
     const id = String(it.id || idx);
     const selected = selectedIds.has(id);
-    const fid = selectedFolderId as string;
 
     // 🔑 CHUẨN HOÁ DATA (WORDPRESS STYLE)
     const resolvedType = msg?.type || it.type || 'text';

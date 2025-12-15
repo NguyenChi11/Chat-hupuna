@@ -192,7 +192,7 @@ export default function FolderSidebar({
   selectedFolderId: string | null;
   selectedScope: Scope;
 
-  onSelect: (id: string, scope: Scope) => void;
+  onSelect: (id: string | null, scope: Scope) => void;
   onToggle: (id: string) => void;
 
   onCreateRoot: (scope: Scope) => void;

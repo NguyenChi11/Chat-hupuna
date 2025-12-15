@@ -82,11 +82,23 @@ export async function POST(req: NextRequest) {
       root: FolderNode,
     ): Record<
       string,
-      Array<{ id: string; content?: string; type?: 'image' | 'video' | 'file' | 'text'; fileUrl?: string; fileName?: string }>
+      Array<{
+        id: string;
+        content?: string;
+        type?: 'image' | 'video' | 'file' | 'text';
+        fileUrl?: string;
+        fileName?: string;
+      }>
     > => {
       const acc: Record<
         string,
-        Array<{ id: string; content?: string; type?: 'image' | 'video' | 'file' | 'text'; fileUrl?: string; fileName?: string }>
+        Array<{
+          id: string;
+          content?: string;
+          type?: 'image' | 'video' | 'file' | 'text';
+          fileUrl?: string;
+          fileName?: string;
+        }>
       > = {};
       const walk = (node: FolderNode) => {
         acc[node.id] = node.items.map((it) => ({
@@ -108,10 +120,27 @@ export async function POST(req: NextRequest) {
         const row = await collection.findOne({ roomId });
         if (!row) {
           const now = Date.now();
-          const root: FolderNode = { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: now };
-          return NextResponse.json({ success: true, data: { roomId, root }, folders: root.children.map(toUiFolder), itemsMap: buildItemsMap(root) });
+          const root: FolderNode = {
+            id: 'root',
+            name: 'root',
+            parentId: undefined,
+            children: [],
+            items: [],
+            createdAt: now,
+          };
+          return NextResponse.json({
+            success: true,
+            data: { roomId, root },
+            folders: root.children.map(toUiFolder),
+            itemsMap: buildItemsMap(root),
+          });
         }
-        return NextResponse.json({ success: true, data: row, folders: row.root.children.map(toUiFolder), itemsMap: buildItemsMap(row.root) });
+        return NextResponse.json({
+          success: true,
+          data: row,
+          folders: row.root.children.map(toUiFolder),
+          itemsMap: buildItemsMap(row.root),
+        });
       }
       case 'createFolder': {
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
@@ -121,14 +150,24 @@ export async function POST(req: NextRequest) {
 
         const existing = await collection.findOne({ roomId });
         const now = Date.now();
-        const baseRoot: FolderNode = existing?.root || { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: now };
+        const baseRoot: FolderNode = existing?.root || {
+          id: 'root',
+          name: 'root',
+          parentId: undefined,
+          children: [],
+          items: [],
+          createdAt: now,
+        };
         const parent = findFolder(baseRoot, parentId);
         if (!parent) return NextResponse.json({ error: 'Parent folder not found' }, { status: 404 });
         const newId = `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const nextRoot = updateFolderById(baseRoot, parentId, (f) => ({
           ...f,
           updatedAt: now,
-          children: [...f.children, { id: newId, name, parentId, children: [], items: [], createdAt: now, updatedAt: now }],
+          children: [
+            ...f.children,
+            { id: newId, name, parentId, children: [], items: [], createdAt: now, updatedAt: now },
+          ],
         }));
 
         if (!existing) {
@@ -136,7 +175,12 @@ export async function POST(req: NextRequest) {
         } else {
           await collection.updateOne({ roomId }, { $set: { root: nextRoot } });
         }
-        return NextResponse.json({ success: true, folder: { id: newId, name, parentId }, folders: nextRoot.children.map(toUiFolder), itemsMap: buildItemsMap(nextRoot) });
+        return NextResponse.json({
+          success: true,
+          folder: { id: newId, name, parentId },
+          folders: nextRoot.children.map(toUiFolder),
+          itemsMap: buildItemsMap(nextRoot),
+        });
       }
       case 'renameFolder': {
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
@@ -146,7 +190,14 @@ export async function POST(req: NextRequest) {
 
         const existing = await collection.findOne({ roomId });
         const now = Date.now();
-        const baseRoot: FolderNode = existing?.root || { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: now };
+        const baseRoot: FolderNode = existing?.root || {
+          id: 'root',
+          name: 'root',
+          parentId: undefined,
+          children: [],
+          items: [],
+          createdAt: now,
+        };
         const nextRoot = renameFolder(baseRoot, folderId, name);
         const nextRootWithTs = updateFolderById(nextRoot, folderId, (f) => ({ ...f, updatedAt: now }));
 
@@ -155,7 +206,11 @@ export async function POST(req: NextRequest) {
         } else {
           await collection.updateOne({ roomId }, { $set: { root: nextRootWithTs } });
         }
-        return NextResponse.json({ success: true, folders: nextRootWithTs.children.map(toUiFolder), itemsMap: buildItemsMap(nextRootWithTs) });
+        return NextResponse.json({
+          success: true,
+          folders: nextRootWithTs.children.map(toUiFolder),
+          itemsMap: buildItemsMap(nextRootWithTs),
+        });
       }
       case 'deleteFolder': {
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
@@ -164,7 +219,14 @@ export async function POST(req: NextRequest) {
 
         const existing = await collection.findOne({ roomId });
         const now = Date.now();
-        const baseRoot: FolderNode = existing?.root || { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: now };
+        const baseRoot: FolderNode = existing?.root || {
+          id: 'root',
+          name: 'root',
+          parentId: undefined,
+          children: [],
+          items: [],
+          createdAt: now,
+        };
         const nextRoot = updateFolderById(deleteFolder(baseRoot, folderId), 'root', (f) => ({ ...f, updatedAt: now }));
 
         if (!existing) {
@@ -172,7 +234,11 @@ export async function POST(req: NextRequest) {
         } else {
           await collection.updateOne({ roomId }, { $set: { root: nextRoot } });
         }
-        return NextResponse.json({ success: true, folders: nextRoot.children.map(toUiFolder), itemsMap: buildItemsMap(nextRoot) });
+        return NextResponse.json({
+          success: true,
+          folders: nextRoot.children.map(toUiFolder),
+          itemsMap: buildItemsMap(nextRoot),
+        });
       }
       case 'listItems': {
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
@@ -180,10 +246,26 @@ export async function POST(req: NextRequest) {
         if (!folderId) return NextResponse.json({ error: 'Missing folderId' }, { status: 400 });
 
         const existing = await collection.findOne({ roomId });
-        const baseRoot: FolderNode = existing?.root || { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: Date.now() };
+        const baseRoot: FolderNode = existing?.root || {
+          id: 'root',
+          name: 'root',
+          parentId: undefined,
+          children: [],
+          items: [],
+          createdAt: Date.now(),
+        };
         const folder = findFolder(baseRoot, folderId);
         if (!folder) return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
-        return NextResponse.json({ success: true, items: folder.items.map((it) => ({ id: it.id, content: it.content, type: it.type, fileUrl: it.url, fileName: it.fileName })) });
+        return NextResponse.json({
+          success: true,
+          items: folder.items.map((it) => ({
+            id: it.id,
+            content: it.content,
+            type: it.type,
+            fileUrl: it.url,
+            fileName: it.fileName,
+          })),
+        });
       }
       case 'upsertItem':
       case 'updateText':
@@ -193,7 +275,11 @@ export async function POST(req: NextRequest) {
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
         const folderId = String(body.folderId || '').trim();
         const itemId = String(body.itemId || '').trim() || `i-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        const type: ItemType = (action === 'upsertItem' ? String(body.type || '').trim() : (action.replace('update', '').toLowerCase() as ItemType)) as ItemType;
+        const type: ItemType = (
+          action === 'upsertItem'
+            ? String(body.type || '').trim()
+            : (action.replace('update', '').toLowerCase() as ItemType)
+        ) as ItemType;
         if (!folderId || !type) return NextResponse.json({ error: 'Missing folderId or type' }, { status: 400 });
         const name = typeof body.name === 'string' ? body.name : undefined;
         const url = typeof body.url === 'string' ? body.url : undefined;
@@ -202,12 +288,22 @@ export async function POST(req: NextRequest) {
 
         const existing = await collection.findOne({ roomId });
         const now = Date.now();
-        const baseRoot: FolderNode = existing?.root || { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: now };
+        const baseRoot: FolderNode = existing?.root || {
+          id: 'root',
+          name: 'root',
+          parentId: undefined,
+          children: [],
+          items: [],
+          createdAt: now,
+        };
         const folder = findFolder(baseRoot, folderId);
         if (!folder) return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
 
         const nextItem: Item = { id: itemId, type, name, url, fileName, content, updatedAt: Date.now() };
-        const nextRoot = updateFolderById(baseRoot, folderId, (f) => ({ ...upsertItemInFolder(f, nextItem), updatedAt: now }));
+        const nextRoot = updateFolderById(baseRoot, folderId, (f) => ({
+          ...upsertItemInFolder(f, nextItem),
+          updatedAt: now,
+        }));
 
         if (!existing) {
           await collection.insertOne({ roomId, root: nextRoot });
@@ -215,7 +311,17 @@ export async function POST(req: NextRequest) {
           await collection.updateOne({ roomId }, { $set: { root: nextRoot } });
         }
         const updatedFolder = findFolder(nextRoot, folderId)!;
-        return NextResponse.json({ success: true, item: nextItem, items: updatedFolder.items.map((it) => ({ id: it.id, content: it.content, type: it.type, fileUrl: it.url, fileName: it.fileName })) });
+        return NextResponse.json({
+          success: true,
+          item: nextItem,
+          items: updatedFolder.items.map((it) => ({
+            id: it.id,
+            content: it.content,
+            type: it.type,
+            fileUrl: it.url,
+            fileName: it.fileName,
+          })),
+        });
       }
       case 'deleteItem': {
         if (!roomId) return NextResponse.json({ error: 'Missing roomId' }, { status: 400 });
@@ -225,11 +331,22 @@ export async function POST(req: NextRequest) {
 
         const existing = await collection.findOne({ roomId });
         const now = Date.now();
-        const baseRoot: FolderNode = existing?.root || { id: 'root', name: 'root', parentId: undefined, children: [], items: [], createdAt: now };
+        const baseRoot: FolderNode = existing?.root || {
+          id: 'root',
+          name: 'root',
+          parentId: undefined,
+          children: [],
+          items: [],
+          createdAt: now,
+        };
         const folder = findFolder(baseRoot, folderId);
         if (!folder) return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
 
-        const nextRoot = updateFolderById(baseRoot, folderId, (f) => ({ ...f, items: f.items.filter((x) => x.id !== itemId), updatedAt: now }));
+        const nextRoot = updateFolderById(baseRoot, folderId, (f) => ({
+          ...f,
+          items: f.items.filter((x) => x.id !== itemId),
+          updatedAt: now,
+        }));
 
         if (!existing) {
           await collection.insertOne({ roomId, root: nextRoot });
@@ -237,11 +354,21 @@ export async function POST(req: NextRequest) {
           await collection.updateOne({ roomId }, { $set: { root: nextRoot } });
         }
         const updatedFolder = findFolder(nextRoot, folderId)!;
-        return NextResponse.json({ success: true, items: updatedFolder.items.map((it) => ({ id: it.id, content: it.content, type: it.type, fileUrl: it.url, fileName: it.fileName })) });
+        return NextResponse.json({
+          success: true,
+          items: updatedFolder.items.map((it) => ({
+            id: it.id,
+            content: it.content,
+            type: it.type,
+            fileUrl: it.url,
+            fileName: it.fileName,
+          })),
+        });
       }
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }

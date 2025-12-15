@@ -8,5 +8,5 @@ export function useFolderStorage<T>(key: string, setter: (v: T) => void, fallbac
     } catch {
       setter(fallback);
     }
-  }, [key]);
+  }, [fallback, key, setter]);
 }

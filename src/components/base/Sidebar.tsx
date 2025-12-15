@@ -486,6 +486,7 @@ function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; 
 
   React.useEffect(() => {
     controller.setSelectedScope('global');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

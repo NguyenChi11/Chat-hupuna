@@ -28,8 +28,21 @@ function getContentType(fileName: string) {
   if (ext === 'mp4') return 'video/mp4';
   if (ext === 'webm') return 'video/webm';
   if (ext === 'mkv') return 'video/x-matroska';
+  if (ext === 'mov') return 'video/quicktime';
+  if (ext === 'avi') return 'video/x-msvideo';
+
   if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
   if (ext === 'png') return 'image/png';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'bmp') return 'image/bmp';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'svg') return 'image/svg+xml';
+  if (ext === 'ico') return 'image/x-icon';
+  if (ext === 'tif' || ext === 'tiff') return 'image/tiff';
+  if (ext === 'heic') return 'image/heic';
+  if (ext === 'heif') return 'image/heif';
+  if (ext === 'avif') return 'image/avif';
+
   return 'application/octet-stream'; // Mặc định
 }
 
@@ -145,7 +158,14 @@ export async function GET(req: NextRequest) {
 
     const fileName = file.name || 'file';
     const fileSize = file.size || 0;
-    const contentType = getContentType(fileName);
+    let contentType = getContentType(fileName);
+    const acceptHeader = req.headers.get('accept') || '';
+    const wantsImage = acceptHeader.includes('image/');
+    const isImageType = contentType.startsWith('image/');
+    if (wantsImage && !isImageType) {
+      // Trường hợp Next/Image yêu cầu ảnh nhưng không đoán được đuôi -> fallback ảnh phổ biến
+      contentType = 'image/jpeg';
+    }
 
     // 2. Xử lý Range Request (Quan trọng cho Video streaming)
     // Trình duyệt sẽ gửi header "range: bytes=0-" hoặc "bytes=1000-2000" khi tua video
@@ -189,6 +209,7 @@ export async function GET(req: NextRequest) {
           'Accept-Ranges': 'bytes',
           'Content-Length': chunksize.toString(),
           'Content-Type': contentType,
+          'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
         },
       });
     } else {
@@ -221,6 +242,7 @@ export async function GET(req: NextRequest) {
         headers: {
           'Content-Length': fileSize.toString(),
           'Content-Type': contentType,
+          'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
           // Cache ảnh lâu dài, nhưng video thì cẩn thận cache
           'Cache-Control': contentType.startsWith('image') ? 'public, max-age=31536000, immutable' : 'no-cache',
         },

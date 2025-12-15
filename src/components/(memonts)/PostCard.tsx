@@ -14,6 +14,7 @@ function toMegaStream(url: string) {
   return url.startsWith('https://mega.nz/') ? `/api/mega-stream?url=${encodeURIComponent(url)}` : url;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function uploadFileMega(file: File): Promise<string | null> {
   const uploadId = `up_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const form = new FormData();
