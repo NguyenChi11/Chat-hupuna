@@ -15,6 +15,7 @@ import {
 import { HiDocumentText, HiLightningBolt, HiX } from 'react-icons/hi';
 import Image from 'next/image';
 import { useChatContext } from '@/context/ChatContext';
+import FolderDashboard from '@/components/(chatPopup)/components/Folder/FolderDashboard';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -29,6 +30,7 @@ interface ChatInputProps {
   onSendMessage: () => void;
   onSelectImage: (file: File) => void;
   onSelectFile: (file: File) => void;
+  onAttachFromFolder: (att: { url: string; type: 'image' | 'video' | 'file'; fileName?: string }) => void;
   attachments: { previewUrl: string; type: 'image' | 'video' | 'file'; fileName?: string }[];
   onRemoveAttachment: (index: number) => void;
   onClearAttachments: () => void;
@@ -46,6 +48,7 @@ export default function ChatInput({
   onSendMessage,
   onSelectImage,
   onSelectFile,
+  onAttachFromFolder,
   attachments,
   onRemoveAttachment,
   onClearAttachments,
@@ -64,6 +67,7 @@ export default function ChatInput({
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashSelectedIndex, setSlashSelectedIndex] = useState<number>(0);
+  const [showFolderDashboard, setShowFolderDashboard] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -211,6 +215,17 @@ export default function ChatInput({
             <span className="text-xs text-gray-700 max-w-[9rem] truncate">
               {selectedFlashFolder?.name || 'Chọn thư mục'}
             </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setShowFolderDashboard(true)}
+          className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-yellow-100 to-orange-100 hover:from-yellow-200 hover:to-orange-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
+          aria-label="Mở dashboard Folder"
+        >
+          <div className="flex items-center gap-1">
+            <HiFolder className="w-5 h-5 text-orange-600 group-hover:scale-110 transition-transform" />
+            <span className="text-xs text-gray-700 max-w-[9rem] truncate">Folder</span>
           </div>
         </button>
 
@@ -438,6 +453,47 @@ export default function ChatInput({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFolderDashboard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
+            <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
+                  <HiFolder className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-bold">Folder</h3>
+              </div>
+              <button onClick={() => setShowFolderDashboard(false)} className="p-2 rounded-full hover:bg-white/20">
+                <HiX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <FolderDashboard
+                roomId={roomId}
+                onClose={() => setShowFolderDashboard(false)}
+                onInsertToInput={(text) => {
+                  const el = editableRef.current;
+                  if (!el) return;
+                  const cur = String(el.innerText || '');
+                  el.innerText = cur + (cur ? ' ' : '') + String(text || '');
+                  try {
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    range.collapse(false);
+                    const sel = window.getSelection();
+                    sel?.removeAllRanges();
+                    sel?.addRange(range);
+                  } catch {}
+                  el.focus();
+                  onInputEditable();
+                }}
+                onAttachFromFolder={(att) => onAttachFromFolder(att)}
+              />
             </div>
           </div>
         </div>

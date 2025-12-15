@@ -1,7 +1,12 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import { HiFolder, HiFolderOpen, HiChevronDown, HiX, HiCheck } from 'react-icons/hi';
-import type { FolderNode } from './FolderSection';
+
+export interface FolderNode {
+  id: string;
+  name: string;
+  children: FolderNode[];
+}
 
 interface Props {
   isOpen: boolean;

@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { HiChevronRight, HiLightningBolt, HiPlus, HiPencil, HiTrash, HiX } from 'react-icons/hi';
 import { useChatContext } from '@/context/ChatContext';
+import io, { type Socket } from 'socket.io-client';
+import { resolveSocketUrl } from '@/utils/utils';
 
 interface ChatFlashSectionProps {
   isOpen: boolean;
@@ -30,6 +32,40 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingKey, setEditingKey] = useState('');
   const [editingValue, setEditingValue] = useState('');
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    const s = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
+    socketRef.current = s;
+    if (roomId) s.emit('join_room', roomId);
+    s.on('chatflash_folder_updated', (data: { roomId?: unknown; folders?: Array<{ id: string; name: string }> }) => {
+      if (String(data?.roomId) !== String(roomId)) return;
+      const next = Array.isArray(data?.folders) ? data.folders : [];
+      setFolders(next);
+      try {
+        localStorage.setItem(foldersKey, JSON.stringify(next));
+      } catch {}
+    });
+    s.on(
+      'chatflash_kv_updated',
+      (data: { roomId?: unknown; folderId?: unknown; items?: Array<{ key: string; value: string }> }) => {
+        if (String(data?.roomId) !== String(roomId)) return;
+        const fid = String(data?.folderId || '');
+        const arr = Array.isArray(data?.items) ? data.items : [];
+        try {
+          localStorage.setItem(`chatFlashKV:${roomId}:${fid}`, JSON.stringify(arr));
+        } catch {}
+        if (showModal && activeFolderId && String(activeFolderId) === fid) {
+          setItems(arr);
+        }
+      },
+    );
+    return () => {
+      try {
+        s.disconnect();
+      } catch {}
+    };
+  }, [roomId, showModal, activeFolderId, foldersKey]);
 
   useEffect(() => {
     const load = async () => {
@@ -55,13 +91,13 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
       }
     };
     if (roomId) load();
-  }, [roomId]);
+  }, [roomId, foldersKey]);
 
   useEffect(() => {
     try {
       localStorage.setItem(foldersKey, JSON.stringify(folders));
     } catch {}
-  }, [folders]);
+  }, [folders, foldersKey]);
 
   useEffect(() => {
     if (!activeFolderId || !showModal || !roomId) return;
@@ -95,7 +131,7 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
     try {
       localStorage.setItem(`chatFlashKV:${roomId}:${activeFolderId}`, JSON.stringify(items));
     } catch {}
-  }, [items, activeFolderId, showModal]);
+  }, [items, activeFolderId, showModal, roomId]);
 
   const handleCreateFolder = async () => {
     const name = folderName.trim();
@@ -113,6 +149,9 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
           const next = [...prev, folder];
           try {
             localStorage.setItem(foldersKey, JSON.stringify(next));
+          } catch {}
+          try {
+            socketRef.current?.emit('chatflash_folder_updated', { roomId, folders: next });
           } catch {}
           return next;
         });
@@ -136,6 +175,10 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
       try {
         localStorage.setItem(foldersKey, JSON.stringify(next));
         localStorage.removeItem(`chatFlashKV:${id}`);
+      } catch {}
+      try {
+        socketRef.current?.emit('chatflash_folder_updated', { roomId, folders: next });
+        socketRef.current?.emit('chatflash_kv_updated', { roomId, folderId: id, items: [] });
       } catch {}
       return next;
     });
@@ -163,6 +206,9 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
       const next = prev.map((f, i) => (i === editingFolderIndex ? { ...f, name } : f));
       try {
         localStorage.setItem(foldersKey, JSON.stringify(next));
+      } catch {}
+      try {
+        socketRef.current?.emit('chatflash_folder_updated', { roomId, folders: next });
       } catch {}
       return next;
     });
@@ -192,7 +238,16 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
         body: JSON.stringify({ action: 'upsertKV', roomId, folderId: activeFolderId, key: k, value: v }),
       });
     } catch {}
-    setItems((prev) => [...prev, { key: k, value: v }]);
+    setItems((prev) => {
+      const next = [...prev, { key: k, value: v }];
+      try {
+        localStorage.setItem(`chatFlashKV:${roomId}:${activeFolderId}`, JSON.stringify(next));
+      } catch {}
+      try {
+        socketRef.current?.emit('chatflash_kv_updated', { roomId, folderId: activeFolderId, items: next });
+      } catch {}
+      return next;
+    });
     setNewKey('');
     setNewValue('');
   };
@@ -207,7 +262,16 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
         body: JSON.stringify({ action: 'deleteKV', roomId, folderId: activeFolderId, key: k }),
       });
     } catch {}
-    setItems((prev) => prev.filter((_, i) => i !== index));
+    setItems((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      try {
+        localStorage.setItem(`chatFlashKV:${roomId}:${activeFolderId}`, JSON.stringify(next));
+      } catch {}
+      try {
+        socketRef.current?.emit('chatflash_kv_updated', { roomId, folderId: activeFolderId, items: next });
+      } catch {}
+      return next;
+    });
   };
 
   const startEdit = (index: number) => {
@@ -228,7 +292,16 @@ export default function ChatFlashSection({ isOpen, onToggle }: ChatFlashSectionP
         body: JSON.stringify({ action: 'upsertKV', roomId, folderId: activeFolderId, key: k, value: v }),
       });
     } catch {}
-    setItems((prev) => prev.map((it, i) => (i === editingIndex ? { key: k, value: v } : it)));
+    setItems((prev) => {
+      const next = prev.map((it, i) => (i === editingIndex ? { key: k, value: v } : it));
+      try {
+        localStorage.setItem(`chatFlashKV:${roomId}:${activeFolderId}`, JSON.stringify(next));
+      } catch {}
+      try {
+        socketRef.current?.emit('chatflash_kv_updated', { roomId, folderId: activeFolderId, items: next });
+      } catch {}
+      return next;
+    });
     setEditingIndex(null);
     setEditingKey('');
     setEditingValue('');
