@@ -279,6 +279,7 @@ export async function POST(req: NextRequest) {
           success: true,
           items: folder.items.map((it) => ({
             id: it.id,
+            name: it.name,
             content: it.content,
             type: it.type,
             fileUrl: it.url,
@@ -330,6 +331,7 @@ export async function POST(req: NextRequest) {
           item: nextItem,
           items: updatedFolder.items.map((it) => ({
             id: it.id,
+            name: it.name,
             content: it.content,
             type: it.type,
             fileUrl: it.url,
@@ -367,6 +369,7 @@ export async function POST(req: NextRequest) {
           success: true,
           items: updatedFolder.items.map((it) => ({
             id: it.id,
+            name: it.name,
             content: it.content,
             type: it.type,
             fileUrl: it.url,
