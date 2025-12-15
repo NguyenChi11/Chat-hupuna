@@ -551,7 +551,7 @@ export default function MessageList({
                   onReplyMessage?.(msg);
                 }}
                 className={`
-                  w-full px-3 sm:max-w-[22rem]
+                  w-full  sm:max-w-[22rem]
                   flex gap-2 group relative
                   ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row'}
                   ${isGrouped ? 'mt-1' : 'mt-4'}
@@ -911,7 +911,7 @@ export default function MessageList({
                     {/* IMAGE – FIX SIZE MOBILE */}
                     {msg.type === 'image' && msg.fileUrl && !isRecalled && (
                       <div
-                        className="relative rounded-2xl overflow-hidden cursor-pointer shadow-md max-w-[70vw] sm:max-w-[10rem]"
+                        className="relative rounded-[0.25rem] overflow-hidden cursor-pointer shadow-md max-w-[70vw] sm:max-w-[10rem]"
                         onClick={() => !isUploading && onOpenMedia(String(msg.fileUrl), 'image')}
                       >
                         {String(msg.fileUrl).startsWith('blob:') ? (

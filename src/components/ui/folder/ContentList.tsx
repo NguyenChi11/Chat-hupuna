@@ -241,7 +241,7 @@ export default function ContentList({
 
   return (
     <>
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">{items.map(renderTile)}</div>
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">{items.map(renderTile)}</div>
       {renameOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">

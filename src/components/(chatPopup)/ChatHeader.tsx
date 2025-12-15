@@ -5,7 +5,14 @@ import Image from 'next/image';
 import { getProxyUrl } from '../../utils/utils';
 
 // React Icons - chuẩn Zalo, đẹp, nhẹ
-import { HiArrowLeft, HiMagnifyingGlass, HiEllipsisVertical, HiUserGroup, HiPhone, HiVideoCamera } from 'react-icons/hi2';
+import {
+  HiArrowLeft,
+  HiMagnifyingGlass,
+  HiEllipsisVertical,
+  HiUserGroup,
+  HiPhone,
+  HiVideoCamera,
+} from 'react-icons/hi2';
 
 interface ChatHeaderProps {
   chatName: string;
@@ -50,7 +57,7 @@ export default function ChatHeader({
         {onBackFromChat && (
           <button
             onClick={onBackFromChat}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors md:hidden"
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors md:hidden cursor-pointer"
             title="Quay lại"
           >
             <HiArrowLeft className="w-5 h-5 text-gray-700" />
@@ -107,7 +114,6 @@ export default function ChatHeader({
       </div>
 
       <div className="flex items-center gap-1">
-        
         {!isGroup && (
           <>
             {typeof onVoiceCall === 'function' && (
@@ -129,10 +135,8 @@ export default function ChatHeader({
               </button>
             )}
           </>
-        )
-        
-        }
-        
+        )}
+
         {/* Nút tìm kiếm */}
         <button
           onClick={() => {

@@ -28,6 +28,10 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+        />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />

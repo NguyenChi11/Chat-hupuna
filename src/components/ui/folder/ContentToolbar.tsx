@@ -98,7 +98,7 @@ export default function ContentToolbar({
 
       {openKind && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl mx-4">
             <p className="text-sm font-semibold text-gray-900">
               {openKind === 'link' ? 'Thêm Link' : `Upload ${openKind === 'media' ? 'Ảnh/Video' : 'File'}`}
             </p>

@@ -355,6 +355,16 @@ export default function ChatWindow({
     [roomId, currentUser._id, sendMessageProcess],
   );
 
+  const scrollToBottom = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    const end = messagesEndRef.current;
+    if (end && typeof end.scrollIntoView === 'function') {
+      end.scrollIntoView({ block: 'end' });
+    }
+  }, []);
+
   const { uploadingFiles, handleUploadAndSend } = useChatUpload({
     roomId,
     currentUser,
@@ -362,12 +372,7 @@ export default function ChatWindow({
     isGroup,
     sendMessageProcess,
     setMessages,
-    onScrollBottom: () => {
-      const el = messagesContainerRef.current;
-      if (el) {
-        el.scrollTop = el.scrollHeight;
-      }
-    },
+    onScrollBottom: scrollToBottom,
   });
   const uploadingValues = Object.values(uploadingFiles);
   const hasUploading = uploadingValues.length > 0;
@@ -375,6 +380,31 @@ export default function ChatWindow({
     ? uploadingValues.reduce((sum, v) => sum + v, 0) / uploadingValues.length
     : 0;
   const uploadingCount = uploadingValues.length;
+
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const latest = messages[messages.length - 1];
+    const mine = latest && String(latest.sender) === String(currentUser._id);
+    const should = mine || uploadingCount > 0;
+    if (!should) return;
+    scrollToBottom();
+    setTimeout(scrollToBottom, 0);
+    setTimeout(scrollToBottom, 250);
+  }, [messages.length, uploadingCount, currentUser._id, scrollToBottom]);
+
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const imgs = Array.from(el.querySelectorAll('img'));
+    const handler = () => {
+      scrollToBottom();
+    };
+    imgs.forEach((img) => img.addEventListener('load', handler, { once: true }));
+    return () => {
+      imgs.forEach((img) => img.removeEventListener('load', handler));
+    };
+  }, [messages.length, scrollToBottom]);
 
   const { memberCount, activeMembers, handleMemberRemoved, handleRoleChange, handleMembersAdded } = useChatMembers({
     selectedChat,
