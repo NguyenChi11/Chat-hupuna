@@ -430,7 +430,7 @@ export default function ChatInfoPopup({
                 onJumpToMessage={onJumpToMessage}
                 closeMenu={closeMenu}
               />
-              <ChatFlashSection isOpen={openItems['ChatFlash']} onToggle={() => toggleItem('ChatFlash')} />
+              {/* <ChatFlashSection isOpen={openItems['ChatFlash']} onToggle={() => toggleItem('ChatFlash')} /> */}
               {isGroup && (
                 <GroupInviteLinkSection
                   groupId={(selectedChat as GroupConversation)._id}

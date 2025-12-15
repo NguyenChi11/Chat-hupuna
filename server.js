@@ -13,7 +13,7 @@ const presence = new Map();
 const callSessions = new Map();
 const roomCalls = new Map();
 
-const apiBase = `http://localhost:${String(process.env.NEXT_PUBLIC_WEB_PORT || process.env.PORT || 3000)}`;
+const apiBase =process.env.API_BASE_URL ;
 const formatDuration = (sec) => {
   const s = Math.max(0, Math.floor(Number(sec || 0)));
   const m = Math.floor(s / 60);

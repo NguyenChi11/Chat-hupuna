@@ -2008,7 +2008,7 @@ export default function ChatWindow({
         </div>
 
         {showPopup && (
-          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full z-10 ">
             <ChatInfoPopup
               onClose={() => setShowPopup(false)}
               onShowCreateGroup={onShowCreateGroup}

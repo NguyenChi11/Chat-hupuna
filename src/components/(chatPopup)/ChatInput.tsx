@@ -1,6 +1,7 @@
 'use client';
 
 import React, { ClipboardEvent, KeyboardEvent, RefObject, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // React Icons hi2 – Đỉnh cao nhất 2025
 import {
@@ -460,46 +461,48 @@ export default function ChatInput({
         </div>
       )}
 
-      {showFolderDashboard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
-            <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
-                  <HiFolder className="w-4 h-4" />
+      {showFolderDashboard &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
+              <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
+                    <HiFolder className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-lg font-bold">Folder</h3>
                 </div>
-                <h3 className="text-lg font-bold">Folder</h3>
+                <button onClick={() => setShowFolderDashboard(false)} className="p-2 rounded-full hover:bg-white/20">
+                  <HiX className="w-5 h-5" />
+                </button>
               </div>
-              <button onClick={() => setShowFolderDashboard(false)} className="p-2 rounded-full hover:bg-white/20">
-                <HiX className="w-5 h-5" />
-              </button>
+              <div className="p-4">
+                <FolderDashboard
+                  roomId={roomId}
+                  onClose={() => setShowFolderDashboard(false)}
+                  onInsertToInput={(text) => {
+                    const el = editableRef.current;
+                    if (!el) return;
+                    const cur = String(el.innerText || '');
+                    el.innerText = cur + (cur ? ' ' : '') + String(text || '');
+                    try {
+                      const range = document.createRange();
+                      range.selectNodeContents(el);
+                      range.collapse(false);
+                      const sel = window.getSelection();
+                      sel?.removeAllRanges();
+                      sel?.addRange(range);
+                    } catch {}
+                    el.focus();
+                    onInputEditable();
+                  }}
+                  onAttachFromFolder={(att) => onAttachFromFolder(att)}
+                />
+              </div>
             </div>
-            <div className="p-4">
-              <FolderDashboard
-                roomId={roomId}
-                onClose={() => setShowFolderDashboard(false)}
-                onInsertToInput={(text) => {
-                  const el = editableRef.current;
-                  if (!el) return;
-                  const cur = String(el.innerText || '');
-                  el.innerText = cur + (cur ? ' ' : '') + String(text || '');
-                  try {
-                    const range = document.createRange();
-                    range.selectNodeContents(el);
-                    range.collapse(false);
-                    const sel = window.getSelection();
-                    sel?.removeAllRanges();
-                    sel?.addRange(range);
-                  } catch {}
-                  el.focus();
-                  onInputEditable();
-                }}
-                onAttachFromFolder={(att) => onAttachFromFolder(att)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {showChatFlashDashboard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
