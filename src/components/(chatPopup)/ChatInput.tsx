@@ -16,6 +16,7 @@ import { HiDocumentText, HiLightningBolt, HiX } from 'react-icons/hi';
 import Image from 'next/image';
 import { useChatContext } from '@/context/ChatContext';
 import FolderDashboard from '@/components/(chatPopup)/components/Folder/FolderDashboard';
+import ChatFlashDashboard from '@/components/(chatPopup)/components/Chat-Flash/ChatFlashDashboard';
 
 interface ChatInputProps {
   showEmojiPicker: boolean;
@@ -68,6 +69,7 @@ export default function ChatInput({
   const [slashQuery, setSlashQuery] = useState('');
   const [slashSelectedIndex, setSlashSelectedIndex] = useState<number>(0);
   const [showFolderDashboard, setShowFolderDashboard] = useState(false);
+  const [showChatFlashDashboard, setShowChatFlashDashboard] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -206,9 +208,9 @@ export default function ChatInput({
         </button>
 
         <button
-          onClick={() => setShowFlashPicker(true)}
+          onClick={() => setShowChatFlashDashboard(true)}
           className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-indigo-100 to-blue-100 hover:from-indigo-200 hover:to-blue-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
-          aria-label="Chọn thư mục ChatFlash"
+          aria-label="Mở dashboard Chat nhanh"
         >
           <div className="flex items-center gap-1">
             <HiLightningBolt className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
@@ -494,6 +496,27 @@ export default function ChatInput({
                 }}
                 onAttachFromFolder={(att) => onAttachFromFolder(att)}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showChatFlashDashboard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
+            <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center">
+                  <HiLightningBolt className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-bold">Chat nhanh</h3>
+              </div>
+              <button onClick={() => setShowChatFlashDashboard(false)} className="p-2 rounded-full hover:bg-white/20">
+                <HiX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <ChatFlashDashboard roomId={roomId} onClose={() => setShowChatFlashDashboard(false)} />
             </div>
           </div>
         </div>

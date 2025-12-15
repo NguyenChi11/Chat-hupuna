@@ -74,7 +74,7 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
   const mobileTabs = [
     { key: 'home', label: 'Tin nhắn', paths: ['/home', '/chat', '/'], icon: HiChatBubbleLeftRight },
     { key: 'directory', label: 'Danh bạ', paths: ['/directory'], icon: HiUserGroup },
-    { key: 'moments', label: 'Tường', paths: ['/moments', '/timeline'], icon: HiPhoto },
+    // { key: 'moments', label: 'Tường', paths: ['/moments', '/timeline'], icon: HiPhoto },
     { key: 'profile', label: 'Cá nhân', paths: ['/profile', '/me'], icon: HiUserCircle },
     { key: 'setting', label: 'Cài đặt', paths: ['/setting'], icon: HiCog6Tooth },
   ];
@@ -131,7 +131,9 @@ const LayoutBase = ({ children }: { children: React.ReactNode }) => {
       )}
 
       {/* Nội dung chính */}
-      <main className={`flex-1 overflow-hidden ${isAuthed && !(hideMobileFooter || isWidgetIframe) ? 'pb-20 md:pb-0' : ''}`}>
+      <main
+        className={`flex-1 overflow-hidden ${isAuthed && !(hideMobileFooter || isWidgetIframe) ? 'pb-20 md:pb-0' : ''}`}
+      >
         {children}
       </main>
 
