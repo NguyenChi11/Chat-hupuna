@@ -37,12 +37,15 @@ import {
 } from '@/fetch/messages';
 import SearchSidebar from '@/components/(chatPopup)/SearchMessageModal';
 import { isVideoFile, resolveSocketUrl, getProxyUrl } from '@/utils/utils';
+import ModalCall from '@/components/(call)/ModalCall';
 import { insertTextAtCursor } from '@/utils/chatInput';
 import { groupMessagesByDate } from '@/utils/chatMessages';
 import { ChatProvider } from '@/context/ChatContext';
 import { useRouter } from 'next/navigation';
-
 import ShareMessageModal from '@/components/(chatPopup)/ShareMessageModal';
+import { stopGlobalRingTone } from '@/utils/callRing';
+import { useCallSession } from '@/hooks/useCallSession';
+import IncomingCallModal from '@/components/(call)/IncomingCallModal';
 
 const STICKERS = [
   'https://cdn-icons-png.flaticon.com/512/9408/9408176.png',
@@ -155,15 +158,44 @@ export default function ChatWindow({
   const messagesRef = useRef<Message[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [messageToShare, setMessageToShare] = useState<Message | null>(null);
+  const [callTicker, setCallTicker] = useState(0);
+  const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
+    return [user1Id, user2Id].sort().join('_');
+  };
+  const roomId = isGroup ? getId(selectedChat) : getOneToOneRoomId(getId(currentUser), getId(selectedChat));
+  const {
+    callActive,
+    callType,
+    callStartAt,
+    callConnecting,
+    remoteStreamsState,
+    incomingCall,
+    localVideoRef,
+    startCall: startCall_s2,
+    endCall: endCall_s2,
+    toggleMic: toggleMic_s2,
+    toggleCamera: toggleCamera_s2,
+    acceptIncomingCall: acceptIncomingCall_s2,
+    acceptIncomingCallWith: acceptIncomingCallWith_s2,
+    setIncomingCall: setIncomingCall_s2,
+    micEnabled,
+    camEnabled,
+    roomCallActive,
+    roomCallType,
+    roomParticipants,
+    activeRoomId,
+    counterpartId,
+  } = useCallSession({
+    socketRef,
+    roomId,
+    currentUserId: String(currentUser._id),
+    isGroup,
+    selectedChat,
+  });
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
-  const getOneToOneRoomId = (user1Id: string | number, user2Id: string | number) => {
-    return [user1Id, user2Id].sort().join('_');
-  };
-
-  const roomId = isGroup ? getId(selectedChat) : getOneToOneRoomId(getId(currentUser), getId(selectedChat));
   const chatName = selectedChat.name;
 
   const [showSearchSidebar, setShowSearchSidebar] = useState(false);
@@ -217,6 +249,64 @@ export default function ChatWindow({
     },
     [roomId, currentUser, isGroup, selectedChat],
   );
+
+  // Call WebRTC is managed by useCallSession
+
+  // Local stream is managed by useCallSession
+
+  // Reset is managed by useCallSession
+
+  // Receivers are handled inside useCallSession
+
+  const startCall = useCallback(
+    async (type: 'voice' | 'video') => {
+      await startCall_s2(type);
+    },
+    [startCall_s2],
+  );
+
+  const endCall = useCallback(
+    (source: 'local' | 'remote' = 'local') => {
+      endCall_s2(source);
+    },
+    [endCall_s2],
+  );
+
+  const toggleMic = useCallback(() => {
+    toggleMic_s2();
+  }, [toggleMic_s2]);
+
+  const toggleCamera = useCallback(() => {
+    toggleCamera_s2();
+  }, [toggleCamera_s2]);
+
+  const handleVoiceCall = useCallback(() => {
+    void startCall('voice');
+  }, [startCall]);
+
+  const handleVideoCall = useCallback(() => {
+    void startCall('video');
+  }, [startCall]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const d = (e as CustomEvent).detail || {};
+        const t = d.type === 'video' ? 'video' : 'voice';
+        void startCall(t);
+      } catch {}
+    };
+    window.addEventListener('startCall', handler as EventListener);
+    return () => window.removeEventListener('startCall', handler as EventListener);
+  }, [startCall]);
+
+  useEffect(() => {
+    if (!callActive) return;
+    const id = window.setInterval(() => setCallTicker((x) => x + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [callActive]);
+
+  // Ring tone handled inside useCallSession
 
   const sendNotifyMessage = useCallback(
     async (text: string, replyToMessageId?: string) => {
@@ -867,6 +957,7 @@ export default function ChatWindow({
 
     socketRef.current = io(resolveSocketUrl(), { transports: ['websocket'], withCredentials: false });
     socketRef.current.emit('join_room', roomId);
+    socketRef.current.emit('join_user', { userId: String(currentUser._id) });
 
     socketRef.current.on('receive_message', (data: Message) => {
       if (String(data.roomId) !== String(roomId)) return;
@@ -899,6 +990,7 @@ export default function ChatWindow({
         }, 0);
       }
     });
+
     socketRef.current.on(
       'reaction_updated',
       (data: { _id: string; roomId: string; reactions: Record<string, string[]> }) => {
@@ -1175,6 +1267,40 @@ export default function ChatWindow({
     };
   }, [roomId, currentUser._id, playMessageSound, showMessageNotification, fetchMessages, sendNotifyMessage]);
 
+  const endCallRef = useRef<((source: 'local' | 'remote') => void) | null>(null);
+
+  // Socket call events handled inside useCallSession
+
+  // Ring tone handled inside useCallSession
+
+  useEffect(() => {
+    endCallRef.current = endCall;
+  }, [endCall]);
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('pendingIncomingCall') : null;
+      if (!raw) return;
+      if (incomingCall || callActive || callConnecting) return;
+      const data = JSON.parse(raw) as {
+        roomId: string;
+        from: string;
+        type: 'voice' | 'video';
+        sdp: RTCSessionDescriptionInit;
+      };
+      if (!data || String(data.roomId) !== String(roomId)) return;
+      localStorage.removeItem('pendingIncomingCall');
+
+      (async () => {
+        await acceptIncomingCallWith_s2({
+          from: String(data.from),
+          type: data.type,
+          roomId: String(data.roomId),
+          sdp: data.sdp,
+        });
+      })();
+    } catch {}
+  }, [roomId, incomingCall, callActive, callConnecting, acceptIncomingCallWith_s2]);
   const handleRecallMessage = async (messageId: string) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) return;
 
@@ -1653,6 +1779,8 @@ export default function ChatWindow({
             onBackFromChat={onBackFromChat}
             presenceText={!isGroup ? presenceInfo.text : undefined}
             presenceOnline={!isGroup ? presenceInfo.online : undefined}
+            onVoiceCall={handleVoiceCall}
+            onVideoCall={handleVideoCall}
           />
           <PinnedMessagesSection
             allPinnedMessages={allPinnedMessages}
@@ -1663,6 +1791,18 @@ export default function ChatWindow({
             getSenderName={getSenderName}
             onUnpinMessage={handlePinMessage}
           />
+
+          {isGroup && !callActive && !callConnecting && roomCallActive && (
+            <div className="mx-2 mt-2 mb-0 px-3 py-2 bg-yellow-100 border border-yellow-200 text-yellow-800 rounded flex items-center justify-between">
+              <span>Cuộc gọi đang diễn ra</span>
+              <button
+                className="px-3 py-1 rounded bg-yellow-300 hover:bg-yellow-400 hover:cursor-pointer"
+                onClick={() => void startCall(roomCallType === 'video' ? 'video' : 'voice')}
+              >
+                Tham gia
+              </button>
+            </div>
+          )}
 
           {/* Messages Area */}
           <div
@@ -1921,6 +2061,124 @@ export default function ChatWindow({
           roomId={roomId}
           onClose={() => setPreviewMedia(null)}
         />
+
+        {(callActive || incomingCall || callConnecting) && (
+          <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-[20rem] p-4">
+              {!callActive &&
+                incomingCall &&
+                (() => {
+                  const rid = String(incomingCall.roomId || '');
+                  const parts = rid.split('_').filter(Boolean);
+                  const isOneToOneIncoming = parts.length === 2;
+                  const group = !isOneToOneIncoming ? groups.find((g) => String(g._id) === rid) : null;
+                  const caller = allUsers.find((u) => String(u._id) === String(incomingCall?.from));
+                  const avatar = isOneToOneIncoming ? caller?.avatar : group?.avatar;
+                  const name = isOneToOneIncoming ? caller?.name || chatName : group?.name || chatName;
+                  return (
+                    <IncomingCallModal
+                      avatar={avatar}
+                      name={name}
+                      onAccept={async () => {
+                        await acceptIncomingCall_s2();
+                      }}
+                      onReject={() => {
+                        const from = incomingCall?.from;
+                        const targetRoom = incomingCall?.roomId || roomId;
+                        socketRef.current?.emit('call_reject', {
+                          roomId: String(targetRoom),
+                          targets: from ? [String(from)] : [],
+                        });
+                        setIncomingCall_s2(null);
+                        stopGlobalRingTone();
+                        try {
+                          localStorage.removeItem('pendingIncomingCall');
+                        } catch {}
+                      }}
+                    />
+                  );
+                })()}
+              {!callActive &&
+                callConnecting &&
+                (() => {
+                  const parts = String(roomId).split('_');
+                  const otherId = isGroup
+                    ? null
+                    : parts.find((p) => p && p !== String(currentUser._id)) || getId(selectedChat);
+                  const other = !isGroup ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
+                  const avatar = isGroup ? chatAvatar : other?.avatar;
+                  const name = isGroup ? chatName : other?.name || chatName;
+                  return (
+                    <ModalCall
+                      avatar={avatar}
+                      name={name}
+                      mode="connecting"
+                      callType={callType === 'video' ? 'video' : 'voice'}
+                      onEndCall={() => endCall('local')}
+                    />
+                  );
+                })()}
+              {callActive &&
+                (() => {
+                  const remoteIds = Array.from(remoteStreamsState.keys());
+                  const participantOtherId =
+                    roomParticipants && roomParticipants.length > 0
+                      ? roomParticipants.find((id) => String(id) !== String(currentUser._id))
+                      : undefined;
+                  const otherId =
+                    counterpartId ||
+                    participantOtherId ||
+                    remoteIds[0] ||
+                    incomingCall?.from ||
+                    String(activeRoomId || roomId)
+                      .split('_')
+                      .find((p) => p && p !== String(currentUser._id)) ||
+                    (!isGroup ? getId(selectedChat) : null);
+                  const other = otherId ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
+                  const isOneToOneCall = counterpartId
+                    ? true
+                    : roomParticipants && roomParticipants.length > 0
+                      ? roomParticipants.length === 2
+                      : remoteIds.length <= 1;
+                  const currentCallRoomId = String(activeRoomId || roomId);
+                  const currentGroup = groups.find((g) => String(g._id) === currentCallRoomId);
+                  const avatar = isOneToOneCall ? other?.avatar : currentGroup?.avatar || chatAvatar;
+                  const name = isOneToOneCall ? other?.name || chatName : currentGroup?.name || chatName;
+                  const remotePeers = Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
+                    const u = allUsers.find((x) => String(x._id) === String(uid));
+                    return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
+                  });
+                  const participantIds = new Set<string>();
+                  roomParticipants.forEach((id) => participantIds.add(String(id)));
+                  remoteIds.forEach((id) => participantIds.add(String(id)));
+                  participantIds.delete(String(currentUser._id));
+                  const participants = Array.from(participantIds).map((uid) => {
+                    const u = allUsers.find((x) => String(x._id) === String(uid));
+                    return { userId: uid, name: u?.name, avatar: u?.avatar };
+                  });
+                  return (
+                    <ModalCall
+                      avatar={avatar}
+                      name={name}
+                      mode="active"
+                      callType={callType === 'video' ? 'video' : 'voice'}
+                      callStartAt={callStartAt}
+                      localVideoRef={localVideoRef}
+                      currentUserName={currentUser.name}
+                      currentUserAvatar={currentUser.avatar}
+                      remotePeers={remotePeers}
+                      participants={participants}
+                      micEnabled={micEnabled}
+                      camEnabled={camEnabled}
+                      onToggleMic={toggleMic}
+                      onToggleCamera={toggleCamera}
+                      onEndCall={() => endCall('local')}
+                    />
+                  );
+                })()}
+            </div>
+          </div>
+        )}
       </main>
     </ChatProvider>
   );

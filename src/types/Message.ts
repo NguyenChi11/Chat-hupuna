@@ -37,6 +37,13 @@ export interface Message {
     originalSender: string;
     originalRoomId: string;
   };
+  callerId?: string;
+  calleeId?: string;
+  callType?: 'voice' | 'video';
+  callStatus?: 'answered' | 'rejected' | 'timeout';
+  callDurationSec?: number;
+  callStartedAt?: number;
+  callEndedAt?: number;
 }
 export interface MessageCreate {
   [key: string]: unknown;
@@ -68,4 +75,11 @@ export interface MessageCreate {
     originalSender: string;
     originalRoomId: string;
   };
+  callerId?: string;
+  calleeId?: string;
+  callType?: 'voice' | 'video';
+  callStatus?: 'answered' | 'rejected' | 'timeout';
+  callDurationSec?: number;
+  callStartedAt?: number;
+  callEndedAt?: number;
 }
