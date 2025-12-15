@@ -13,7 +13,6 @@ const presence = new Map();
 const callSessions = new Map();
 const roomCalls = new Map();
 
-const apiBase =process.env.API_BASE_URL ;
 const formatDuration = (sec) => {
   const s = Math.max(0, Math.floor(Number(sec || 0)));
   const m = Math.floor(s / 60);
@@ -32,7 +31,9 @@ const createCallNotify = async ({ roomId, sender, callerId, calleeId, type, stat
     const incoming = String(sender) === String(calleeId);
     const content = buildCallContent({ type, incoming, status, durationSec });
     const receiver = String(sender) === String(callerId) ? String(calleeId) : String(callerId);
-    const immediateSidebar = {
+    const uniqueId = `notify-${String(roomId)}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      _id: uniqueId,
       roomId: String(roomId),
       sender: String(sender),
       senderName: 'Hệ thống',
@@ -42,59 +43,17 @@ const createCallNotify = async ({ roomId, sender, callerId, calleeId, type, stat
       type: 'notify',
       content,
       timestamp: Date.now(),
-      lastMessage: `Hệ thống: ${content}`,
       callerId: String(callerId),
       calleeId: String(calleeId),
       callType: type,
       callStatus: status,
       callDurationSec: typeof durationSec === 'number' ? Math.max(0, Math.floor(durationSec)) : 0,
     };
-    io.to(String(sender)).emit('update_sidebar', immediateSidebar);
-    io.to(String(receiver)).emit('update_sidebar', immediateSidebar);
-    const res = await fetch(`${apiBase}/api/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'create',
-        data: {
-          roomId: String(roomId),
-          sender: String(sender),
-          type: 'notify',
-          content,
-          timestamp: Date.now(),
-          callerId: String(callerId),
-          calleeId: String(calleeId),
-          callType: type,
-          callStatus: status,
-          callDurationSec: typeof durationSec === 'number' ? Math.max(0, Math.floor(durationSec)) : 0,
-        },
-      }),
-    });
-    const json = await res.json();
-    if (json && json.success && json._id) {
-      const payload = {
-        _id: String(json._id),
-        roomId: String(roomId),
-        sender: String(sender),
-        senderName: 'Hệ thống',
-        isGroup: false,
-        receiver,
-        members: [],
-        type: 'notify',
-        content,
-        timestamp: Date.now(),
-        callerId: String(callerId),
-        calleeId: String(calleeId),
-        callType: type,
-        callStatus: status,
-        callDurationSec: typeof durationSec === 'number' ? Math.max(0, Math.floor(durationSec)) : 0,
-      };
-      io.in(String(roomId)).emit('receive_message', payload);
-      const lastMessage = `Hệ thống: ${content}`;
-      const sidebarData = { ...payload, lastMessage };
-      io.to(String(sender)).emit('update_sidebar', sidebarData);
-      io.to(String(receiver)).emit('update_sidebar', sidebarData);
-    }
+    io.in(String(roomId)).emit('receive_message', payload);
+    const lastMessage = `Hệ thống: ${content}`;
+    const sidebarData = { ...payload, lastMessage };
+    io.to(String(sender)).emit('update_sidebar', sidebarData);
+    io.to(String(receiver)).emit('update_sidebar', sidebarData);
   } catch {}
 };
 
