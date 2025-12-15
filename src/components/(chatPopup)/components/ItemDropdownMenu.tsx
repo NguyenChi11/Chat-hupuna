@@ -25,7 +25,7 @@ export default function ItemDropdownMenu({
     <>
       {/* Lớp phủ trong suốt để click ra ngoài thì đóng menu */}
       <div
-        className="fixed inset-0 z-20 cursor-default"
+        className="fixed inset-0 z-40 cursor-default"
         onClick={(e) => {
           e.stopPropagation();
           onClose();
@@ -33,7 +33,7 @@ export default function ItemDropdownMenu({
       ></div>
 
       {/* Dropdown Menu */}
-      <div className="absolute top-8 right-0 z-30 w-40 bg-white rounded-md shadow-xl border border-gray-200 py-1 animate-in fade-in zoom-in duration-100 origin-top-right">
+      <div className="absolute top-10 right-0 z-50 w-40 bg-white rounded-md shadow-xl border border-gray-200 py-1 animate-in fade-in zoom-in duration-100 origin-top-right">
         {/* Option 1: Nhảy tới tin nhắn */}
         <button
           onClick={(e) => {

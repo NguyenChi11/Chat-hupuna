@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HiFolder } from 'react-icons/hi';
 import { useChatContext } from '@/context/ChatContext';
+import { folderRoomApi } from '@/services/folderRoom.service';
 
 type FolderNode = { id: string; name: string; children: FolderNode[] };
 
@@ -170,13 +171,16 @@ export default function FolderButton({
   const sideCls = isMine ? 'right-full mr-3' : 'left-full ml-3';
   const pickerSideCls = isMine ? 'left-1/2 -translate-x-1/2' : 'left-1/2 -translate-x-3/4';
 
-  const handleSave = async (folderId: string) => {
+  const [pendingFolderId, setPendingFolderId] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState('');
+
+  const handleSave = async (folderId: string, name?: string) => {
     try {
       const isGlobal = scope === 'global';
       if (isGlobal) {
         const ownerId = String(currentUser?._id || '');
         const kind = String(type || '').toLowerCase();
-        let payload: Record<string, unknown> = { ownerId, folderId, itemId: messageId };
+        let payload: Record<string, unknown> = { ownerId, folderId, itemId: messageId, name: name || '' };
         if (kind === 'image') {
           payload = { ...payload, action: 'updateImage', url: fileUrl, fileName };
         } else if (kind === 'video') {
@@ -189,41 +193,59 @@ export default function FolderButton({
         const json = await postFoldersGlobal(payload);
         if (json && json.success) {
           const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+          const patched = Array.isArray(arr)
+            ? arr.map((it) =>
+                String(it.id) === String(messageId)
+                  ? { ...it, fileName: it.fileName, content: it.content, type: it.type, fileUrl: it.fileUrl, name }
+                  : it,
+              )
+            : arr;
           setItemsMapGlobal((prev) => ({ ...prev, [folderId]: arr }));
           try {
             const raw = localStorage.getItem(globalItemsKey);
             const map = raw ? JSON.parse(raw) : {};
-            map[folderId] = arr;
+            map[folderId] = patched;
             localStorage.setItem(globalItemsKey, JSON.stringify(map));
           } catch {}
         }
       } else {
-        const key = itemsKey;
-        const raw = localStorage.getItem(key);
-        const map = raw ? (JSON.parse(raw) as Record<string, FolderItem[]>) : {};
-        const arr = Array.isArray(map[folderId]) ? map[folderId] : [];
-        const item: FolderItem = {
-          id: messageId,
-          content: content ?? preview ?? '',
-          type: type as FolderItem['type'],
-          fileUrl: fileUrl,
-          fileName: fileName,
-        };
-        if (!arr.some((x) => String(x.id) === String(messageId))) arr.push(item);
-        map[folderId] = arr;
-        localStorage.setItem(key, JSON.stringify(map));
-        try {
-          const ev = new CustomEvent('chatFolderItemsChanged', {
-            detail: { roomId, folderId, messageId },
-          });
-          window.dispatchEvent(ev);
-        } catch {}
-        setItemsMap((prev) => ({ ...prev, [folderId]: arr }));
+        const kind = String(type || '').toLowerCase();
+        let payload: Record<string, unknown> = { roomId, folderId, itemId: messageId, name: name || '' };
+        if (kind === 'image') {
+          payload = { ...payload, action: 'updateImage', url: fileUrl, fileName };
+        } else if (kind === 'video') {
+          payload = { ...payload, action: 'updateVideo', url: fileUrl, fileName };
+        } else if (kind === 'file') {
+          payload = { ...payload, action: 'updateFile', url: fileUrl, fileName };
+        } else {
+          payload = { ...payload, action: 'updateText', content: content ?? preview ?? '' };
+        }
+        const json = await folderRoomApi(payload);
+        if (json && json.success) {
+          const arr: FolderItem[] = Array.isArray(json.items) ? json.items : [];
+          setItemsMap((prev) => ({ ...prev, [folderId]: arr }));
+          try {
+            const raw = localStorage.getItem(itemsKey);
+            const map = raw ? JSON.parse(raw) : {};
+            map[folderId] = arr;
+            localStorage.setItem(itemsKey, JSON.stringify(map));
+          } catch {}
+          try {
+            const ev = new CustomEvent('chatFolderItemsChanged', {
+              detail: { roomId, folderId, messageId },
+            });
+            window.dispatchEvent(ev);
+          } catch {}
+        }
       }
       onSaved?.(folderId);
       setOpen(false);
+      setPendingFolderId(null);
+      setNameInput('');
     } catch {
       setOpen(false);
+      setPendingFolderId(null);
+      setNameInput('');
     }
   };
 
@@ -292,7 +314,11 @@ export default function FolderButton({
                 {(scope === 'global' ? flatListGlobal : flatListRoom).map(({ node, depth }) => (
                   <button
                     key={node.id}
-                    onClick={() => handleSave(node.id)}
+                    onClick={() => {
+                      setPendingFolderId(node.id);
+                      const suggested = (type === 'file' ? fileName || '' : '') || content || '' || preview || '' || '';
+                      setNameInput(String(suggested).slice(0, 100));
+                    }}
                     className="w-full text-left px-1 py-1.5 rounded-lg hover:bg-gray-50 text-sm text-gray-800"
                   >
                     <div className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
@@ -311,6 +337,38 @@ export default function FolderButton({
               </div>
             ) : (
               <div className="text-xs text-gray-500">Chưa có thư mục, hãy tạo trong mục Folder</div>
+            )}
+            {pendingFolderId && (
+              <div className="mt-2 border-t border-gray-200 pt-2">
+                <div className="text-xs text-gray-600 mb-1">Đặt tên nội dung</div>
+                <input
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder="Nhập tên hiển thị"
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-400"
+                />
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700"
+                    onClick={() => {
+                      if (!pendingFolderId) return;
+                      const name = nameInput.trim();
+                      handleSave(pendingFolderId, name || undefined);
+                    }}
+                  >
+                    Xác nhận
+                  </button>
+                  <button
+                    className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
+                    onClick={() => {
+                      setPendingFolderId(null);
+                      setNameInput('');
+                    }}
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

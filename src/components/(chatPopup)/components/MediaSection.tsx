@@ -41,7 +41,7 @@ export default function MediaSection({
   const showToggle = typeof totalCount === 'number' && totalCount > 6;
   const toggleHandler = onToggleExpanded || (() => {});
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 ">
       {/* Header: Ảnh/Video + mũi tên */}
       <button
         onClick={onToggle}
@@ -79,7 +79,9 @@ export default function MediaSection({
                     {group.items.map((item) => (
                       <div
                         key={item.id}
-                        className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group bg-gray-100"
+                        className={`relative aspect-square rounded-xl cursor-pointer group bg-gray-100 ${
+                          activeMenuId === item.id ? 'z-50' : 'z-0'
+                        }`}
                         onClick={() => {
                           const mediaType = item.type === 'video' ? 'video' : 'image';
                           setPreviewMedia({ url: item.url, type: mediaType });

@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
       string,
       Array<{
         id: string;
+        name?: string;
         content?: string;
         type?: 'image' | 'video' | 'file' | 'text';
         fileUrl?: string;
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
         string,
         Array<{
           id: string;
+          name?: string;
           content?: string;
           type?: 'image' | 'video' | 'file' | 'text';
           fileUrl?: string;
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
       const walk = (node: FolderNode) => {
         acc[node.id] = node.items.map((it) => ({
           id: it.id,
+          name: it.name,
           content: it.content,
           type: it.type,
           fileUrl: it.url,
@@ -259,6 +262,7 @@ export async function POST(req: NextRequest) {
           success: true,
           items: folder.items.map((it) => ({
             id: it.id,
+            name: it.name,
             content: it.content,
             type: it.type,
             fileUrl: it.url,
@@ -311,6 +315,7 @@ export async function POST(req: NextRequest) {
           item: nextItem,
           items: updatedFolder.items.map((it) => ({
             id: it.id,
+            name: it.name,
             content: it.content,
             type: it.type,
             fileUrl: it.url,
@@ -349,6 +354,7 @@ export async function POST(req: NextRequest) {
           success: true,
           items: updatedFolder.items.map((it) => ({
             id: it.id,
+            name: it.name,
             content: it.content,
             type: it.type,
             fileUrl: it.url,

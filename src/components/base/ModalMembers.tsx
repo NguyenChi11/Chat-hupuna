@@ -278,13 +278,13 @@ export default function GroupMembersModal({
     <div className="fixed inset-0 z-50 flex items-center  justify-center bg-black/40 backdrop-blur-sm px-2 sm:px-4 py-4 sm:py-6">
       <div className="bg-white w-full h-full sm:h-auto rounded-t-2xl rounded-b-2xl max-h-[90vh] sm:max-w-2xl rounded-none sm:rounded-2xl shadow-none sm:shadow-xl border border-gray-200 flex flex-col overflow-hidden">
         {/* HEADER */}
-        <div className="flex-none px-4 py-3   bg-[#f3f6fb] flex items-center justify-between gap-3">
+        <div className="flex-none px-2 py-1  bg-[#f3f6fb] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-[#0088ff] flex items-center justify-center text-white shadow-sm">
               <ICPeopleGroup className="w-5 h-5" stroke="#ffffff" />
             </div>
             <div>
-              <h2 className="sm:text-xl text-lg font-bold">Thành viên nhóm</h2>
+              <h2 className="sm:text-sm text-lg font-bold">Thành viên nhóm</h2>
               {groupName && <p className="sm:text-sm text-xs opacity-90 mt-1">{groupName}</p>}
             </div>
           </div>
@@ -299,11 +299,11 @@ export default function GroupMembersModal({
         {/* BODY */}
         <div className="flex-1 flex flex-col min-h-0 bg-gray-50/60">
           {/* Search & Add Section */}
-          <div className="flex-none p-4 space-y-3 bg-white shadow-sm z-10">
+          <div className="flex-none p-2 space-y-3 bg-white shadow-sm z-10">
             {/* {(myRole === 'OWNER' || myRole === 'ADMIN') && ( */}
               <button
                 onClick={() => setShowCreateGroupModal(true)}
-                className="w-full py-1.5 cursor-pointer sm:py-2.5 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold sm:text-lg text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-98"
+                className="w-full py-1 cursor-pointer sm:py-2 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold sm:text-sm rounded-2xl shadow-xl transition-all duration-300 active:scale-98"
               >
                 <HiUserPlus className="sm:w-6 sm:h-6 w-4 h-4" />
                 Thêm thành viên mới
@@ -341,12 +341,12 @@ export default function GroupMembersModal({
                 return (
                   <div
                     key={memberId}
-                    className={`relative flex items-center gap-3 p-1 sm:p-3 bg-white sm:rounded-3xl rounded-2xl shadow-md border-2 border-transparent transition-all duration-300 group
+                    className={`relative flex items-center gap-3 p-2 sm:p-2 bg-white sm:rounded-xl rounded-xl shadow-md border-2 border-transparent transition-all duration-300 group
                       ${isLoading ? 'opacity-60' : 'hover:border-indigo-200 hover:shadow-xl'}`}
                   >
                     {/* Avatar */}
                     <div
-                      className="sm:w-12 sm:h-12 h-8 w-8 rounded-3xl overflow-hidden ring-4 ring-white shadow-2xl cursor-pointer transition-transform hover:scale-105"
+                      className="sm:w-8 sm:h-8 h-8 w-8 rounded-3xl overflow-hidden ring-4 ring-white shadow-2xl cursor-pointer transition-transform hover:scale-105"
                       onClick={() => handleOpenProfile(memberId)}
                     >
                       {member.avatar ? (
@@ -443,7 +443,7 @@ export default function GroupMembersModal({
         <div className="flex-none px-4 py-3 bg-white border-t border-gray-200 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="w-full py-1 cursor-pointer sm:py-3 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold text-sm sm:text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-98"
+            className="w-full py-1 cursor-pointer sm:py-1.5 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-800 font-bold text-sm sm:text-lg rounded-3xl shadow-lg transition-all duration-300 active:scale-98"
           >
             Đóng
           </button>

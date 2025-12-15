@@ -114,12 +114,10 @@ export default function GroupInviteLinkSection({
   const [modal, setModal] = useState<{ show: boolean; type: 'confirm' | 'success' | 'error'; message: string }>({
     show: false,
     type: 'success',
-    message: ''
+    message: '',
   });
 
-  const inviteLink = inviteCode 
-    ? `${window.location.origin}/invite/${inviteCode}` 
-    : '';
+  const inviteLink = inviteCode ? `${window.location.origin}/invite/${inviteCode}` : '';
 
   const showModal = (type: 'confirm' | 'success' | 'error', message: string) => {
     setModal({ show: true, type, message });
@@ -163,7 +161,7 @@ export default function GroupInviteLinkSection({
 
   const handleCopyLink = async () => {
     if (!inviteLink) return;
-    
+
     try {
       await navigator.clipboard.writeText(inviteLink);
       setIsCopied(true);
@@ -195,9 +193,7 @@ export default function GroupInviteLinkSection({
           {!inviteCode ? (
             // Chưa có link
             <div className="text-center py-4">
-              <p className="text-sm text-gray-600 mb-4">
-                Tạo link mời để chia sẻ với bạn bè
-              </p>
+              <p className="text-sm text-gray-600 mb-4">Tạo link mời để chia sẻ với bạn bè</p>
               <button
                 onClick={handleGenerateLink}
                 disabled={isGenerating}
@@ -236,10 +232,8 @@ export default function GroupInviteLinkSection({
                   <HiRefresh className={`w-5 h-5 text-gray-600 ${isGenerating ? 'animate-spin' : ''}`} />
                 </button>
               </div>
-              
-              <p className="text-xs text-gray-500">
-                💡 Mọi người có link này có thể tham gia nhóm
-              </p>
+
+              <p className="text-xs text-gray-500">💡 Mọi người có link này có thể tham gia nhóm</p>
             </>
           )}
         </div>

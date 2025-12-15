@@ -16,46 +16,52 @@ export async function POST(req: NextRequest) {
 
     if (action === 'generate' || action === 'regenerate') {
       if (!groupId) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Missing groupId' 
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Missing groupId',
+          },
+          { status: 400 },
+        );
       }
 
       // Generate new code
       const inviteCode = generateInviteCode();
 
       // Update group
-      const updated = await updateByField<GroupConversation>(
-        GROUPS_COLLECTION,
-        '_id',
-        groupId,
-        { inviteCode }
-      );
+      const updated = await updateByField<GroupConversation>(GROUPS_COLLECTION, '_id', groupId, { inviteCode });
 
       if (!updated) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Update failed' 
-        }, { status: 500 });
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Update failed',
+          },
+          { status: 500 },
+        );
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        inviteCode 
+      return NextResponse.json({
+        success: true,
+        inviteCode,
       });
     }
 
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Invalid action' 
-    }, { status: 400 });
-
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Invalid action',
+      },
+      { status: 400 },
+    );
   } catch (error) {
     console.error('Invite API error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Server error' 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Server error',
+      },
+      { status: 500 },
+    );
   }
 }

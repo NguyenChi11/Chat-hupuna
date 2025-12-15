@@ -66,12 +66,12 @@ export default function CreateGroupModal({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 sm:px-0">
       <div className="bg-white w-full max-w-2xl h-[80vh] sm:h-auto sm:max-h-[90vh] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-2 py-2 sm:px-6 sm:py-5 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white">
+        <div className="flex items-center justify-between px-2 py-2 sm:px-2 sm:py-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white">
           <div className="flex items-center gap-3">
-            <div className="p-2 sm:p-3 rounded-xl bg-white/20 backdrop-blur-sm">
-              <HiOutlineUserPlus className="w-4 h-4 sm:w-7 sm:h-7" />
+            <div className="p-1 sm:p-1 rounded-xl bg-white/20 backdrop-blur-sm">
+              <HiOutlineUserPlus className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold">{mode === 'create' ? 'Tạo nhóm mới' : 'Thêm thành viên'}</h2>
+            <h2 className="text-lg sm:text-sm font-bold">{mode === 'create' ? 'Tạo nhóm mới' : 'Thêm thành viên'}</h2>
           </div>
           <button
             onClick={onClose}
@@ -84,7 +84,7 @@ export default function CreateGroupModal({
         {/* Body */}
         <div className="flex-1 flex flex-col min-h-0 bg-gray-50">
           {/* Input Section */}
-          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white border-b border-gray-100">
+          <div className="p-2 sm:p-3 sm:space-y-3 bg-white border-b border-gray-100">
             {/* Tên nhóm */}
             {mode === 'create' && (
               <div>
@@ -97,7 +97,7 @@ export default function CreateGroupModal({
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   placeholder="Nhóm ăn trưa, Gia đình..."
-                  className="mt-2 w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base font-medium placeholder:text-gray-400"
+                  className="mt-2 w-full px-2 py-1 bg-gray-50 border border-gray-300 rounded-lg sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base font-medium placeholder:text-gray-400"
                 />
               </div>
             )}
@@ -110,7 +110,7 @@ export default function CreateGroupModal({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Tìm kiếm bạn bè..."
-                className="w-full pl-12 px-4 py-2 bg-gray-100 sm:rounded-2xl rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm sm:text-base placeholder:text-gray-500"
+                className="w-full pl-12 px-2 py-1 bg-gray-100 sm:rounded-2xl rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm sm:text-base placeholder:text-gray-500"
               />
             </div>
 
@@ -184,7 +184,7 @@ export default function CreateGroupModal({
                     return (
                       <label
                         key={user._id}
-                        className={`flex items-center p-2 cursor-pointer transition-colors
+                        className={`flex items-center p-1 cursor-pointer transition-colors
                           ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${
                             (mode === 'add' && isAlreadyMember) || isMe
                               ? 'bg-gray-50 opacity-60 cursor-not-allowed'
@@ -212,7 +212,7 @@ export default function CreateGroupModal({
                           </svg>
                         </div>
 
-                        <div className="sm:w-12 sm:h-12 w-8 h-8 rounded-full overflow-hidden sm:ring-4 ring-2 ring-white shadow-md">
+                        <div className="sm:w-7 sm:h-7 w-4 h-4 rounded-full overflow-hidden sm:ring-4 ring-2 ring-white shadow-md">
                           {user.avatar ? (
                             <Image
                               src={getProxyUrl(user.avatar)}
@@ -230,7 +230,7 @@ export default function CreateGroupModal({
 
                         <div>
                           <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900 px-1">{user.name}</p>
+                            <p className="sm:text-sm font-semibold text-gray-900 px-1">{user.name}</p>
                           </div>
                           <span
                             className={`text-xs px-1 font-medium ${user.online ? 'text-green-600' : 'text-gray-500'}`}
@@ -262,17 +262,17 @@ export default function CreateGroupModal({
         </div>
 
         {/* Footer - Nút cố định dưới cùng */}
-        <div className="p-2 sm:p-6 bg-white border-t border-gray-200 flex gap-3 shadow-2xl">
+        <div className="p-2 sm:p-4 bg-white border-t border-gray-200 flex gap-3 shadow-2xl">
           <button
             onClick={onClose}
-            className="flex-1 cursor-pointer py-2 sm:py-4 sm:text-base text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all duration-200 active:scale-95"
+            className="flex-1 cursor-pointer py-2 sm:py-2 sm:text-base text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-all duration-200 active:scale-95"
           >
             Hủy
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || selectedMembers.length === 0}
-            className={`flex-1 cursor-pointer py-2 sm:py-4 text-sm sm:text-base font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
+            className={`flex-1 cursor-pointer py-2 sm:py-2 text-sm sm:text-base font-bold text-white rounded-2xl shadow-lg transition-all duration-300 active:scale-95 flex items-center justify-center gap-2
               ${
                 loading || selectedMembers.length === 0
                   ? 'bg-gray-400 cursor-not-allowed'

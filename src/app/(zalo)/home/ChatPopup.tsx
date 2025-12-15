@@ -1396,6 +1396,7 @@ export default function ChatWindow({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMentionMenu, mentionMenuRef, setShowMentionMenu]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const getSenderName = (sender: User | string): string => {
     if (typeof sender === 'object' && sender && 'name' in sender && (sender as User).name) {
       return (sender as User).name as string;
@@ -1951,8 +1952,17 @@ export default function ChatWindow({
                 setAttachments((prev) => [...prev, { file, type: msgType, previewUrl: url, fileName: file.name }]);
               }}
               onAttachFromFolder={async (att) => {
+                const remoteUrl = getProxyUrl(att.url);
+                const name =
+                  att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
+                const placeholder = new File([new Blob([])], name, { type: 'application/octet-stream' });
+                const index = attachments.length;
+                setAttachments((prev) => [
+                  ...prev,
+                  { file: placeholder, type: att.type, previewUrl: remoteUrl, fileName: name },
+                ]);
                 try {
-                  const res = await fetch(getProxyUrl(att.url));
+                  const res = await fetch(remoteUrl);
                   const blob = await res.blob();
                   const mime =
                     blob.type ||
@@ -1961,11 +1971,15 @@ export default function ChatWindow({
                       : att.type === 'video'
                         ? 'video/mp4'
                         : 'application/octet-stream');
-                  const name =
-                    att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
-                  const file = new File([blob], name, { type: mime });
+                  const realFile = new File([blob], name, { type: mime });
                   const previewUrl = URL.createObjectURL(blob);
-                  setAttachments((prev) => [...prev, { file, type: att.type, previewUrl, fileName: name }]);
+                  setAttachments((prev) => {
+                    const next = [...prev];
+                    if (next[index]) {
+                      next[index] = { file: realFile, type: att.type, previewUrl, fileName: name };
+                    }
+                    return next;
+                  });
                 } catch {}
               }}
               onFocusEditable={() => setShowEmojiPicker(false)}
@@ -1997,7 +2011,7 @@ export default function ChatWindow({
         </div>
 
         {showPopup && (
-          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full z-20 ">
+          <div className="fixed inset-0 sm:static sm:inset-auto sm:w-[21.875rem] h-full ">
             <ChatInfoPopup
               onClose={() => setShowPopup(false)}
               onShowCreateGroup={onShowCreateGroup}
@@ -2080,7 +2094,7 @@ export default function ChatWindow({
           onClose={() => setPreviewMedia(null)}
         />
 
-        {(callActive || incomingCall || callConnecting)  && (
+        {(callActive || incomingCall || callConnecting) && (
           <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
             <div
               ref={callModalRef}
@@ -2101,7 +2115,7 @@ export default function ChatWindow({
                   const group = !isOneToOneIncoming ? groups.find((g) => String(g._id) === rid) : null;
                   const caller = allUsers.find((u) => String(u._id) === String(incomingCall?.from));
                   const avatar = isOneToOneIncoming ? caller?.avatar : group?.avatar;
-                  const name = isOneToOneIncoming ? (caller?.name || chatName) : (group?.name || chatName);
+                  const name = isOneToOneIncoming ? caller?.name || chatName : group?.name || chatName;
                   return (
                     <IncomingCallModal
                       avatar={avatar}
@@ -2112,7 +2126,10 @@ export default function ChatWindow({
                       onReject={() => {
                         const from = incomingCall?.from;
                         const targetRoom = incomingCall?.roomId || roomId;
-                        socketRef.current?.emit('call_reject', { roomId: String(targetRoom), targets: from ? [String(from)] : [] });
+                        socketRef.current?.emit('call_reject', {
+                          roomId: String(targetRoom),
+                          targets: from ? [String(from)] : [],
+                        });
                         setIncomingCall_s2(null);
                         stopGlobalRingTone();
                         try {
@@ -2122,73 +2139,84 @@ export default function ChatWindow({
                     />
                   );
                 })()}
-              {!callActive && callConnecting && (() => {
-                const parts = String(roomId).split('_');
-                const otherId = isGroup ? null : parts.find((p) => p && p !== String(currentUser._id)) || getId(selectedChat);
-                const other = !isGroup ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
-                const avatar = isGroup ? chatAvatar : other?.avatar;
-                const name = isGroup ? chatName : other?.name || chatName;
-                return (
-                  <ModalCall
-                    avatar={avatar}
-                    name={name}
-                    mode="connecting"
-                    callType={callType === 'video' ? 'video' : 'voice'}
-                    onEndCall={() => endCall('local')}
-                  />
-                );
-              })()}
-              {callActive && (() => {
-                const remoteIds = Array.from(remoteStreamsState.keys());
-                const participantOtherId = roomParticipants && roomParticipants.length > 0
-                  ? roomParticipants.find((id) => String(id) !== String(currentUser._id))
-                  : undefined;
-                const otherId = counterpartId
-                  || participantOtherId
-                  || (remoteIds[0]
-                      || incomingCall?.from
-                      || String(activeRoomId || roomId).split('_').find((p) => p && p !== String(currentUser._id))
-                      || (!isGroup ? getId(selectedChat) : null));
-                const other = otherId ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
-                const isOneToOneCall = counterpartId ? true : (roomParticipants && roomParticipants.length > 0
-                  ? roomParticipants.length === 2
-                  : remoteIds.length <= 1);
-                const currentCallRoomId = String(activeRoomId || roomId);
-                const currentGroup = groups.find((g) => String(g._id) === currentCallRoomId);
-                const avatar = isOneToOneCall ? other?.avatar : (currentGroup?.avatar || chatAvatar);
-                const name = isOneToOneCall ? (other?.name || chatName) : (currentGroup?.name || chatName);
-                const remotePeers = Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
-                  const u = allUsers.find((x) => String(x._id) === String(uid));
-                  return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
-                });
-                const participantIds = new Set<string>();
-                roomParticipants.forEach((id) => participantIds.add(String(id)));
-                remoteIds.forEach((id) => participantIds.add(String(id)));
-                participantIds.delete(String(currentUser._id));
-                const participants = Array.from(participantIds).map((uid) => {
-                  const u = allUsers.find((x) => String(x._id) === String(uid));
-                  return { userId: uid, name: u?.name, avatar: u?.avatar };
-                });
-                return (
-                  <ModalCall
-                    avatar={avatar}
-                    name={name}
-                    mode="active"
-                    callType={callType === 'video' ? 'video' : 'voice'}
-                    callStartAt={callStartAt}
-                    localVideoRef={localVideoRef}
-                    currentUserName={currentUser.name}
-                    currentUserAvatar={currentUser.avatar}
-                    remotePeers={remotePeers}
-                    participants={participants}
-                    micEnabled={micEnabled}
-                    camEnabled={camEnabled}
-                    onToggleMic={toggleMic}
-                    onToggleCamera={toggleCamera}
-                    onEndCall={() => endCall('local')}
-                  />
-                );
-              })()}
+              {!callActive &&
+                callConnecting &&
+                (() => {
+                  const parts = String(roomId).split('_');
+                  const otherId = isGroup
+                    ? null
+                    : parts.find((p) => p && p !== String(currentUser._id)) || getId(selectedChat);
+                  const other = !isGroup ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
+                  const avatar = isGroup ? chatAvatar : other?.avatar;
+                  const name = isGroup ? chatName : other?.name || chatName;
+                  return (
+                    <ModalCall
+                      avatar={avatar}
+                      name={name}
+                      mode="connecting"
+                      callType={callType === 'video' ? 'video' : 'voice'}
+                      onEndCall={() => endCall('local')}
+                    />
+                  );
+                })()}
+              {callActive &&
+                (() => {
+                  const remoteIds = Array.from(remoteStreamsState.keys());
+                  const participantOtherId =
+                    roomParticipants && roomParticipants.length > 0
+                      ? roomParticipants.find((id) => String(id) !== String(currentUser._id))
+                      : undefined;
+                  const otherId =
+                    counterpartId ||
+                    participantOtherId ||
+                    remoteIds[0] ||
+                    incomingCall?.from ||
+                    String(activeRoomId || roomId)
+                      .split('_')
+                      .find((p) => p && p !== String(currentUser._id)) ||
+                    (!isGroup ? getId(selectedChat) : null);
+                  const other = otherId ? allUsers.find((u) => String(u._id) === String(otherId)) : null;
+                  const isOneToOneCall = counterpartId
+                    ? true
+                    : roomParticipants && roomParticipants.length > 0
+                      ? roomParticipants.length === 2
+                      : remoteIds.length <= 1;
+                  const currentCallRoomId = String(activeRoomId || roomId);
+                  const currentGroup = groups.find((g) => String(g._id) === currentCallRoomId);
+                  const avatar = isOneToOneCall ? other?.avatar : currentGroup?.avatar || chatAvatar;
+                  const name = isOneToOneCall ? other?.name || chatName : currentGroup?.name || chatName;
+                  const remotePeers = Array.from(remoteStreamsState.entries()).map(([uid, stream]) => {
+                    const u = allUsers.find((x) => String(x._id) === String(uid));
+                    return { userId: uid, stream, name: u?.name, avatar: u?.avatar };
+                  });
+                  const participantIds = new Set<string>();
+                  roomParticipants.forEach((id) => participantIds.add(String(id)));
+                  remoteIds.forEach((id) => participantIds.add(String(id)));
+                  participantIds.delete(String(currentUser._id));
+                  const participants = Array.from(participantIds).map((uid) => {
+                    const u = allUsers.find((x) => String(x._id) === String(uid));
+                    return { userId: uid, name: u?.name, avatar: u?.avatar };
+                  });
+                  return (
+                    <ModalCall
+                      avatar={avatar}
+                      name={name}
+                      mode="active"
+                      callType={callType === 'video' ? 'video' : 'voice'}
+                      callStartAt={callStartAt}
+                      localVideoRef={localVideoRef}
+                      currentUserName={currentUser.name}
+                      currentUserAvatar={currentUser.avatar}
+                      remotePeers={remotePeers}
+                      participants={participants}
+                      micEnabled={micEnabled}
+                      camEnabled={camEnabled}
+                      onToggleMic={toggleMic}
+                      onToggleCamera={toggleCamera}
+                      onEndCall={() => endCall('local')}
+                    />
+                  );
+                })()}
             </div>
           </div>
         )}
