@@ -208,7 +208,7 @@ export default function ChatInput({
           <HiFaceSmile className="w-5 h-5 text-purple-600 group-hover:scale-110 transition-transform" />
         </button>
 
-        <button
+        {/* <button
           onClick={() => setShowChatFlashDashboard(true)}
           className="group p-2 rounded-2xl cursor-pointer bg-gradient-to-br from-indigo-100 to-blue-100 hover:from-indigo-200 hover:to-blue-200 transition-all duration-300 active:scale-90 shadow-lg hover:shadow-xl"
           aria-label="Mở dashboard Chat nhanh"
@@ -219,7 +219,7 @@ export default function ChatInput({
               {selectedFlashFolder?.name || 'Chọn thư mục'}
             </span>
           </div>
-        </button>
+        </button> */}
 
         <button
           onClick={() => setShowFolderDashboard(true)}

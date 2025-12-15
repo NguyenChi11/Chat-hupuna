@@ -309,12 +309,12 @@ export default function SidebarMenu() {
           >
             <FaPager className="w-5 h-5" />
           </button> */}
-          <button
+          {/* <button
             onClick={() => navigate('/directory', 'directory')}
             className={`p-4 cursor-pointer rounded-2xl transition-all duration-300 ${activeItem === 'directory' ? 'bg-white/20 shadow-xl scale-110' : 'hover:bg-white/10 hover:scale-110'}`}
           >
             <HiUserGroup className="w-5 h-5" />
-          </button>
+          </button> */}
         </nav>
 
         {/* Bottom Actions */}

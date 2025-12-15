@@ -409,7 +409,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
               </div>
             </div>
 
-            <div className="flex flex-col w-full h-[55vh] overflow-auto custom-scrollbar">
+            <div className="flex flex-col w-full h-[50vh] overflow-auto custom-scrollbar">
               {selectedFolderId && selectedChildren.length > 0 && (
                 <div className="mt-3 p-3 rounded-xl bg-white border border-gray-200 shadow-sm">
                   <div className="flex items-center justify-between mb-2">

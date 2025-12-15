@@ -3,9 +3,9 @@
 import React from 'react';
 
 // React Icons – Bộ hiện đại nhất
-import { HiChatBubbleLeftRight, HiEnvelopeOpen, HiEnvelope, HiEyeSlash } from 'react-icons/hi2';
+import { HiChatBubbleLeftRight, HiEnvelopeOpen, HiEnvelope, HiEyeSlash, HiUsers, HiUserCircle } from 'react-icons/hi2';
 
-export type FilterType = 'all' | 'unread' | 'read' | 'hidden';
+export type FilterType = 'all' | 'unread' | 'read' | 'group' | 'personal' | 'hidden';
 
 interface MessageFilterProps {
   filterType: FilterType;
@@ -14,21 +14,26 @@ interface MessageFilterProps {
     all: number;
     unread: number;
     read: number;
+    group: number;
+    personal: number;
     hidden: number;
   };
 }
 
 const FILTER_CONFIG: Record<FilterType, { label: string; icon: React.ElementType; color: string }> = {
   all: { label: 'Tất cả', icon: HiChatBubbleLeftRight, color: 'indigo' },
+  group: { label: 'Nhóm', icon: HiUsers, color: 'purple' },
+  personal: { label: 'Cá nhân', icon: HiUserCircle, color: 'pink' },
   unread: { label: 'Chưa đọc', icon: HiEnvelope, color: 'blue' },
   read: { label: 'Đã đọc', icon: HiEnvelopeOpen, color: 'green' },
   hidden: { label: 'Ẩn', icon: HiEyeSlash, color: 'gray' },
 };
 
 export default function MessageFilter({ filterType, setFilterType, counts }: MessageFilterProps) {
-  // Chỉ hiển thị tab "Ẩn" nếu có cuộc trò chuyện bị ẩn
   const filters: FilterType[] =
-    counts.hidden > 0 ? (['all', 'unread', 'read', 'hidden'] as const) : (['all', 'unread', 'read'] as const);
+    counts.hidden > 0
+      ? ['all', 'group', 'personal', 'unread', 'read', 'hidden']
+      : ['all', 'group', 'personal', 'unread', 'read'];
 
   return (
     <div className=" bg-gradient-to-b from-white via-white to-gray-50/50 border-b border-gray-200">
@@ -43,6 +48,8 @@ export default function MessageFilter({ filterType, setFilterType, counts }: Mes
             indigo: 'from-indigo-500',
             blue: 'from-blue-500',
             green: 'from-emerald-500',
+            purple: 'from-purple-500',
+            pink: 'from-pink-500',
             gray: 'from-gray-500',
           }[color];
 
@@ -50,6 +57,8 @@ export default function MessageFilter({ filterType, setFilterType, counts }: Mes
             indigo: 'to-purple-600',
             blue: 'to-cyan-600',
             green: 'to-teal-600',
+            purple: 'to-fuchsia-600',
+            pink: 'to-rose-600',
             gray: 'to-slate-600',
           }[color];
 

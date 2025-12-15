@@ -15,9 +15,11 @@ import { HiMagnifyingGlass, HiXMark, HiUserCircle, HiChatBubbleLeftRight, HiFold
 import { useRouter, usePathname } from 'next/navigation';
 import { useFolderController } from '@/components/controller/useFolderController';
 import DesktopLayout from '@/components/layout/folder/DesktopLayout';
+import MobileLayout from '@/components/layout/folder/MobileLayout';
 import FolderCreateModal from '@/components/modal/folder/FolderCreateModal';
 import RenameModal from '@/components/modal/folder/RenameModal';
 import DeleteModal from '@/components/modal/folder/DeleteModal';
+import ReactDOM from 'react-dom';
 
 interface SidebarProps {
   currentUser: User;
@@ -273,9 +275,20 @@ export default function Sidebar({
       return !isHidden && matchesSearch;
     });
 
+    if (!isSearchActive) {
+      if (filterType === 'group') {
+        filtered = filtered.filter((c) => c.isGroup === true || Array.isArray((c as GroupConversation).members));
+      } else if (filterType === 'personal') {
+        filtered = filtered.filter((c) => !(c.isGroup === true || Array.isArray((c as GroupConversation).members)));
+      } else if (filterType === 'unread') {
+        filtered = filtered.filter((c) => (c.unreadCount || 0) > 0);
+      } else if (filterType === 'read') {
+        filtered = filtered.filter((c) => (c.unreadCount || 0) === 0);
+      }
+    }
+
     if (!isSearchActive && filterType !== 'hidden') {
-      if (filterType === 'unread') filtered = filtered.filter((c) => (c.unreadCount || 0) > 0);
-      else if (filterType === 'read') filtered = filtered.filter((c) => (c.unreadCount || 0) === 0);
+      // no-op, handled above
     }
 
     filtered.sort((a, b) => {
@@ -298,10 +311,16 @@ export default function Sidebar({
   const filterCounts = useMemo(() => {
     const visible = mixedChats.filter((c) => !c.isHidden);
     const hidden = mixedChats.filter((c) => c.isHidden);
+    const groupVisible = visible.filter((c) => c.isGroup === true || Array.isArray((c as GroupConversation).members));
+    const personalVisible = visible.filter(
+      (c) => !(c.isGroup === true || Array.isArray((c as GroupConversation).members)),
+    );
     return {
       all: visible.length,
       unread: visible.filter((c) => (c.unreadCount || 0) > 0).length,
       read: visible.filter((c) => (c.unreadCount || 0) === 0).length,
+      group: groupVisible.length,
+      personal: personalVisible.length,
       hidden: hidden.length,
     };
   }, [mixedChats]);
@@ -489,8 +508,8 @@ function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+  const modal = (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
         <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
           <div className="flex items-center gap-2">
@@ -504,7 +523,11 @@ function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; 
           </button>
         </div>
         <div className="p-4">
-          <DesktopLayout {...controller} onClose={onClose} onlyGlobal />
+          {controller.compact ? (
+            <MobileLayout {...controller} onClose={onClose} onlyGlobal />
+          ) : (
+            <DesktopLayout {...controller} onClose={onClose} onlyGlobal />
+          )}
         </div>
       </div>
       {controller.showCreateModal && (
@@ -539,4 +562,6 @@ function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; 
       />
     </div>
   );
+  if (typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(modal, document.body);
 }
