@@ -1780,8 +1780,14 @@ export default function ChatWindow({
                 setAttachments((prev) => [...prev, { file, type: msgType, previewUrl: url, fileName: file.name }]);
               }}
               onAttachFromFolder={async (att) => {
+                const remoteUrl = getProxyUrl(att.url);
+                const name =
+                  att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
+                const placeholder = new File([new Blob([])], name, { type: 'application/octet-stream' });
+                const index = attachments.length;
+                setAttachments((prev) => [...prev, { file: placeholder, type: att.type, previewUrl: remoteUrl, fileName: name }]);
                 try {
-                  const res = await fetch(getProxyUrl(att.url));
+                  const res = await fetch(remoteUrl);
                   const blob = await res.blob();
                   const mime =
                     blob.type ||
@@ -1790,11 +1796,15 @@ export default function ChatWindow({
                       : att.type === 'video'
                         ? 'video/mp4'
                         : 'application/octet-stream');
-                  const name =
-                    att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
-                  const file = new File([blob], name, { type: mime });
+                  const realFile = new File([blob], name, { type: mime });
                   const previewUrl = URL.createObjectURL(blob);
-                  setAttachments((prev) => [...prev, { file, type: att.type, previewUrl, fileName: name }]);
+                  setAttachments((prev) => {
+                    const next = [...prev];
+                    if (next[index]) {
+                      next[index] = { file: realFile, type: att.type, previewUrl, fileName: name };
+                    }
+                    return next;
+                  });
                 } catch {}
               }}
               onFocusEditable={() => setShowEmojiPicker(false)}

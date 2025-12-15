@@ -181,6 +181,7 @@ export default function FolderSidebar({
   onCreateChild,
   onRename,
   onDelete,
+  onlyGlobal,
 }: {
   folders: FolderNode[];
   foldersGlobal: FolderNode[];
@@ -191,7 +192,7 @@ export default function FolderSidebar({
   selectedFolderId: string | null;
   selectedScope: Scope;
 
-  onSelect: (id: string | null, scope: Scope) => void;
+  onSelect: (id: string, scope: Scope) => void;
   onToggle: (id: string) => void;
 
   onCreateRoot: (scope: Scope) => void;
@@ -202,48 +203,51 @@ export default function FolderSidebar({
   onCreateChild: (nodeId: string, scope: Scope) => void;
   onRename: (nodeId: string, name: string, scope: Scope) => void;
   onDelete: (nodeId: string, name: string, scope: Scope) => void;
+  onlyGlobal?: boolean;
 }) {
   return (
     <div className="w-full space-y-4">
-      <div className="rounded-2xl border border-gray-200 bg-white p-3">
-        <div className="mb-2 flex items-center justify-between">
-          <button
-            onClick={() => onSelect(null, 'room')}
-            className={`text-sm font-semibold hover:text-indigo-600 ${
-              selectedScope === 'room' ? 'text-indigo-700' : 'text-gray-900'
-            }`}
-          >
-            Phòng hiện tại
-          </button>
-          <button
-            onClick={() => onCreateRoot('room')}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
-          >
-            <HiPlus className="h-4 w-4" />
-            Tạo
-          </button>
+      {!onlyGlobal && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              onClick={() => onSelect(null, 'room')}
+              className={`text-sm font-semibold hover:text-indigo-600 ${
+                selectedScope === 'room' ? 'text-indigo-700' : 'text-gray-900'
+              }`}
+            >
+              Phòng hiện tại
+            </button>
+            <button
+              onClick={() => onCreateRoot('room')}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              <HiPlus className="h-4 w-4" />
+              Tạo
+            </button>
+          </div>
+          <div className="space-y-1">
+            {folders.map((n) => (
+              <NodeRow
+                key={n.id}
+                node={n}
+                scope="room"
+                expanded={expanded}
+                onToggle={onToggle}
+                onSelect={(id) => onSelect(id, 'room')}
+                itemsMap={itemsMap}
+                selectedFolderId={selectedScope === 'room' ? selectedFolderId : null}
+                onCreateChild={onCreateChild}
+                onRename={onRename}
+                onDelete={onDelete}
+                openFolderMenuId={openFolderMenuId}
+                setOpenFolderMenuId={setOpenFolderMenuId}
+              />
+            ))}
+            {!folders.length ? <p className="px-2 py-2 text-xs text-gray-500">Chưa có thư mục.</p> : null}
+          </div>
         </div>
-        <div className="space-y-1">
-          {folders.map((n) => (
-            <NodeRow
-              key={n.id}
-              node={n}
-              scope="room"
-              expanded={expanded}
-              onToggle={onToggle}
-              onSelect={(id) => onSelect(id, 'room')}
-              itemsMap={itemsMap}
-              selectedFolderId={selectedScope === 'room' ? selectedFolderId : null}
-              onCreateChild={onCreateChild}
-              onRename={onRename}
-              onDelete={onDelete}
-              openFolderMenuId={openFolderMenuId}
-              setOpenFolderMenuId={setOpenFolderMenuId}
-            />
-          ))}
-          {!folders.length ? <p className="px-2 py-2 text-xs text-gray-500">Chưa có thư mục.</p> : null}
-        </div>
-      </div>
+      )}
 
       <div className="rounded-2xl border border-gray-200 bg-white p-3">
         <div className="mb-2 flex items-center justify-between">

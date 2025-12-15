@@ -16,6 +16,8 @@ type MobileLayoutProps = {
   compact?: boolean;
   activeTab: 'sidebar' | 'content';
   setActiveTab: (tab: 'sidebar' | 'content') => void;
+  onClose?: () => void;
+  onlyGlobal?: boolean;
 
   folders: FolderNode[];
   foldersGlobal: FolderNode[];
@@ -153,6 +155,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
   } = props;
 
   const [activeNav, setActiveNav] = useState<'media' | 'text' | 'link' | 'file'>('media');
+  const [showComplete, setShowComplete] = useState(false);
 
   // Smart switch tab when folder changes or items load
   React.useEffect(() => {
@@ -290,6 +293,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
               onCreateChild={(nodeId, scope) => onCreateChild(nodeId, scope)}
               onRename={(nodeId, name, scope) => onRenameFolder(nodeId, name, scope)}
               onDelete={(nodeId, name, scope) => onDeleteFolder(nodeId, name, scope)}
+              onlyGlobal={props.onlyGlobal}
             />
           </div>
         ) : (
@@ -445,7 +449,11 @@ export default function MobileLayout(props: MobileLayoutProps) {
                     <div className="flex items-center gap-2">
                       <button
                         className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700"
-                        onClick={applySelection}
+                        onClick={() => {
+                          applySelection();
+                          setShowComplete(true);
+                          props.onClose?.();
+                        }}
                       >
                         Đồng ý lựa chọn
                       </button>
@@ -455,13 +463,17 @@ export default function MobileLayout(props: MobileLayoutProps) {
                           if (!selectedFolderId) return;
                           Array.from(selectedIds).forEach((id) => removeItemFromFolder(selectedFolderId, id));
                           clearSelection();
+                          setShowComplete(true);
                         }}
                       >
                         Xóa lựa chọn
                       </button>
                       <button
                         className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
-                        onClick={clearSelection}
+                        onClick={() => {
+                          clearSelection();
+                          setShowComplete(true);
+                        }}
                       >
                         Bỏ chọn tất cả
                       </button>
@@ -490,6 +502,26 @@ export default function MobileLayout(props: MobileLayoutProps) {
       </div>
 
       <UploadProgressBar uploadingCount={uploadingCount} overallUploadPercent={overallPercent} />
+
+      {showComplete && (
+        <div className="fixed inset-0 z-[1000] bg-black/40" onClick={() => setShowComplete(false)}>
+          <div
+            className="absolute left-1/2 top-1/2 w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-xl border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-800">Hoàn thành</div>
+            <div className="px-4 py-4 text-sm text-gray-700">Thao tác đã được thực hiện thành công.</div>
+            <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
+              <button
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+                onClick={() => setShowComplete(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

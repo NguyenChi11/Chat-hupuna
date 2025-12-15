@@ -12,12 +12,20 @@ import DeleteModal from '@/components/modal/folder/DeleteModal';
 type Props = {
   roomId: string;
   onClose?: () => void;
+  initialScope?: 'room' | 'global';
   onJumpToMessage?: (messageId: string) => void;
   onInsertToInput?: (text: string) => void;
   onAttachFromFolder?: (att: { url: string; type: 'image' | 'video' | 'file'; fileName?: string }) => void;
 };
 
-export default function FolderDashboard({ roomId, onJumpToMessage, onInsertToInput, onAttachFromFolder }: Props) {
+export default function FolderDashboard({
+  roomId,
+  onClose,
+  initialScope,
+  onJumpToMessage,
+  onInsertToInput,
+  onAttachFromFolder,
+}: Props) {
   const { messages, currentUser } = useChatContext();
 
   const controller = useFolderController({
@@ -29,9 +37,21 @@ export default function FolderDashboard({ roomId, onJumpToMessage, onInsertToInp
     onAttachFromFolder,
   });
 
+  React.useEffect(() => {
+    if (initialScope === 'global') {
+      controller.setSelectedScope('global');
+    } else if (initialScope === 'room') {
+      controller.setSelectedScope('room');
+    }
+  }, [initialScope]);
+
   return (
     <div className="w-full">
-      {controller.compact ? <MobileLayout {...controller} /> : <DesktopLayout {...controller} />}
+      {controller.compact ? (
+        <MobileLayout {...controller} onClose={onClose} />
+      ) : (
+        <DesktopLayout {...controller} onClose={onClose} />
+      )}
 
       {controller.showCreateModal && (
         <FolderCreateModal

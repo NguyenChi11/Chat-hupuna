@@ -11,8 +11,13 @@ import Image from 'next/image';
 import { FaPlus } from 'react-icons/fa6';
 
 // React Icons – Bộ hiện đại nhất 2025
-import { HiMagnifyingGlass, HiXMark, HiUserCircle, HiChatBubbleLeftRight } from 'react-icons/hi2';
+import { HiMagnifyingGlass, HiXMark, HiUserCircle, HiChatBubbleLeftRight, HiFolder } from 'react-icons/hi2';
 import { useRouter, usePathname } from 'next/navigation';
+import { useFolderController } from '@/components/controller/useFolderController';
+import DesktopLayout from '@/components/layout/folder/DesktopLayout';
+import FolderCreateModal from '@/components/modal/folder/FolderCreateModal';
+import RenameModal from '@/components/modal/folder/RenameModal';
+import DeleteModal from '@/components/modal/folder/DeleteModal';
 
 interface SidebarProps {
   currentUser: User;
@@ -142,6 +147,7 @@ export default function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const isWidgetIframe = pathname === '/chat-iframe' || (pathname?.startsWith('/chat-iframe') ?? false);
+  const [showGlobalFolder, setShowGlobalFolder] = useState(false);
 
   // === TẤT CẢ LOGIC GIỮ NGUYÊN NHƯ BẠN ĐÃ VIẾT ===
   const handleGlobalSearch = useCallback(
@@ -379,6 +385,15 @@ export default function Sidebar({
                 <FaPlus className="w-5 h-5 text-white" />
               </button>
             )}
+            {!isWidgetIframe && (
+              <button
+                onClick={() => setShowGlobalFolder(true)}
+                className="cursor-pointer p-2 bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-3xl shadow-xl transition-all duration-300 active:scale-95"
+                title="Folder dùng chung"
+              >
+                <HiFolder className="w-5 h-5 text-white" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -454,6 +469,73 @@ export default function Sidebar({
 
       {/* Fade Bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-100 to-transparent pointer-events-none" />
+
+      {showGlobalFolder && (
+        <GlobalFolderModal currentUserId={String(currentUser._id)} onClose={() => setShowGlobalFolder(false)} />
+      )}
     </aside>
+  );
+}
+
+function GlobalFolderModal({ currentUserId, onClose }: { currentUserId: string; onClose: () => void }) {
+  const controller = useFolderController({
+    roomId: '__global__sidebar__',
+    currentUserId,
+    messages: [],
+  });
+
+  React.useEffect(() => {
+    controller.setSelectedScope('global');
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden h-[90vh]">
+        <div className="flex items-center justify-between px-4 py-3 bg-[#f3f6fb] border-b">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+              <HiFolder className="w-4 h-4" />
+            </div>
+            <h3 className="text-lg font-bold">Folder dùng chung</h3>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20">
+            <HiXMark className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-4">
+          <DesktopLayout {...controller} onClose={onClose} onlyGlobal />
+        </div>
+      </div>
+      {controller.showCreateModal && (
+        <FolderCreateModal
+          isOpen={controller.showCreateModal}
+          folders={controller.foldersGlobal}
+          defaultParentId={controller.createParentId || undefined}
+          lockParent={!!controller.createParentId}
+          onClose={() => {
+            controller.setShowCreateModal(false);
+            controller.setCreateParentId(null);
+          }}
+          onCreate={(name: string, parentId?: string) => {
+            controller.createFolder(name, parentId);
+            controller.setShowCreateModal(false);
+            controller.setCreateParentId(null);
+          }}
+        />
+      )}
+      <RenameModal
+        open={!!controller.renameTarget}
+        name={controller.renameInput}
+        onChangeName={(v) => controller.setRenameInput(v)}
+        onCancel={() => controller.setRenameTarget(null)}
+        onSave={controller.saveRename}
+      />
+      <DeleteModal
+        open={!!controller.deleteTarget}
+        name={controller.deleteTarget?.name || ''}
+        onCancel={() => controller.setDeleteTarget(null)}
+        onConfirm={controller.confirmDeleteFolder}
+      />
+    </div>
   );
 }
