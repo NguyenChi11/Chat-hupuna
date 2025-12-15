@@ -79,13 +79,11 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
         track.stop();
-        console.log('🛑 Stopped track:', track.kind);
       });
       localStreamRef.current = null;
     }
 
-    peerConnectionsRef.current.forEach((pc, userId) => {
-      console.log('🔌 Closing peer connection with:', userId);
+    peerConnectionsRef.current.forEach((pc) => {
       pc.close();
     });
     peerConnectionsRef.current.clear();
@@ -100,13 +98,11 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       // ✅ Nếu đã tồn tại và đang hoạt động, trả về luôn
       const existing = peerConnectionsRef.current.get(userId);
       if (existing && (existing.connectionState === 'connected' || existing.connectionState === 'connecting')) {
-        console.log('♻️ Reusing existing peer connection with:', userId);
         return existing;
       }
 
       // Đóng connection cũ nếu có
       if (existing) {
-        console.log('🔄 Closing old peer connection with:', userId);
         existing.close();
         peerConnectionsRef.current.delete(userId);
       }
@@ -135,25 +131,16 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       };
 
       const peerConnection = new RTCPeerConnection(configuration);
-      console.log('🔗 Created NEW peer connection with:', userId);
 
       // ✅ CRITICAL: Thêm local stream tracks
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
           peerConnection.addTrack(track, localStreamRef.current!);
-          console.log('➕ Added local track:', track.kind, 'enabled:', track.enabled);
         });
       }
 
       // ✅ CRITICAL: Xử lý remote tracks
       peerConnection.ontrack = (event) => {
-        console.log('🎵 Received remote track from', userId, ':', {
-          kind: event.track.kind,
-          enabled: event.track.enabled,
-          muted: event.track.muted,
-          readyState: event.track.readyState,
-        });
-
         let [remoteStream] = event.streams;
         if (!remoteStream) {
           const ms = new MediaStream();
@@ -164,7 +151,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
           // ✅ Enable tất cả tracks
           remoteStream.getTracks().forEach((track) => {
             track.enabled = true;
-            console.log('✅ Enabled remote track:', track.kind, track.id);
           });
 
           remoteStreamsRef.current.set(userId, remoteStream);
@@ -176,7 +162,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       // ICE candidates
       peerConnection.onicecandidate = (event) => {
         if (event.candidate && socket && currentUser) {
-          console.log('🧊 Sending ICE candidate to:', userId);
           socket.emit('call:ice-candidate', {
             callId,
             candidate: event.candidate,
@@ -186,17 +171,8 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
         }
       };
 
-      peerConnection.onicegatheringstatechange = () => {
-        console.log('🧊 ICE gathering state:', peerConnection.iceGatheringState);
-      };
-
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log('🔌 ICE connection state:', peerConnection.iceConnectionState);
-      };
-
       // Connection state changes
       peerConnection.onconnectionstatechange = () => {
-        console.log(`🔄 Peer connection state with ${userId}:`, peerConnection.connectionState);
         if (peerConnection.connectionState === 'failed') {
           console.error('❌ Connection failed with:', userId);
         } else if (peerConnection.connectionState === 'connected') {
@@ -231,7 +207,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
           peerConnection = await createPeerConnection(receiverId, callId, opts?.forceRelay);
         }
 
-        console.log('📤 Creating offer for:', receiverId, 'State:', peerConnection.signalingState, 'iceRestart:', !!opts?.iceRestart);
 
         const offer = await peerConnection.createOffer({
           offerToReceiveAudio: true,
@@ -240,7 +215,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
         });
 
         await peerConnection.setLocalDescription(offer);
-        console.log('✅ Set local description (offer)');
 
         socket.emit('call:offer', {
           callId,
@@ -260,7 +234,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
     if (!socket || !currentUser) return;
 
     const handleIncomingCall = (data: IncomingCall) => {
-      console.log('📥 Received incoming call:', data);
       if (data.callerId !== currentUser._id) {
         setIncomingCall(data);
         playRingtone();
@@ -268,7 +241,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
     };
 
     const handleCallStarted = (data: { callId: string; status: string; startedAt?: number }) => {
-      console.log('📞 Call started:', data);
       setActiveCall((prev) => {
         if (prev?.callId === data.callId) {
           return { ...prev, status: data.status as CallStatus, startTime: data.startedAt ?? prev.startTime };
@@ -284,7 +256,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       userId: string;
       participants: string[];
     }) => {
-      console.log('✅ Call accepted by:', data.userId);
 
       setActiveCall((prev) => {
         if (prev?.callId === data.callId) {
@@ -302,7 +273,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
 
       // ✅ CRITICAL: Người gọi tạo offer sau khi được accept
       if (activeCall && activeCall.callerId === currentUser._id && data.userId !== currentUser._id) {
-        console.log('📤 Caller creating offer for:', data.userId);
         await createAndSendOffer(data.userId, data.callId);
         // Fallback: nếu chưa connect sau 3s, thử ICE restart
         setTimeout(async () => {
@@ -312,7 +282,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
             const attempts = (restartAttemptsRef.current.get(data.userId) || 0) + 1;
             if (attempts <= 3) {
               restartAttemptsRef.current.set(data.userId, attempts);
-              console.log('🔄 ICE restart attempt', attempts, 'for', data.userId);
               const forceRelay = attempts >= 2;
               await createAndSendOffer(data.userId, data.callId, { iceRestart: true, forceRelay });
             }
@@ -322,7 +291,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
     };
 
     const handleCallRejected = (data: { callId: string; userId: string }) => {
-      console.log('❌ Call rejected by:', data.userId);
       if (activeCall?.callId === data.callId) {
         setActiveCall(null);
         endLocalStream();
@@ -334,7 +302,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
     };
 
     const handleCallEnded = (data: { callId: string; userId: string }) => {
-      console.log('🔚 Call ended by:', data.userId);
       if (activeCall?.callId === data.callId || incomingCall?.callId === data.callId) {
         setActiveCall(null);
         setIncomingCall(null);
@@ -348,7 +315,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       offer: RTCSessionDescriptionInit;
       from: string;
     }) => {
-      console.log('📥 Received offer from:', data.from);
       if (!currentUser) return;
 
       try {
@@ -364,11 +330,9 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
         // ✅ Chỉ set remote description nếu chưa có
         if (!peerConnection.currentRemoteDescription) {
           await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-          console.log('✅ Set remote description (offer)');
 
           const answer = await peerConnection.createAnswer();
           await peerConnection.setLocalDescription(answer);
-          console.log('📤 Sending answer to:', data.from);
 
           socket.emit('call:answer', {
             callId: data.callId,
@@ -389,21 +353,15 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       answer: RTCSessionDescriptionInit;
       from: string;
     }) => {
-      console.log('📥 Received answer from:', data.from);
       const peerConnection = peerConnectionsRef.current.get(data.from);
       
       if (!peerConnection) {
         console.warn('⚠️ No peer connection found for:', data.from);
         return;
       }
-
-      console.log('🔄 Peer connection state:', peerConnection.signalingState);
-
-      // ✅ CRITICAL: Chỉ set remote description khi đang chờ answer
       if (peerConnection.signalingState === 'have-local-offer') {
         try {
           await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-          console.log('✅ Set remote description (answer)');
         } catch (error) {
           console.error('❌ Error setting remote description:', error);
         }
@@ -417,12 +375,10 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       candidate: RTCIceCandidateInit;
       from: string;
     }) => {
-      console.log('🧊 Received ICE candidate from:', data.from);
       const peerConnection = peerConnectionsRef.current.get(data.from);
       if (peerConnection) {
         try {
           await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-          console.log('✅ Added ICE candidate');
         } catch (error) {
           console.error('❌ Error adding ICE candidate:', error);
         }
@@ -434,7 +390,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       userId: string;
       participants: string[];
     }) => {
-      console.log('👋 Participant left:', data.userId);
       setActiveCall((prev) => {
         if (prev?.callId === data.callId) {
           return { ...prev, participants: data.participants };
@@ -499,7 +454,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       }
 
       const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log('📞 Starting call:', callId);
 
       // ✅ CRITICAL: Lấy media stream với constraints phù hợp
       try {
@@ -513,20 +467,9 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
         });
         
         localStreamRef.current = stream;
-        console.log('✅ Got local media stream:', {
-          audio: stream.getAudioTracks().length,
-          video: stream.getVideoTracks().length,
-        });
 
         // ✅ Verify audio tracks
-        stream.getAudioTracks().forEach((track) => {
-          console.log('🎤 Audio track:', {
-            id: track.id,
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState,
-          });
-        });
+       
       } catch (error) {
         console.error('❌ Error accessing media:', error);
         alert('Không thể truy cập microphone/camera. Vui lòng kiểm tra quyền truy cập.');
@@ -577,7 +520,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       return;
     }
 
-    console.log('✅ Accepting call:', incomingCall.callId);
 
     try {
       // ✅ CRITICAL: Lấy media stream
@@ -591,19 +533,10 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       });
 
       localStreamRef.current = stream;
-      console.log('✅ Got local media for receiver:', {
-        audio: stream.getAudioTracks().length,
-        video: stream.getVideoTracks().length,
-      });
+      
 
       // Verify tracks
-      stream.getAudioTracks().forEach((track) => {
-        console.log('🎤 Receiver audio track:', {
-          id: track.id,
-          enabled: track.enabled,
-          muted: track.muted,
-        });
-      });
+    
 
       // ✅ Emit accept event
       socket.emit('call:accept', {
@@ -638,12 +571,11 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
       });
       setIncomingCall(null);
     }
-  }, [socket, currentUser, incomingCall]);
+  }, [socket, currentUser, incomingCall, stopRingtone]);
 
   // Từ chối cuộc gọi
   const rejectCall = useCallback(() => {
     if (!socket || !currentUser || !incomingCall) return;
-    console.log('❌ Rejecting call:', incomingCall.callId);
     socket.emit('call:reject', {
       callId: incomingCall.callId,
       userId: currentUser._id,
@@ -655,7 +587,6 @@ export function useCall(currentUser: User | null, socket: Socket | null) {
   // Kết thúc cuộc gọi
   const endCall = useCallback(() => {
     if (!socket || !currentUser || !activeCall) return;
-    console.log('🔚 Ending call:', activeCall.callId);
     socket.emit('call:end', {
       callId: activeCall.callId,
       userId: currentUser._id,

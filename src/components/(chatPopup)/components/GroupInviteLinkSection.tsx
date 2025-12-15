@@ -104,7 +104,6 @@ function Modal({ show, type, message, onClose, onConfirm }: ModalProps) {
 }
 
 export default function GroupInviteLinkSection({
-  groupId,
   inviteCode: initialCode,
   onGenerateLink,
   onRegenerateLink,

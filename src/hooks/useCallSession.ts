@@ -201,10 +201,6 @@ export function useCallSession({
     [micEnabled, camEnabled],
   );
 
-  const shouldInitiateTo = useCallback(
-    (otherId: string) => String(currentUserId) < String(otherId),
-    [currentUserId],
-  );
 
   const resetCallLocal = useCallback(() => {
     try {

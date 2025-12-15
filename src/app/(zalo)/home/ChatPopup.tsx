@@ -250,14 +250,6 @@ export default function ChatWindow({
     [roomId, currentUser, isGroup, selectedChat],
   );
 
-  // Call WebRTC is managed by useCallSession
-
-  // Local stream is managed by useCallSession
-
-  // Reset is managed by useCallSession
-
-  // Receivers are handled inside useCallSession
-
   const startCall = useCallback(
     async (type: 'voice' | 'video') => {
       await startCall_s2(type);
@@ -305,6 +297,46 @@ export default function ChatWindow({
     const id = window.setInterval(() => setCallTicker((x) => x + 1), 1000);
     return () => window.clearInterval(id);
   }, [callActive]);
+
+  const [callModalSize, setCallModalSize] = useState<{ w: number; h: number | null }>({ w: 320, h: null });
+  const callModalRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const v = callType === 'video';
+    let w = 320;
+    let h: number | null = null;
+    try {
+      const raw = localStorage.getItem('callModalSize');
+      const s = raw ? JSON.parse(raw) : null;
+      if (s && typeof s.w === 'number') w = s.w;
+      if (s && typeof s.h === 'number') h = s.h;
+    } catch {}
+    const maxW = Math.max(320, window.innerWidth - 64);
+    const maxH = Math.max(200, window.innerHeight - 64);
+    if (v) {
+      w = Math.max(w, 640);
+      h = h == null ? 420 : h;
+    }
+    w = Math.min(Math.max(w, 320), maxW);
+    h = h == null ? null : Math.min(Math.max(h, 200), maxH);
+    setCallModalSize({ w, h });
+  }, [callActive, callConnecting, incomingCall, callType]);
+  useEffect(() => {
+    const el = callModalRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0]?.contentRect;
+      if (!r) return;
+      const maxW = Math.max(320, window.innerWidth - 64);
+      const maxH = Math.max(200, window.innerHeight - 64);
+      const w = Math.min(Math.max(Math.round(r.width), 320), maxW);
+      const h = Math.min(Math.max(Math.round(r.height), 200), maxH);
+      try {
+        localStorage.setItem('callModalSize', JSON.stringify({ w, h }));
+      } catch {}
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [callActive, callConnecting, incomingCall]);
 
   // Ring tone handled inside useCallSession
 
@@ -2050,7 +2082,16 @@ export default function ChatWindow({
 
         {(callActive || incomingCall || callConnecting)  && (
           <div className="fixed inset-0 z-30 bg-black/60 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-[20rem] p-4">
+            <div
+              ref={callModalRef}
+              className="bg-white rounded-xl shadow-lg p-4 resize overflow-auto"
+              style={{
+                width: callModalSize.w,
+                height: callModalSize.h ?? undefined,
+                maxWidth: 'calc(100vw - 4rem)',
+                maxHeight: 'calc(100vh - 4rem)',
+              }}
+            >
               {!callActive &&
                 incomingCall &&
                 (() => {

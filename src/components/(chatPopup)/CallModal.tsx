@@ -76,7 +76,6 @@ export default function CallModal({
         
         // Gán stream vào audio element
         audioElement.srcObject = stream;
-        console.log('🔊 [CallModal] Playing remote audio for user:', userId);
       }
       
       // Hiển thị video nếu có
