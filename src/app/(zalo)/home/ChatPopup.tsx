@@ -1956,11 +1956,8 @@ export default function ChatWindow({
                 const name =
                   att.fileName || (att.type === 'image' ? 'image.jpg' : att.type === 'video' ? 'video.mp4' : 'file');
                 const placeholder = new File([new Blob([])], name, { type: 'application/octet-stream' });
-                const index = attachments.length;
-                setAttachments((prev) => [
-                  ...prev,
-                  { file: placeholder, type: att.type, previewUrl: remoteUrl, fileName: name },
-                ]);
+                const placeholderItem = { file: placeholder, type: att.type, previewUrl: remoteUrl, fileName: name };
+                setAttachments((prev) => [...prev, placeholderItem]);
                 try {
                   const res = await fetch(remoteUrl);
                   const blob = await res.blob();
@@ -1973,13 +1970,13 @@ export default function ChatWindow({
                         : 'application/octet-stream');
                   const realFile = new File([blob], name, { type: mime });
                   const previewUrl = URL.createObjectURL(blob);
-                  setAttachments((prev) => {
-                    const next = [...prev];
-                    if (next[index]) {
-                      next[index] = { file: realFile, type: att.type, previewUrl, fileName: name };
-                    }
-                    return next;
-                  });
+                  setAttachments((prev) =>
+                    prev.map((item) =>
+                      item.previewUrl === remoteUrl
+                        ? { file: realFile, type: att.type, previewUrl, fileName: name }
+                        : item,
+                    ),
+                  );
                 } catch {}
               }}
               onFocusEditable={() => setShowEmojiPicker(false)}
