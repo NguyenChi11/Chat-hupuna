@@ -73,21 +73,21 @@ export default function ContentToolbar({
           <button
             onClick={openLink}
             disabled={disabled}
-            className="rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+            className="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
           >
             Thêm link
           </button>
           <button
             onClick={() => openUpload('media')}
             disabled={disabled}
-            className="rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+            className="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
           >
             Ảnh/Video
           </button>
           <button
             onClick={() => openUpload('file')}
             disabled={disabled}
-            className="rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+            className="cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
           >
             File
           </button>

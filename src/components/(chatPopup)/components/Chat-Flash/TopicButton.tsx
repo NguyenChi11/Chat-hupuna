@@ -299,7 +299,7 @@ export default function TopicButton({
                     Xác nhận
                   </button>
                   <button
-                    className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
+                    className="cursor-pointer px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
                     onClick={() => {
                       setPendingTopicId(null);
                       setNameInput('');

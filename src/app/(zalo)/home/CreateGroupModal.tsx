@@ -103,7 +103,7 @@ export default function CreateGroupModal({
             )}
 
             {/* Thanh tìm kiếm */}
-            <div className="relative">
+            <div className="relative mt-1">
               <HiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
                 type="text"
@@ -212,7 +212,7 @@ export default function CreateGroupModal({
                           </svg>
                         </div>
 
-                        <div className="sm:w-7 sm:h-7 w-4 h-4 rounded-full overflow-hidden sm:ring-4 ring-2 ring-white shadow-md">
+                        <div className="sm:w-10 sm:h-10 w-10 h-10 rounded-full overflow-hidden sm:ring-4 ring-2 ring-white shadow-md">
                           {user.avatar ? (
                             <Image
                               src={getProxyUrl(user.avatar)}

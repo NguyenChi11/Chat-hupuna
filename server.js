@@ -405,7 +405,10 @@ io.on('connection', (socket) => {
     io.in(roomId).emit('call_offer', data);
     if (data?.target) io.to(String(data.target)).emit('call_offer', data);
     const key = `${roomId}|${String(data.from)}|${String(data.target)}`;
-    callSessions.set(key, { roomId, callerId: String(data.from), calleeId: String(data.target), type: data.type, offerAt: Date.now() });
+    const session = { roomId, callerId: String(data.from), calleeId: String(data.target), type: data.type, offerAt: Date.now() };
+    callSessions.set(key, session);
+    const reversedKey = `${roomId}|${String(data.target)}|${String(data.from)}`;
+    callSessions.set(reversedKey, session);
     const rc = roomCalls.get(roomId) || { type: data.type || 'voice', participants: new Set(), active: false, startAt: null };
     rc.type = data.type || rc.type;
     rc.participants.add(String(data.from));
@@ -418,9 +421,14 @@ io.on('connection', (socket) => {
     io.in(roomId).emit('call_answer', data);
     if (data?.target) io.to(String(data.target)).emit('call_answer', data);
     if (data?.from) io.to(String(data.from)).emit('call_answer', data);
-    const key = `${roomId}|${String(data.target)}|${String(data.from)}`;
-    const s = callSessions.get(key);
-    if (s) callSessions.set(key, { ...s, startAt: Date.now() });
+    const key1 = `${roomId}|${String(data.target)}|${String(data.from)}`;
+    const key2 = `${roomId}|${String(data.from)}|${String(data.target)}`;
+    const s = callSessions.get(key1) || callSessions.get(key2);
+    if (s) {
+      s.startAt = Date.now();
+      callSessions.set(key1, s);
+      callSessions.set(key2, s);
+    }
     const rc = roomCalls.get(roomId) || { type: s?.type || 'voice', participants: new Set(), active: false, startAt: null };
     rc.type = (s?.type || rc.type);
     rc.active = true;
@@ -451,8 +459,9 @@ io.on('connection', (socket) => {
       io.in(roomId).emit('call_end', { roomId });
       targets.forEach((t) => io.to(String(t)).emit('call_end', { roomId }));
       for (const t of targets) {
-        const key = `${roomId}|${fromId}|${String(t)}`;
-        const s = callSessions.get(key);
+        const keyA = `${roomId}|${fromId}|${String(t)}`;
+        const keyB = `${roomId}|${String(t)}|${fromId}`;
+        const s = callSessions.get(keyA) || callSessions.get(keyB);
         if (!s) continue;
         const started = typeof s.startAt === 'number' ? s.startAt : null;
         const ended = Date.now();
@@ -462,7 +471,8 @@ io.on('connection', (socket) => {
         } else {
           await createCallNotify({ roomId, sender: fromId, callerId: s.callerId, calleeId: s.calleeId, type: s.type, status: 'timeout', durationSec: 0 });
         }
-        callSessions.delete(key);
+        callSessions.delete(keyA);
+        callSessions.delete(keyB);
       }
       rc.active = false;
       rc.participants.clear();
@@ -495,13 +505,15 @@ io.on('connection', (socket) => {
       io.in(roomId).emit('call_leave', { roomId, userId: fromId });
     }
     for (const t of targets) {
-      const key = `${roomId}|${String(t)}|${fromId}`;
-      const s = callSessions.get(key);
+      const keyA = `${roomId}|${String(t)}|${fromId}`;
+      const keyB = `${roomId}|${fromId}|${String(t)}`;
+      const s = callSessions.get(keyA) || callSessions.get(keyB);
       const type = s?.type || 'voice';
       const callerId = s?.callerId || String(t);
       const calleeId = s?.calleeId || fromId;
       await createCallNotify({ roomId, sender: fromId, callerId, calleeId, type, status: 'rejected', durationSec: 0 });
-      callSessions.delete(key);
+      callSessions.delete(keyA);
+      callSessions.delete(keyB);
     }
     const rc = roomCalls.get(roomId) || { type: 'voice', participants: new Set(), active: false, startAt: null };
     rc.participants.delete(fromId);

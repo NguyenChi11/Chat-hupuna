@@ -336,7 +336,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
 
           <div className="mt-2 flex items-center gap-2 text-sm">
             <button
-              className={`px-3 py-1.5 rounded-lg ${
+              className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                 activeNav === 'media' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               onClick={() => setActiveNav('media')}
@@ -344,7 +344,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
               Ảnh/Video
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg ${
+              className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                 activeNav === 'text' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               onClick={() => setActiveNav('text')}
@@ -352,7 +352,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
               Text
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg ${
+              className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                 activeNav === 'link' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               onClick={() => setActiveNav('link')}
@@ -360,7 +360,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
               Link
             </button>
             <button
-              className={`px-3 py-1.5 rounded-lg ${
+              className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                 activeNav === 'file' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
               onClick={() => setActiveNav('file')}
@@ -401,7 +401,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
                   <p className="text-sm font-semibold text-gray-800">Lựa chọn</p>
                   <div className="flex items-center gap-2">
                     <button
-                      className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700"
+                      className="cursor-pointer px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700"
                       onClick={() => {
                         applySelection();
                         setShowComplete(true);
@@ -411,7 +411,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
                       Đồng ý lựa chọn
                     </button>
                     <button
-                      className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs hover:bg-red-700"
+                      className="cursor-pointer px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs hover:bg-red-700"
                       onClick={() => {
                         if (!selectedFolderId) return;
                         Array.from(selectedIds).forEach((id) => removeItemFromFolder(selectedFolderId, id));
@@ -422,7 +422,7 @@ export default function DesktopLayout(props: DesktopLayoutProps) {
                       Xóa lựa chọn
                     </button>
                     <button
-                      className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
+                      className="cursor-pointer px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
                       onClick={() => {
                         clearSelection();
                         setShowComplete(true);

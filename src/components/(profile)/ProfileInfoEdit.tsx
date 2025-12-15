@@ -69,7 +69,7 @@ export default function ProfileInfoEdit({ form, setForm, isSaving, onSave }: Pro
       <button
         onClick={onSave}
         disabled={isSaving}
-        className="w-full mt-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xl rounded-2xl shadow-2xl transition-all active:scale-98 disabled:opacity-70 flex items-center justify-center gap-3"
+        className="w-full mt-2 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-sm cursor-pointer rounded-2xl shadow-2xl transition-all active:scale-98 disabled:opacity-70 flex items-center justify-center gap-3"
       >
         {isSaving ? (
           'Đang lưu...'

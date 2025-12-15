@@ -46,7 +46,6 @@ export default function ProfileByIdPage() {
   const [tabLeft, setTabLeft] = useState<'profile' | 'qr'>('profile');
   const [tabRight, setTabRight] = useState<'info' | 'settings' | 'qr'>('info');
   const [tabMobile, setTabMobile] = useState<'profile' | 'qr' | 'info' | 'settings'>('profile');
-  const [mobileModalOpen, setMobileModalOpen] = useState(false);
 
   const tabsLeft = isOwner ? ['profile', 'qr'] : [];
   const tabsRight = isOwner ? ['info', 'settings'] : ['info', 'qr'];
@@ -83,7 +82,7 @@ export default function ProfileByIdPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       {/* ==================== MOBILE (<= md) & TABLET SMALL (<= lg) ==================== */}
       <div className=" mx-auto md:hidden">
-        <div className="h-[75vh] bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/50">
+        <div className=" max-h-[90vh] bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl overflow-y-auto custom-scrollbar border border-white/50 pb-28 ">
           {/* Header */}
           <ProfileHeader
             isOwner={!!isOwner}
@@ -95,8 +94,8 @@ export default function ProfileByIdPage() {
           />
 
           {/* Info */}
-          <div className="px-6 pt-16 pb-6 text-center">
-            <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+          <div className="px-2 pt-4 pb-3 text-center">
+            <h1 className="mt-14 text-xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
               {displayName || 'Hồ sơ'}
             </h1>
             {departmentLabel && (
@@ -113,60 +112,18 @@ export default function ProfileByIdPage() {
             tab={tabMobile}
             setTab={(item) => {
               setTabMobile(item as 'profile' | 'qr' | 'info' | 'settings');
-              setMobileModalOpen(true);
             }}
             icon={getTabIcon}
           />
 
-          {/* Ẩn hoàn toàn phần nội dung bên dưới trên mobile; chỉ hiển thị qua popup */}
-          {false && (
-            <div className="h-96 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white">
-              <ProfileContent
-                tab={tabMobile}
-                isOwner={!!isOwner}
-                overviewData={overviewData}
-                handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
-              />
-            </div>
-          )}
-
-          {mobileModalOpen && (
-            <div className="fixed inset-0 z-50">
-              <div className="absolute inset-0 bg-black/40" onClick={() => setMobileModalOpen(false)} />
-              <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b">
-                    <div className="flex items-center gap-2 text-gray-800 font-semibold">
-                      {getTabIcon(tabMobile)}
-                      <span>
-                        {tabMobile === 'profile'
-                          ? 'Hồ sơ'
-                          : tabMobile === 'qr'
-                            ? 'Mã QR'
-                            : tabMobile === 'info'
-                              ? 'Thông tin'
-                              : 'Cài đặt'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setMobileModalOpen(false)}
-                      className="px-3 py-1 text-sm font-medium rounded-lg bg-gray-100 hover:bg-gray-200"
-                    >
-                      Đóng
-                    </button>
-                  </div>
-                  <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <ProfileContent
-                      tab={tabMobile}
-                      isOwner={!!isOwner}
-                      overviewData={overviewData}
-                      handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="bg-gradient-to-b from-gray-50/50 to-white">
+            <ProfileContent
+              tab={tabMobile}
+              isOwner={!!isOwner}
+              overviewData={overviewData}
+              handleOverviewData={(data) => setOverviewData(data as Parameters<typeof setOverviewData>[0])}
+            />
+          </div>
         </div>
       </div>
 
@@ -185,7 +142,7 @@ export default function ProfileByIdPage() {
             />
 
             <div className="px-8 pt-20 pb-8 text-center bg-gradient-to-b from-white to-gray-50">
-              <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-xl font-black bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 {displayName}
               </h1>
               {departmentLabel && (

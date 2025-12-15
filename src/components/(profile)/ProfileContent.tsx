@@ -20,7 +20,7 @@ export default function ProfileContent({
 }) {
   // Icon tiêu đề cho từng tab – đẹp như Zalo
   const getTabHeader = () => {
-    const baseClasses = 'flex items-center gap-3 text-2xl font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200';
+    const baseClasses = 'flex items-center gap-3 text-xl font-bold text-gray-800 mb-6 pb-3 border-b border-gray-200';
 
     switch (tab) {
       case 'info':

@@ -150,7 +150,7 @@ export default function ContentList({
 
           {selected && showSelected}
           <button
-            className="absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm ring-1 ring-black/5 hover:bg-white"
+            className= "cursor-pointer absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm ring-1 ring-black/5 hover:bg-white"
             onClick={(e) => {
               e.stopPropagation();
               const label = it.name || resolvedFileName || (resolvedType === 'video' ? 'Video' : 'Ảnh');
@@ -185,7 +185,7 @@ export default function ContentList({
 
           {selected && showSelected}
           <button
-            className="absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm ring-1 ring-black/5 hover:bg-white"
+            className="cursor-pointer absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm ring-1 ring-black/5 hover:bg-white"
             onClick={(e) => {
               e.stopPropagation();
               const label = it.name || resolvedFileName || 'Tệp đính kèm';
@@ -224,7 +224,7 @@ export default function ContentList({
 
         {selected && showSelected}
         <button
-          className="absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm ring-1 ring-black/5 hover:bg-white"
+          className="cursor-pointer absolute right-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm ring-1 ring-black/5 hover:bg-white"
           onClick={(e) => {
             e.stopPropagation();
             const label = it.name || raw || resolvedContent || 'Tin nhắn';

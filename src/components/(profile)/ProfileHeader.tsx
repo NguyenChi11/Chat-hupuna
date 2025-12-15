@@ -25,7 +25,7 @@ export default function ProfileHeader({
     setMounted(true);
   }, []);
   return (
-    <div className="relative h-50 md:h-60 z-10 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600">
+    <div className="relative h-30 md:h-30 z-10 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600">
       {/* Background Image */}
       {background ? (
         <Image
@@ -45,7 +45,7 @@ export default function ProfileHeader({
       {/* Nút đổi ảnh bìa - Glassmorphism cực đẹp */}
       {mounted && isOwner && (
         <label className="absolute top-5 right-5 z-10 cursor-pointer group">
-          <div className="px-6 py-3.5 bg-white/15 backdrop-blur-xl rounded-2xl border border-white/30 shadow-2xl hover:bg-white/25 transition-all duration-300 flex items-center gap-3 active:scale-95">
+          <div className="px-2 py-3.5 bg-white/15 backdrop-blur-xl rounded-2xl border border-white/30 shadow-2xl hover:bg-white/25 transition-all duration-300 flex items-center gap-3 active:scale-95">
             <HiCamera className="w-6 h-6 text-white" />
             <span className="text-white font-semibold text-sm tracking-wide">
               {isUploadingBackground ? 'Đang tải...' : 'Đổi ảnh bìa'}

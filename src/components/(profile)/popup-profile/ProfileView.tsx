@@ -58,7 +58,7 @@ export default function ProfileView({
         {/* Card thông tin - Nhỏ gọn, thanh lịch */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-5 text-white">
-            <h3 className="text-xl font-bold flex items-center gap-3">
+            <h3 className="text-sm font-bold flex items-center gap-3">
               <HiUser className="w-7 h-7" />
               Thông tin cá nhân
             </h3>

@@ -44,21 +44,21 @@ export default function ProfileTabs({
 
   if (!mounted) return null;
   return (
-    <div className="flex bg-white border-b border-gray-200/80 sticky top-0 z-10">
+    <div className="flex bg-white border-b border-gray-200/80 sticky top-0 z-10 overflow-hidden">
       {tabs.map((item) => (
         <button
           key={item}
           onClick={() => setTab(item)}
           className={`
-            flex-1 relative py-4 px-3 text-center font-medium text-sm
+            flex-1 relative py-4 px-3 text-center font-medium text-sm cursor-pointer select-none
             transition-all duration-300 group
             ${tab === item ? 'text-indigo-600 font-bold' : 'text-gray-500 hover:text-gray-700'}
           `}
         >
           {/* Nội dung tab */}
-          <div className="flex items-center justify-center gap-2.5 overflow-auto w-full">
+          <div className="flex items-center justify-center md:gap-2.5 gap-0.5 overflow-hidden w-full">
             {icon ? icon(item) : defaultIcon(item)}
-            <span className="inline text-[0.625rem]">{labels[item] || item}</span>
+            <span className="inline md:text-sm text-[10.5px]">{labels[item] || item}</span>
           </div>
 
           {/* Thanh gạch dưới mượt mà */}

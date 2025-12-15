@@ -47,14 +47,14 @@ function NodeRow({
   return (
     <div className="w-full">
       <div
-        className={`group relative flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-gray-50 ${
+        className={`cursor-pointer group relative flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-gray-50 ${
           isSelected ? 'bg-indigo-50' : ''
         }`}
         style={{ paddingLeft: 12 + depth * 12 }}
       >
         <button
           type="button"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-lg hover:bg-gray-100"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             onToggle(node.id);
@@ -74,7 +74,7 @@ function NodeRow({
 
         <button
           type="button"
-          className="flex flex-1 items-center gap-2 overflow-hidden"
+          className="flex flex-1 items-center gap-2 overflow-hidden cursor-pointer"
           onClick={() => onSelect(node.id, scope)}
         >
           <FaFolder className="h-5 w-5 text-gray-500" />
@@ -90,7 +90,7 @@ function NodeRow({
 
         <button
           type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             setOpenFolderMenuId(openFolderMenuId === node.id ? null : node.id);
@@ -103,7 +103,7 @@ function NodeRow({
         {openFolderMenuId === node.id && (
           <div className="absolute right-2 top-10 z-50 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
             <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
               onClick={(e) => {
                 e.stopPropagation();
                 setOpenFolderMenuId(null);
@@ -114,7 +114,7 @@ function NodeRow({
               <span>Tạo thư mục con</span>
             </button>
             <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
               onClick={(e) => {
                 e.stopPropagation();
                 setOpenFolderMenuId(null);
@@ -125,7 +125,7 @@ function NodeRow({
               <span>Đổi tên</span>
             </button>
             <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+              className="cursor-pointer flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
               onClick={(e) => {
                 e.stopPropagation();
                 setOpenFolderMenuId(null);
@@ -261,7 +261,7 @@ export default function FolderSidebar({
           </button>
           <button
             onClick={() => onCreateRoot('global')}
-            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700"
           >
             <HiPlus className="h-4 w-4" />
             Tạo

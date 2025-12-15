@@ -249,7 +249,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
         <div className="flex flex-nowrap overflow-x-auto border-b border-gray-200 bg-white/80 backdrop-blur-sm -mx-4 px-4">
           <button
             onClick={() => setActiveTab('sidebar')}
-            className={`flex-shrink-0 flex items-center justify-center gap-2 py-3 px-3 text-sm font-semibold transition-all ${
+            className={`cursor-pointer flex-shrink-0 flex items-center justify-center gap-2 py-3 px-3 text-sm font-semibold transition-all ${
               activeTab === 'sidebar' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600'
             }`}
           >
@@ -257,7 +257,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
           </button>
           <button
             onClick={() => setActiveTab('content')}
-            className={`flex-shrink-0 flex items-center justify-center gap-2 py-3 px-3 text-sm font-semibold transition-all ${
+            className={`cursor-pointer flex-shrink-0 flex items-center justify-center gap-2 py-3 px-3 text-sm font-semibold transition-all ${
               activeTab === 'content' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600'
             }`}
           >
@@ -340,7 +340,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
             <div className="mt-2 flex items-start gap-2 text-sm flex-col w-full">
               <div className="flex items-center gap-2">
                 <button
-                  className={`px-3 py-1.5 rounded-lg ${
+                  className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                     activeNav === 'media' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   onClick={() => setActiveNav('media')}
@@ -348,7 +348,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                   Ảnh/Video
                 </button>
                 <button
-                  className={`px-3 py-1.5 rounded-lg ${
+                  className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                     activeNav === 'text' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   onClick={() => setActiveNav('text')}
@@ -356,7 +356,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                   Text
                 </button>
                 <button
-                  className={`px-3 py-1.5 rounded-lg ${
+                  className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                     activeNav === 'link' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   onClick={() => setActiveNav('link')}
@@ -364,7 +364,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                   Link
                 </button>
                 <button
-                  className={`px-3 py-1.5 rounded-lg ${
+                  className={`cursor-pointer px-3 py-1.5 rounded-lg ${
                     activeNav === 'file' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                   onClick={() => setActiveNav('file')}
@@ -441,7 +441,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                     <p className="text-sm font-semibold text-gray-800">Xem trước lựa chọn</p>
                     <div className="flex items-center gap-2">
                       <button
-                        className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700"
+                        className="cursor-pointer px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700"
                         onClick={() => {
                           applySelection();
                           setShowComplete(true);
@@ -451,7 +451,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         Đồng ý lựa chọn
                       </button>
                       <button
-                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs hover:bg-red-700"
+                        className="cursor-pointer px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs hover:bg-red-700"
                         onClick={() => {
                           if (!selectedFolderId) return;
                           Array.from(selectedIds).forEach((id) => removeItemFromFolder(selectedFolderId, id));
@@ -462,7 +462,7 @@ export default function MobileLayout(props: MobileLayoutProps) {
                         Xóa lựa chọn
                       </button>
                       <button
-                        className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
+                        className="cursor-pointer px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-200"
                         onClick={() => {
                           clearSelection();
                           setShowComplete(true);

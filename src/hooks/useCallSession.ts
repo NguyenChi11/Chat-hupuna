@@ -335,10 +335,23 @@ export function useCallSession({
       if (endingRef.current || endedRef.current) return;
       endingRef.current = true;
       if (source === 'local' && socketRef.current?.connected) {
+        let targets = receiversRef.current;
+        if (!targets || targets.length === 0) {
+          const other =
+            counterpartId
+              ? String(counterpartId)
+              : (() => {
+                  const parts = String(activeRoomIdRef.current).split('_').filter(Boolean);
+                  const me = String(currentUserId);
+                  const t = parts.length === 2 ? parts.find((id) => String(id) !== me) : undefined;
+                  return t ? String(t) : undefined;
+                })();
+          targets = other ? [other] : [];
+        }
         socketRef.current.emit('call_end', {
           roomId: activeRoomIdRef.current,
           from: String(currentUserId),
-          targets: receiversRef.current,
+          targets,
         });
         const parts = String(activeRoomIdRef.current).split('_').filter(Boolean);
         const isDirect = parts.length === 2;
