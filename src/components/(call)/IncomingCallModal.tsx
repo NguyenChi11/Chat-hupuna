@@ -18,8 +18,7 @@ export default function IncomingCallModal({
   name,
   onAccept,
   onReject,
-  acceptText = 'Chấp nhận',
-  rejectText = 'Từ chối',
+
   titleText = 'Cuộc gọi đến',
 }: Props) {
   return (

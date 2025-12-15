@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { resolveSocketUrl } from '@/utils/utils';
 import IncomingCallModal from '@/components/(call)/IncomingCallModal';

@@ -160,7 +160,7 @@ export function useCallSession({
           const hint = isSecure || host === 'localhost' ? '' : ' Truy cập bằng HTTPS hoặc localhost để cấp quyền mic/camera.';
           throw new Error('MediaDevices API is unavailable.' + hint);
         }
-      } catch (err) {
+      } catch {
         if (type === 'video') {
           try {
             if (md && typeof md.getUserMedia === 'function') {
@@ -272,7 +272,7 @@ export function useCallSession({
       setCallConnecting(true);
       activeRoomIdRef.current = roomId;
       setActiveRoomId(roomId);
-      setCounterpartId(!isGroup && receivers.length > 0 ? String(receivers[0]) : null);
+      // setCounterpartId(!isGroup && receivers.length > 0 ? String(receivers[0]) : null);
       if (ringTimeoutRef.current) {
         window.clearTimeout(ringTimeoutRef.current);
         ringTimeoutRef.current = null;
@@ -299,7 +299,7 @@ export function useCallSession({
             sdp: offer,
           });
         }
-      } catch (err) {
+      } catch {
         setCallConnecting(false);
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -367,7 +367,7 @@ export function useCallSession({
       endedRef.current = true;
       endingRef.current = false;
     },
-    [roomId, currentUserId, socketRef],
+    [currentUserId, socketRef],
   );
 
   const toggleMic = useCallback(() => {
@@ -422,11 +422,11 @@ export function useCallSession({
         // Không gọi lại những thành viên chưa tham gia khi Accept trong nhóm
         // Việc kết nối bổ sung sẽ dựa vào danh sách participants từ server
         setIncomingCall(null);
-      } catch (err) {
+      } catch  {
         setIncomingCall(null);
       }
     },
-    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, isGroup],
+    [roomId, currentUserId, startLocalStream, createPeerConnection, endCall, socketRef, isGroup, endCall],
   );
 
   const acceptIncomingCall = useCallback(async () => {
@@ -485,7 +485,7 @@ export function useCallSession({
         if (isDirect) {
           setCallStartAt(Date.now());
         }
-      } catch (err) {
+      } catch  {
         stopGlobalRingTone();
       }
     };
@@ -575,7 +575,7 @@ export function useCallSession({
       socket.off('call_leave', handleCallLeave);
       socket.off('call_state', handleCallState);
     };
-  }, [roomId, currentUserId, socketRef.current, endCall]);
+  }, [roomId, currentUserId, socketRef.current, endCall, acceptIncomingCallWith, socketRef]);
 
   useEffect(() => {
     setRoomCallActive(false);

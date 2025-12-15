@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addRow, getAllRows, updateByField } from '@/lib/mongoDBCRUD';
+import {  updateByField } from '@/lib/mongoDBCRUD';
 import { GroupConversation } from '@/types/Group';
 import { randomBytes } from 'crypto';
 

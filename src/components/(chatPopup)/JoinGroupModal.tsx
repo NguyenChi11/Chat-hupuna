@@ -3,7 +3,6 @@
 import { getProxyUrl } from '@/utils/utils';
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
-import { FaUserSecret } from 'react-icons/fa';
 import { HiX } from 'react-icons/hi';
 import { PiUserCircleGearDuotone } from 'react-icons/pi';
 

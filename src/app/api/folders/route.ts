@@ -359,7 +359,7 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-  } catch (e) {
+  } catch  {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
