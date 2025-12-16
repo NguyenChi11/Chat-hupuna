@@ -297,13 +297,13 @@ export default function FolderButton({
           <div className="px-1 py-1">
             <div className="text-xs text-gray-500 pb-2 flex items-center gap-2">
               <button
-                className={`px-2 py-1 rounded-lg text-xs border ${scope === 'global' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                className={`cursor-pointer px-2 py-1 rounded-lg text-xs border ${scope === 'global' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                 onClick={() => setScope('global')}
               >
                 Dùng nhiều đoạn chat
               </button>
               <button
-                className={`px-2 py-1 rounded-lg text-xs border ${scope === 'room' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                className={`cursor-pointer px-2 py-1 rounded-lg text-xs border ${scope === 'room' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                 onClick={() => setScope('room')}
               >
                 Đoạn chat hiện tại
@@ -319,7 +319,7 @@ export default function FolderButton({
                       const suggested = (type === 'file' ? fileName || '' : '') || content || '' || preview || '' || '';
                       setNameInput(String(suggested).slice(0, 100));
                     }}
-                    className="w-full text-left px-1 py-1.5 rounded-lg hover:bg-gray-50 text-sm text-gray-800"
+                    className="cursor-pointer w-full text-left px-1 py-1.5 rounded-lg hover:bg-gray-50 text-sm text-gray-800"
                   >
                     <div className="flex items-center gap-2" style={{ paddingLeft: depth * 16 }}>
                       <div className="p-1.5 rounded-lg bg-gradient-to-br from-sky-500 via-blue-500 to-blue-500 text-white shadow">
@@ -349,7 +349,7 @@ export default function FolderButton({
                 />
                 <div className="flex items-center gap-2 mt-2">
                   <button
-                    className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700"
+                    className="cursor-pointer px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700"
                     onClick={() => {
                       if (!pendingFolderId) return;
                       const name = nameInput.trim();

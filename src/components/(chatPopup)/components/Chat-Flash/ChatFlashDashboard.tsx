@@ -288,13 +288,13 @@ export default function ChatFlashDashboard({
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Chủ đề</h3>
             <div className="flex items-center gap-1">
               <button
-                className={`px-2 py-1 rounded-lg text-xs border ${selectedScope === 'global' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                className={`cursor-pointer px-2 py-1 rounded-lg text-xs border ${selectedScope === 'global' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                 onClick={() => setSelectedScope('global')}
               >
                 Dùng nhiều đoạn chat
               </button>
               <button
-                className={`px-2 py-1 rounded-lg text-xs border ${selectedScope === 'room' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                className={` cursor-pointer px-2 py-1 rounded-lg text-xs border ${selectedScope === 'room' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                 onClick={() => setSelectedScope('room')}
               >
                 Đoạn chat hiện tại
